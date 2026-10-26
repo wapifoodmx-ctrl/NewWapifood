@@ -1,0 +1,103 @@
+/**
+ * Mapa del SaaS Wapifood.
+ * Cada módulo del sistema anterior (Front + Api + microservicio) tiene destino
+ * aquí. No se elimina funcionalidad: se migra módulo por módulo.
+ */
+export const MODULES = [
+  {
+    id: "dashboard",
+    title: "Panel",
+    href: "/dashboard",
+    status: "next",
+    legacy: ["dashboard", "analytics"],
+    description: "Ventas del día, mesas abiertas y alertas de stock.",
+  },
+  {
+    id: "pos",
+    title: "Punto de venta",
+    href: "/pos",
+    status: "next",
+    legacy: ["puntodeventa", "orders", "tables", "payments"],
+    description: "Mesas, cuenta, cobro y ticket. Descuenta inventario al cobrar.",
+  },
+  {
+    id: "kitchen",
+    title: "Cocina",
+    href: "/cocina",
+    status: "next",
+    legacy: ["cocina", "websockets", "orders.status"],
+    description: "Pase de comandas en tiempo real.",
+  },
+  {
+    id: "menu",
+    title: "Carta",
+    href: "/carta",
+    status: "next",
+    legacy: ["products", "categoria", "recetas"],
+    description: "Productos, categorías, costos y recetas.",
+  },
+  {
+    id: "inventory",
+    title: "Insumos",
+    href: "/insumos",
+    status: "next",
+    legacy: ["microServicioWapiFood", "inventarios", "stock_moves"],
+    description: "Stock unificado. Ya no hay microservicio aparte.",
+  },
+  {
+    id: "waiters",
+    title: "Meseros",
+    href: "/meseros",
+    status: "planned",
+    legacy: ["meseros", "waiters", "assignments"],
+    description: "Altas, asignación a mesas y menú de mesero.",
+  },
+  {
+    id: "client-menu",
+    title: "Menú cliente",
+    href: "/menu",
+    status: "planned",
+    legacy: ["clientmenu", "webmenu", "kiosko", "ConfirmationCode"],
+    description: "QR, kiosco y pedido del comensal.",
+  },
+  {
+    id: "screens",
+    title: "Pantallas",
+    href: "/pantallas",
+    status: "planned",
+    legacy: ["pantallas"],
+    description: "Pantallas externas de cocina / turno.",
+  },
+  {
+    id: "payments",
+    title: "Pagos",
+    href: "/pagos",
+    status: "planned",
+    legacy: ["payments", "MercadoPago", "Stripe"],
+    description: "Historial e integraciones de pasarela.",
+  },
+  {
+    id: "settings",
+    title: "Restaurante",
+    href: "/config",
+    status: "planned",
+    legacy: ["user", "user_info", "restaurante"],
+    description: "Datos del local, horarios y preferencias.",
+  },
+  {
+    id: "auth",
+    title: "Acceso",
+    href: "/login",
+    status: "next",
+    legacy: ["auth", "OTP", "roles"],
+    description: "Supabase Auth + memberships (owner/admin/piso/cocina).",
+  },
+  {
+    id: "mobile",
+    title: "Android",
+    href: "#",
+    status: "later",
+    legacy: ["Capacitor", "AndroidApp"],
+    description: "App híbrida sobre el mismo front web.",
+  },
+];

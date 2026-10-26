@@ -1,69 +1,98 @@
-import Image from "next/image";
+import Link from "next/link";
+import { AppShell } from "@/components/AppShell";
+import { MODULES } from "@/lib/modules";
+import { createClient } from "@/lib/supabase/server";
 
-export default function Home() {
+export default async function HomePage() {
+  let health = "sin configurar";
+  let restaurantName = null;
+  let productCount = null;
+  let tableCount = null;
+
+  try {
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      const supabase = await createClient();
+      const { data: restaurants, error } = await supabase
+        .from("restaurants")
+        .select("id,name")
+        .limit(1);
+      if (error) {
+        health = `conectado · ${error.message}`;
+      } else {
+        health = "conectado a Supabase";
+        restaurantName = restaurants?.[0]?.name ?? "sin filas visibles (falta membership)";
+        const [{ count: pc }, { count: tc }] = await Promise.all([
+          supabase.from("products").select("*", { count: "exact", head: true }),
+          supabase.from("dining_tables").select("*", { count: "exact", head: true }),
+        ]);
+        productCount = pc;
+        tableCount = tc;
+      }
+    }
+  } catch (e) {
+    health = `error · ${e?.message ?? "desconocido"}`;
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.js
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <AppShell title="Operación">
+      <section className="mb-8 rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5">
+        <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
+          Estado
+        </p>
+        <h2 className="mt-1 text-3xl">Refactor del SaaS sin perder módulos</h2>
+        <p className="mt-2 max-w-2xl text-[var(--color-muted)]">
+          Este repo concentra Front + API + microservicio de inventarios en
+          Next.js + Supabase. El mapa de abajo es el inventario de
+          funcionalidades del sistema anterior; se migran una a una.
+        </p>
+        <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl bg-[var(--color-cream)] p-3">
+            <dt className="text-sm text-[var(--color-muted)]">Supabase</dt>
+            <dd className="font-semibold">{health}</dd>
+          </div>
+          <div className="rounded-xl bg-[var(--color-cream)] p-3">
+            <dt className="text-sm text-[var(--color-muted)]">Restaurante visible</dt>
+            <dd className="font-semibold">{restaurantName ?? "—"}</dd>
+          </div>
+          <div className="rounded-xl bg-[var(--color-cream)] p-3">
+            <dt className="text-sm text-[var(--color-muted)]">Productos / mesas</dt>
+            <dd className="font-semibold">
+              {productCount ?? "—"} / {tableCount ?? "—"}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-2xl">Módulos del SaaS</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {MODULES.map((m) => (
+            <article
+              key={m.id}
+              className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-4"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="text-xl">{m.title}</h3>
+                <span className="rounded-full bg-[var(--color-cream)] px-2 py-1 text-xs font-bold uppercase tracking-wide text-[var(--color-muted)]">
+                  {m.status}
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-[var(--color-muted)]">{m.description}</p>
+              <p className="mt-2 text-xs text-[var(--color-muted)]">
+                Legacy: {m.legacy.join(" · ")}
+              </p>
+              {m.href !== "#" ? (
+                <Link
+                  href={m.href}
+                  className="mt-3 inline-flex h-10 items-center rounded-full bg-[var(--color-ink)] px-4 text-sm font-semibold text-[var(--color-cream)]"
+                >
+                  Abrir
+                </Link>
+              ) : null}
+            </article>
+          ))}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </section>
+    </AppShell>
   );
 }

@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# NewWapifood
 
-## Getting Started
+SaaS de operación para restaurantes. Refactor de:
 
-First, run the development server:
+- `WapifoodFront` (Next.js UI + Capacitor)
+- `ApiWapifood` (FastAPI)
+- `microServicioWapiFood` (inventarios)
+
+Stack objetivo: **Next.js 16 + Supabase (Auth, Postgres, RLS, Realtime) + Capacitor**.
+
+## Setup rápido
 
 ```bash
+npm install
+cp .env.example .env.local
+# llena NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Base de datos
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+1. Ya corriste `001` (schema + RLS + `close_order`).
+2. Ejecuta en SQL Editor: `supabase/002_seed_demo.sql`
+3. Crea un usuario en Authentication.
+4. Ejecuta `supabase/003_bootstrap_owner.sql` con el UUID de ese usuario.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Sin membership, RLS no deja ver filas (es correcto).
 
-## Learn More
+## Migración sin perder funcionalidad
 
-To learn more about Next.js, take a look at the following resources:
+Ver `src/lib/modules.js`: mapa completo de módulos legacy → rutas nuevas.
+Orden: auth → carta/insumos → POS/cocina → menú cliente → pagos → Capacitor.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Seguridad
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Nunca subas `service_role` al cliente.
+- Todo dato de negocio cuelga de `restaurant_id` + RLS.
+- Cobrar solo vía `close_order` (descuento de stock atómico).
