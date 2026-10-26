@@ -1,38 +1,42 @@
 # NewWapifood
 
-SaaS de operación para restaurantes. Refactor de:
+Refactor del SaaS **Comanadas / Wapifood** (Front + Api + microservicio inventarios) sobre **Next.js 16 + Supabase**.
 
-- `WapifoodFront` (Next.js UI + Capacitor)
-- `ApiWapifood` (FastAPI)
-- `microServicioWapiFood` (inventarios)
+## Qué ya está migrado (bloque 1)
 
-Stack objetivo: **Next.js 16 + Supabase (Auth, Postgres, RLS, Realtime) + Capacitor**.
+| Legacy | Nueva ruta | Estado |
+|---|---|---|
+| `pages/index.js` landing | `/` | live |
+| `pages/login.js` | `/login` | live (Supabase Auth) |
+| `pages/dashboard.js` | `/dashboard` | live |
+| `pages/puntodeventa.js` | `/pos` | live |
+| `pages/cocina.js` | `/cocina` | live |
+| `pages/menu.js` | `/carta` | live |
+| `pages/inventarios.js` + microservicio | `/insumos` | live |
+| `pages/recetas.js` | `/recetas` | live |
+| `pages/meseros.js` | `/meseros` | live (necesita SQL 004) |
+| `pages/clientmenu.js` | `/menu` | live parcial |
+| payments, user, tickets, pantallas, kiosko | rutas shell | siguiente bloque |
 
-## Setup rápido
+## Setup
 
 ```bash
 npm install
 cp .env.example .env.local
-# llena NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY
+# URL + anon + service_role
+npm run db:seed
+# opcional: npm run db:seed -- --owner=UUID_DE_TU_USUARIO
 npm run dev
 ```
 
-## Base de datos
+## SQL en Supabase
 
-1. Ya corriste `001` (schema + RLS + `close_order`).
-2. Ejecuta en SQL Editor: `supabase/002_seed_demo.sql`
-3. Crea un usuario en Authentication.
-4. Ejecuta `supabase/003_bootstrap_owner.sql` con el UUID de ese usuario.
-
-Sin membership, RLS no deja ver filas (es correcto).
-
-## Migración sin perder funcionalidad
-
-Ver `src/lib/modules.js`: mapa completo de módulos legacy → rutas nuevas.
-Orden: auth → carta/insumos → POS/cocina → menú cliente → pagos → Capacitor.
+1. `001` schema base (ya corrido)
+2. `supabase/004_schema_saas_completo.sql` — meseros, web_orders, suscripciones, etc.
+3. Seed por `npm run db:seed` (recomendado) o `002_seed_demo.sql`
 
 ## Seguridad
 
-- Nunca subas `service_role` al cliente.
-- Todo dato de negocio cuelga de `restaurant_id` + RLS.
-- Cobrar solo vía `close_order` (descuento de stock atómico).
+- RLS por `restaurant_id` + memberships
+- Cobro e inventario solo vía `close_order`
+- `service_role` solo en `.env.local`, nunca `NEXT_PUBLIC_`

@@ -13,23 +13,7 @@
   --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-ink: var(--color-ink);
-  --color-cream: var(--color-cream);
-  --color-paper: var(--color-paper);
-  --color-line: var(--color-line);
-  --color-muted: var(--color-muted);
-  --color-ember: var(--color-ember);
-  --color-sage: var(--color-sage);
-  --color-wine: var(--color-wine);
-  --font-sans: var(--font-sans);
-}
-
-html,
-body {
-  height: 100%;
-}
-
+html, body { height: 100%; }
 body {
   margin: 0;
   background: var(--color-cream);
@@ -37,15 +21,8 @@ body {
   font-family: var(--font-sans);
   line-height: 1.5;
 }
-
-h1,
-h2,
-h3 {
+h1, h2, h3 {
   font-family: var(--font-display);
   letter-spacing: -0.02em;
 }
-
-button:not(:disabled),
-[role="button"]:not(:disabled) {
-  cursor: pointer;
-}
+button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }

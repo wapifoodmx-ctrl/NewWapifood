@@ -1,0 +1,401 @@
+From 1101a49bf78194b81c2f8b6fc114c662dc34f027 Mon Sep 17 00:00:00 2001
+From: b <a@b.c>
+Date: Mon, 26 Oct 2026 07:30:41 +0000
+Subject: [PATCH] feat: auto create restaurant on first login
+
+---
+ 005_auto_onboarding.sql          |  56 +++++++++++++++++
+ dashboard-page.js                | 104 +++++++++++++++++++++++++++++++
+ onboarding.js                    |  11 ++++
+ src/app/dashboard/page.js        | 104 +++++++++++++++++++++++++++++++
+ src/lib/onboarding.js            |  11 ++++
+ supabase/005_auto_onboarding.sql |  56 +++++++++++++++++
+ 6 files changed, 342 insertions(+)
+ create mode 100644 005_auto_onboarding.sql
+ create mode 100644 dashboard-page.js
+ create mode 100644 onboarding.js
+ create mode 100644 src/app/dashboard/page.js
+ create mode 100644 src/lib/onboarding.js
+ create mode 100644 supabase/005_auto_onboarding.sql
+
+diff --git a/005_auto_onboarding.sql b/005_auto_onboarding.sql
+new file mode 100644
+index 0000000..9ca934f
+--- /dev/null
++++ b/005_auto_onboarding.sql
+@@ -0,0 +1,56 @@
++-- Onboarding automático: el usuario autenticado crea su restaurante y queda como owner.
++-- No requiere service_role ni SQL manual por cliente.
++
++create or replace function public.create_my_restaurant(p_name text default 'Mi restaurante')
++returns uuid
++language plpgsql
++security definer
++set search_path = public
++as $$
++declare
++  v_uid uuid := auth.uid();
++  v_rid uuid;
++  v_name text := nullif(trim(p_name), '');
++begin
++  if v_uid is null then
++    raise exception 'no autenticado';
++  end if;
++
++  -- Si ya es miembro de alguno, devuelve ese
++  select restaurant_id into v_rid
++  from public.memberships
++  where user_id = v_uid
++  limit 1;
++
++  if v_rid is not null then
++    return v_rid;
++  end if;
++
++  if v_name is null then
++    v_name := 'Mi restaurante';
++  end if;
++
++  insert into public.restaurants (name)
++  values (v_name)
++  returning id into v_rid;
++
++  insert into public.memberships (restaurant_id, user_id, role)
++  values (v_rid, v_uid, 'owner');
++
++  -- Mesas base para poder operar el POS de inmediato
++  insert into public.dining_tables (restaurant_id, number, seats, state, active)
++  select v_rid, n, case when n % 3 = 0 then 4 else 2 end, 'libre', true
++  from generate_series(1, 8) as n;
++
++  -- Categorías base
++  insert into public.categories (restaurant_id, name) values
++    (v_rid, 'Tacos'),
++    (v_rid, 'Antojitos'),
++    (v_rid, 'Bebidas');
++
++  return v_rid;
++end;
++$$;
++
++revoke all on function public.create_my_restaurant(text) from public;
++grant execute on function public.create_my_restaurant(text) to authenticated;
+diff --git a/dashboard-page.js b/dashboard-page.js
+new file mode 100644
+index 0000000..c491707
+--- /dev/null
++++ b/dashboard-page.js
+@@ -0,0 +1,104 @@
++import { AppShell } from "@/components/AppShell";
++import { money } from "@/lib/format";
++import { getMembership, requireUser } from "@/lib/auth";
++import { MODULES } from "@/lib/modules";
++import Link from "next/link";
++import { ensureRestaurant } from "@/lib/onboarding";
++
++export default async function DashboardPage() {
++  const { supabase, user } = await requireUser();
++  let membership = await getMembership(supabase, user.id);
++
++  // SaaS: si no tiene restaurante, se crea solo (owner + mesas + categorías)
++  if (!membership?.restaurant_id) {
++    await ensureRestaurant(supabase, "Mi restaurante");
++    membership = await getMembership(supabase, user.id);
++  }
++
++  const restaurantId = membership?.restaurant_id;
++  const restaurantName = membership?.restaurants?.name || "Mi restaurante";
++
++  let openTables = 0;
++  let openOrders = 0;
++  let sales = 0;
++  let lowStock = [];
++
++  if (restaurantId) {
++    const [{ count: ot }, { data: orders }, { data: ings }] = await Promise.all([
++      supabase
++        .from("dining_tables")
++        .select("*", { count: "exact", head: true })
++        .eq("restaurant_id", restaurantId)
++        .eq("state", "ocupada"),
++      supabase
++        .from("orders")
++        .select("id,status,order_items(qty,unit_price)")
++        .eq("restaurant_id", restaurantId),
++      supabase
++        .from("ingredients")
++        .select("name,stock,min_stock,unit")
++        .eq("restaurant_id", restaurantId),
++    ]);
++    openTables = ot || 0;
++    openOrders = (orders || []).filter((o) => o.status !== "pagada" && o.status !== "cancelada").length;
++    sales = (orders || [])
++      .filter((o) => o.status === "pagada")
++      .reduce(
++        (s, o) =>
++          s +
++          (o.order_items || []).reduce((a, i) => a + Number(i.unit_price) * Number(i.qty), 0),
++        0,
++      );
++    lowStock = (ings || []).filter((i) => Number(i.stock) <= Number(i.min_stock));
++  }
++
++  return (
++    <AppShell title="Panel" restaurantName={restaurantName} role={membership?.role}>
++      <div className="grid gap-3 sm:grid-cols-3">
++        <Stat label="Vendido (pagado)" value={money(sales)} />
++        <Stat label="Mesas ocupadas" value={String(openTables)} />
++        <Stat label="Cuentas abiertas" value={String(openOrders)} />
++      </div>
++
++      <section className="mt-6 rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5">
++        <h2 className="text-2xl">Alertas de stock</h2>
++        {lowStock.length === 0 ? (
++          <p className="mt-2 text-[var(--color-muted)]">Todo arriba del mínimo (o aún sin insumos).</p>
++        ) : (
++          <ul className="mt-2 space-y-1">
++            {lowStock.map((i) => (
++              <li key={i.name}>
++                {i.name}: {i.stock} {i.unit}
++              </li>
++            ))}
++          </ul>
++        )}
++      </section>
++
++      <section className="mt-6">
++        <h2 className="mb-3 text-2xl">Accesos rápidos</h2>
++        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
++          {MODULES.filter((m) => m.status === "live").map((m) => (
++            <Link
++              key={m.id}
++              href={m.href}
++              className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-4 hover:border-[var(--color-ember)]"
++            >
++              <p className="text-lg font-semibold">{m.title}</p>
++              <p className="text-xs text-[var(--color-muted)]">legacy: {m.legacy}</p>
++            </Link>
++          ))}
++        </div>
++      </section>
++    </AppShell>
++  );
++}
++
++function Stat({ label, value }) {
++  return (
++    <article className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-4">
++      <p className="text-sm text-[var(--color-muted)]">{label}</p>
++      <p className="text-3xl font-semibold">{value}</p>
++    </article>
++  );
++}
+diff --git a/onboarding.js b/onboarding.js
+new file mode 100644
+index 0000000..4597ee5
+--- /dev/null
++++ b/onboarding.js
+@@ -0,0 +1,11 @@
++/** Crea restaurante + membership owner vía RPC (security definer). */
++export async function ensureRestaurant(supabase, name = "Mi restaurante") {
++  const { data, error } = await supabase.rpc("create_my_restaurant", {
++    p_name: name,
++  });
++  if (error) {
++    console.error("ensureRestaurant", error.message);
++    throw error;
++  }
++  return data;
++}
+diff --git a/src/app/dashboard/page.js b/src/app/dashboard/page.js
+new file mode 100644
+index 0000000..c491707
+--- /dev/null
++++ b/src/app/dashboard/page.js
+@@ -0,0 +1,104 @@
++import { AppShell } from "@/components/AppShell";
++import { money } from "@/lib/format";
++import { getMembership, requireUser } from "@/lib/auth";
++import { MODULES } from "@/lib/modules";
++import Link from "next/link";
++import { ensureRestaurant } from "@/lib/onboarding";
++
++export default async function DashboardPage() {
++  const { supabase, user } = await requireUser();
++  let membership = await getMembership(supabase, user.id);
++
++  // SaaS: si no tiene restaurante, se crea solo (owner + mesas + categorías)
++  if (!membership?.restaurant_id) {
++    await ensureRestaurant(supabase, "Mi restaurante");
++    membership = await getMembership(supabase, user.id);
++  }
++
++  const restaurantId = membership?.restaurant_id;
++  const restaurantName = membership?.restaurants?.name || "Mi restaurante";
++
++  let openTables = 0;
++  let openOrders = 0;
++  let sales = 0;
++  let lowStock = [];
++
++  if (restaurantId) {
++    const [{ count: ot }, { data: orders }, { data: ings }] = await Promise.all([
++      supabase
++        .from("dining_tables")
++        .select("*", { count: "exact", head: true })
++        .eq("restaurant_id", restaurantId)
++        .eq("state", "ocupada"),
++      supabase
++        .from("orders")
++        .select("id,status,order_items(qty,unit_price)")
++        .eq("restaurant_id", restaurantId),
++      supabase
++        .from("ingredients")
++        .select("name,stock,min_stock,unit")
++        .eq("restaurant_id", restaurantId),
++    ]);
++    openTables = ot || 0;
++    openOrders = (orders || []).filter((o) => o.status !== "pagada" && o.status !== "cancelada").length;
++    sales = (orders || [])
++      .filter((o) => o.status === "pagada")
++      .reduce(
++        (s, o) =>
++          s +
++          (o.order_items || []).reduce((a, i) => a + Number(i.unit_price) * Number(i.qty), 0),
++        0,
++      );
++    lowStock = (ings || []).filter((i) => Number(i.stock) <= Number(i.min_stock));
++  }
++
++  return (
++    <AppShell title="Panel" restaurantName={restaurantName} role={membership?.role}>
++      <div className="grid gap-3 sm:grid-cols-3">
++        <Stat label="Vendido (pagado)" value={money(sales)} />
++        <Stat label="Mesas ocupadas" value={String(openTables)} />
++        <Stat label="Cuentas abiertas" value={String(openOrders)} />
++      </div>
++
++      <section className="mt-6 rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5">
++        <h2 className="text-2xl">Alertas de stock</h2>
++        {lowStock.length === 0 ? (
++          <p className="mt-2 text-[var(--color-muted)]">Todo arriba del mínimo (o aún sin insumos).</p>
++        ) : (
++          <ul className="mt-2 space-y-1">
++            {lowStock.map((i) => (
++              <li key={i.name}>
++                {i.name}: {i.stock} {i.unit}
++              </li>
++            ))}
++          </ul>
++        )}
++      </section>
++
++      <section className="mt-6">
++        <h2 className="mb-3 text-2xl">Accesos rápidos</h2>
++        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
++          {MODULES.filter((m) => m.status === "live").map((m) => (
++            <Link
++              key={m.id}
++              href={m.href}
++              className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-4 hover:border-[var(--color-ember)]"
++            >
++              <p className="text-lg font-semibold">{m.title}</p>
++              <p className="text-xs text-[var(--color-muted)]">legacy: {m.legacy}</p>
++            </Link>
++          ))}
++        </div>
++      </section>
++    </AppShell>
++  );
++}
++
++function Stat({ label, value }) {
++  return (
++    <article className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-4">
++      <p className="text-sm text-[var(--color-muted)]">{label}</p>
++      <p className="text-3xl font-semibold">{value}</p>
++    </article>
++  );
++}
+diff --git a/src/lib/onboarding.js b/src/lib/onboarding.js
+new file mode 100644
+index 0000000..4597ee5
+--- /dev/null
++++ b/src/lib/onboarding.js
+@@ -0,0 +1,11 @@
++/** Crea restaurante + membership owner vía RPC (security definer). */
++export async function ensureRestaurant(supabase, name = "Mi restaurante") {
++  const { data, error } = await supabase.rpc("create_my_restaurant", {
++    p_name: name,
++  });
++  if (error) {
++    console.error("ensureRestaurant", error.message);
++    throw error;
++  }
++  return data;
++}
+diff --git a/supabase/005_auto_onboarding.sql b/supabase/005_auto_onboarding.sql
+new file mode 100644
+index 0000000..9ca934f
+--- /dev/null
++++ b/supabase/005_auto_onboarding.sql
+@@ -0,0 +1,56 @@
++-- Onboarding automático: el usuario autenticado crea su restaurante y queda como owner.
++-- No requiere service_role ni SQL manual por cliente.
++
++create or replace function public.create_my_restaurant(p_name text default 'Mi restaurante')
++returns uuid
++language plpgsql
++security definer
++set search_path = public
++as $$
++declare
++  v_uid uuid := auth.uid();
++  v_rid uuid;
++  v_name text := nullif(trim(p_name), '');
++begin
++  if v_uid is null then
++    raise exception 'no autenticado';
++  end if;
++
++  -- Si ya es miembro de alguno, devuelve ese
++  select restaurant_id into v_rid
++  from public.memberships
++  where user_id = v_uid
++  limit 1;
++
++  if v_rid is not null then
++    return v_rid;
++  end if;
++
++  if v_name is null then
++    v_name := 'Mi restaurante';
++  end if;
++
++  insert into public.restaurants (name)
++  values (v_name)
++  returning id into v_rid;
++
++  insert into public.memberships (restaurant_id, user_id, role)
++  values (v_rid, v_uid, 'owner');
++
++  -- Mesas base para poder operar el POS de inmediato
++  insert into public.dining_tables (restaurant_id, number, seats, state, active)
++  select v_rid, n, case when n % 3 = 0 then 4 else 2 end, 'libre', true
++  from generate_series(1, 8) as n;
++
++  -- Categorías base
++  insert into public.categories (restaurant_id, name) values
++    (v_rid, 'Tacos'),
++    (v_rid, 'Antojitos'),
++    (v_rid, 'Bebidas');
++
++  return v_rid;
++end;
++$$;
++
++revoke all on function public.create_my_restaurant(text) from public;
++grant execute on function public.create_my_restaurant(text) to authenticated;
+-- 
+2.43.0
+

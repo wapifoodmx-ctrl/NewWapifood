@@ -1,98 +1,83 @@
 import Link from "next/link";
-import { AppShell } from "@/components/AppShell";
-import { MODULES } from "@/lib/modules";
-import { createClient } from "@/lib/supabase/server";
 
-export default async function HomePage() {
-  let health = "sin configurar";
-  let restaurantName = null;
-  let productCount = null;
-  let tableCount = null;
+const features = [
+  { t: "Punto de venta", d: "Mesas, cuentas, cobro y ticket en un solo flujo." },
+  { t: "Cocina en vivo", d: "Comandas claras para el pase de cocina." },
+  { t: "Insumos y recetas", d: "El stock baja al cobrar, sin microservicio aparte." },
+  { t: "Menú digital", d: "QR, kiosko y pedido del comensal." },
+  { t: "Meseros", d: "Códigos de acceso y asignación a mesas." },
+  { t: "Multi-sucursal listo", d: "Cada restaurante aislado con RLS en Supabase." },
+];
 
-  try {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      const supabase = await createClient();
-      const { data: restaurants, error } = await supabase
-        .from("restaurants")
-        .select("id,name")
-        .limit(1);
-      if (error) {
-        health = `conectado · ${error.message}`;
-      } else {
-        health = "conectado a Supabase";
-        restaurantName = restaurants?.[0]?.name ?? "sin filas visibles (falta membership)";
-        const [{ count: pc }, { count: tc }] = await Promise.all([
-          supabase.from("products").select("*", { count: "exact", head: true }),
-          supabase.from("dining_tables").select("*", { count: "exact", head: true }),
-        ]);
-        productCount = pc;
-        tableCount = tc;
-      }
-    }
-  } catch (e) {
-    health = `error · ${e?.message ?? "desconocido"}`;
-  }
-
+export default function LandingPage() {
   return (
-    <AppShell title="Operación">
-      <section className="mb-8 rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5">
-        <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-          Estado
-        </p>
-        <h2 className="mt-1 text-3xl">Refactor del SaaS sin perder módulos</h2>
-        <p className="mt-2 max-w-2xl text-[var(--color-muted)]">
-          Este repo concentra Front + API + microservicio de inventarios en
-          Next.js + Supabase. El mapa de abajo es el inventario de
-          funcionalidades del sistema anterior; se migran una a una.
-        </p>
-        <dl className="mt-4 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl bg-[var(--color-cream)] p-3">
-            <dt className="text-sm text-[var(--color-muted)]">Supabase</dt>
-            <dd className="font-semibold">{health}</dd>
-          </div>
-          <div className="rounded-xl bg-[var(--color-cream)] p-3">
-            <dt className="text-sm text-[var(--color-muted)]">Restaurante visible</dt>
-            <dd className="font-semibold">{restaurantName ?? "—"}</dd>
-          </div>
-          <div className="rounded-xl bg-[var(--color-cream)] p-3">
-            <dt className="text-sm text-[var(--color-muted)]">Productos / mesas</dt>
-            <dd className="font-semibold">
-              {productCount ?? "—"} / {tableCount ?? "—"}
-            </dd>
-          </div>
-        </dl>
-      </section>
+    <div className="min-h-screen bg-[var(--color-cream)] text-[var(--color-ink)]">
+      <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
+        <p className="text-xl font-semibold tracking-tight">Wapifood</p>
+        <div className="flex gap-2">
+          <Link href="/login" className="h-11 rounded-full border border-[var(--color-line)] px-4 text-sm font-semibold leading-[2.75rem]">
+            Entrar
+          </Link>
+          <Link href="/login" className="h-11 rounded-full bg-[var(--color-ink)] px-4 text-sm font-semibold leading-[2.75rem] text-[var(--color-cream)]">
+            Probar demo
+          </Link>
+        </div>
+      </header>
 
-      <section>
-        <h2 className="mb-3 text-2xl">Módulos del SaaS</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {MODULES.map((m) => (
-            <article
-              key={m.id}
-              className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-4"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <h3 className="text-xl">{m.title}</h3>
-                <span className="rounded-full bg-[var(--color-cream)] px-2 py-1 text-xs font-bold uppercase tracking-wide text-[var(--color-muted)]">
-                  {m.status}
-                </span>
+      <section className="mx-auto grid max-w-6xl gap-8 px-4 pb-16 pt-8 lg:grid-cols-2 lg:items-center">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-ember)]">
+            Software de restaurante
+          </p>
+          <h1 className="mt-3 text-5xl leading-[1.05] sm:text-6xl">
+            Opera el piso sin caos ni sistemas sueltos
+          </h1>
+          <p className="mt-4 max-w-xl text-lg text-[var(--color-muted)]">
+            Wapifood junta punto de venta, cocina, menú cliente, meseros e inventario
+            en una sola app. Migrado desde Comanadas a una base moderna y segura.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link href="/login" className="inline-flex h-12 items-center rounded-full bg-[var(--color-ember)] px-6 font-semibold text-white">
+              Iniciar sesión
+            </Link>
+            <a href="#modulos" className="inline-flex h-12 items-center rounded-full border border-[var(--color-line)] bg-[var(--color-paper)] px-6 font-semibold">
+              Ver módulos
+            </a>
+          </div>
+        </div>
+        <div className="rounded-[2rem] border border-[var(--color-line)] bg-[var(--color-paper)] p-6 shadow-sm">
+          <div className="grid grid-cols-2 gap-3">
+            {["Mesas", "Cocina", "Carta", "Insumos"].map((x) => (
+              <div key={x} className="rounded-2xl bg-[var(--color-cream)] p-4">
+                <p className="text-sm text-[var(--color-muted)]">Módulo</p>
+                <p className="text-2xl font-semibold">{x}</p>
               </div>
-              <p className="mt-1 text-sm text-[var(--color-muted)]">{m.description}</p>
-              <p className="mt-2 text-xs text-[var(--color-muted)]">
-                Legacy: {m.legacy.join(" · ")}
-              </p>
-              {m.href !== "#" ? (
-                <Link
-                  href={m.href}
-                  className="mt-3 inline-flex h-10 items-center rounded-full bg-[var(--color-ink)] px-4 text-sm font-semibold text-[var(--color-cream)]"
-                >
-                  Abrir
-                </Link>
-              ) : null}
-            </article>
-          ))}
+            ))}
+          </div>
+          <p className="mt-4 text-sm text-[var(--color-muted)]">
+            Misma lógica de negocio del sistema anterior, ahora con Supabase,
+            roles y cobro atómico de inventario.
+          </p>
         </div>
       </section>
-    </AppShell>
+
+      <section id="modulos" className="border-t border-[var(--color-line)] bg-[var(--color-paper)] py-14">
+        <div className="mx-auto max-w-6xl px-4">
+          <h2 className="text-3xl">Todo lo que ya hacía Comanadas</h2>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {features.map((f) => (
+              <article key={f.t} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-cream)] p-5">
+                <h3 className="text-xl">{f.t}</h3>
+                <p className="mt-2 text-sm text-[var(--color-muted)]">{f.d}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <footer className="mx-auto max-w-6xl px-4 py-10 text-sm text-[var(--color-muted)]">
+        Wapifood · operación de restaurante
+      </footer>
+    </div>
   );
 }

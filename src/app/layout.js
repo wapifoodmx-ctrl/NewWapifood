@@ -1,15 +1,8 @@
 import { Fraunces, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 
-const display = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-display",
-});
-
-const sans = Source_Sans_3({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
+const display = Fraunces({ subsets: ["latin"], variable: "--font-display" });
+const sans = Source_Sans_3({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata = {
   title: "Wapifood",
@@ -19,9 +12,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="es">
-      <body className={`${display.variable} ${sans.variable} antialiased`}>
-        {children}
-      </body>
+      <body className={`${display.variable} ${sans.variable} antialiased`}>{children}</body>
     </html>
   );
 }
