@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { ensureRestaurant } from "@/lib/onboarding";
 
 export async function requireUser() {
   const supabase = await createClient();
@@ -16,4 +17,19 @@ export async function getMembership(supabase, userId) {
     .limit(1)
     .maybeSingle();
   return data;
+}
+
+/** Usuario autenticado + restaurante asegurado (SaaS automático). */
+export async function requireTenant() {
+  const { supabase, user } = await requireUser();
+  let membership = await getMembership(supabase, user.id);
+  if (!membership?.restaurant_id) {
+    try {
+      await ensureRestaurant(supabase, "Mi restaurante");
+      membership = await getMembership(supabase, user.id);
+    } catch {
+      // Si falta el RPC 005, el dashboard mostrará guía mínima interna
+    }
+  }
+  return { supabase, user, membership };
 }
