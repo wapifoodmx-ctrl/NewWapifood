@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PricingSection } from "@/components/PricingSection";
 
 const features = [
   { t: "Punto de venta", d: "Mesas, cuentas, cobro y ticket en un solo flujo." },
@@ -11,7 +12,7 @@ const features = [
 
 const steps = [
   { n: "01", t: "Crea tu cuenta", d: "Regístrate con tu correo y confirma en un clic." },
-  { n: "02", t: "Activa el plan", d: "Elige el plan que se ajuste a tu restaurante." },
+  { n: "02", t: "Elige tu plan", d: "Ventas, Restaurante o Plus. Mensual o anual." },
   { n: "03", t: "Opera el piso", d: "POS, cocina, carta e inventario listos desde el día uno." },
 ];
 
@@ -21,6 +22,9 @@ export default function LandingPage() {
       <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
         <p className="text-xl font-semibold tracking-tight">Wapifood</p>
         <div className="flex gap-2">
+          <a href="#precios" className="hidden h-11 items-center rounded-full px-4 text-sm font-semibold text-[var(--color-muted)] sm:inline-flex">
+            Precios
+          </a>
           <Link href="/login" className="inline-flex h-11 items-center rounded-full border border-[var(--color-line)] px-4 text-sm font-semibold">
             Entrar
           </Link>
@@ -47,8 +51,8 @@ export default function LandingPage() {
             <Link href="/login" className="inline-flex h-12 items-center rounded-full bg-[var(--color-ember)] px-6 font-semibold text-white">
               Empezar ahora
             </Link>
-            <a href="#modulos" className="inline-flex h-12 items-center rounded-full border border-[var(--color-line)] bg-[var(--color-paper)] px-6 font-semibold">
-              Ver módulos
+            <a href="#precios" className="inline-flex h-12 items-center rounded-full border border-[var(--color-line)] bg-[var(--color-paper)] px-6 font-semibold">
+              Ver precios
             </a>
           </div>
         </div>
@@ -96,6 +100,8 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      <PricingSection />
 
       <section className="border-t border-[var(--color-line)] bg-[var(--color-ink)] py-14 text-[var(--color-cream)]">
         <div className="mx-auto max-w-6xl px-4 text-center">
