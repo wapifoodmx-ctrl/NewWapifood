@@ -9,9 +9,9 @@ export const MODULES = [
   { id: "pos", title: "Punto de venta", href: "/pos", legacy: "pages/puntodeventa.js", status: "live" },
   { id: "kitchen", title: "Cocina", href: "/cocina", legacy: "pages/cocina.js", status: "live" },
   { id: "meseros", title: "Meseros", href: "/meseros", legacy: "pages/meseros.js", status: "live" },
-  { id: "menu-cliente", title: "Menú cliente", href: "/menu", legacy: "pages/clientmenu.js", status: "live" },
+  { id: "tickets", title: "Tickets", href: "/tickets", legacy: "pages/tickets.js", status: "live" },
+  { id: "pantallas", title: "Pantallas", href: "/pantallas", legacy: "pages/pantallas.js", status: "live" },
+  { id: "menu-cliente", title: "Menú cliente", href: "/menu", legacy: "pages/clientmenu.js", status: "next" },
   { id: "kiosko", title: "Kiosko", href: "/kiosko", legacy: "pages/kiosko.js", status: "shell" },
-  { id: "pantallas", title: "Pantallas", href: "/pantallas", legacy: "pages/pantallas.js", status: "shell" },
-  { id: "tickets", title: "Tickets", href: "/tickets", legacy: "pages/tickets.js", status: "shell" },
   { id: "pagos", title: "Pagos / plan", href: "/pagos", legacy: "pages/payments.js", status: "shell" },
 ];

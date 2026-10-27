@@ -10,18 +10,30 @@ export default async function MeserosPage() {
   if (!membership?.restaurant_id) {
     return <AppShell title="Meseros"><p>Sin restaurante.</p></AppShell>;
   }
-  const { data: waiters } = await supabase
-    .from("waiters")
-    .select("*")
-    .eq("restaurant_id", membership.restaurant_id)
-    .order("name");
+  const rid = membership.restaurant_id;
+  const [{ data: waiters }, { data: tables }] = await Promise.all([
+    supabase.from("waiters").select("*").eq("restaurant_id", rid).order("name"),
+    supabase.from("dining_tables").select("*").eq("restaurant_id", rid).eq("active", true).order("number"),
+  ]);
+
+  let assignments = [];
+  if ((waiters || []).length) {
+    const ids = waiters.map((w) => w.id);
+    const { data } = await supabase.from("waiter_tables").select("waiter_id,table_id").in("waiter_id", ids);
+    assignments = data || [];
+  }
 
   return (
     <AppShell title="Meseros" restaurantName={membership.restaurants?.name} role={membership.role}>
       <p className="mb-4 text-[var(--color-muted)]">
-        Migración de <code>pages/meseros.js</code>. Requiere tablas del SQL 004.
+        Altas, códigos de acceso y asignación de mesas (como en Wapifood original).
       </p>
-      <WaitersPanel restaurantId={membership.restaurant_id} initialWaiters={waiters || []} />
+      <WaitersPanel
+        restaurantId={rid}
+        initialWaiters={waiters || []}
+        tables={tables || []}
+        initialAssignments={assignments}
+      />
     </AppShell>
   );
 }
