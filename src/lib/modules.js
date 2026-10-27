@@ -1,4 +1,3 @@
-/** Inventario de pantallas del SaaS legacy (Comanadas/WapifoodFront main) */
 export const MODULES = [
   { id: "dashboard", title: "Panel", href: "/dashboard", legacy: "pages/dashboard.js", status: "live" },
   { id: "config", title: "Restaurante", href: "/config", legacy: "pages/user.js", status: "live" },
@@ -11,7 +10,7 @@ export const MODULES = [
   { id: "meseros", title: "Meseros", href: "/meseros", legacy: "pages/meseros.js", status: "live" },
   { id: "tickets", title: "Tickets", href: "/tickets", legacy: "pages/tickets.js", status: "live" },
   { id: "pantallas", title: "Pantallas", href: "/pantallas", legacy: "pages/pantallas.js", status: "live" },
-  { id: "menu-cliente", title: "Menú cliente", href: "/menu", legacy: "pages/clientmenu.js", status: "next" },
-  { id: "kiosko", title: "Kiosko", href: "/kiosko", legacy: "pages/kiosko.js", status: "shell" },
+  { id: "menu-cliente", title: "Menú cliente", href: "/menu", legacy: "pages/clientmenu.js", status: "live" },
+  { id: "kiosko", title: "Kiosko", href: "/kiosko", legacy: "pages/kiosko.js", status: "live" },
   { id: "pagos", title: "Pagos / plan", href: "/pagos", legacy: "pages/payments.js", status: "shell" },
 ];

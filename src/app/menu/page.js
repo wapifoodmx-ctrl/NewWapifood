@@ -1,42 +1,52 @@
 export const dynamic = "force-dynamic";
 
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { money } from "@/lib/format";
-import { createClient } from "@/lib/supabase/server";
+import { requireTenant } from "@/lib/auth";
 
-/** Menú cliente público (antes clientmenu / webmenu). Por ahora lista la carta del demo. */
-export default async function ClientMenuPage() {
-  const supabase = await createClient();
-  const { data: products } = await supabase
-    .from("products")
-    .select("name,price,active")
-    .eq("active", true)
-    .limit(50);
+export default async function MenuIndexPage() {
+  const { membership } = await requireTenant();
+  const rid = membership?.restaurant_id;
+  const name = membership?.restaurants?.name || "Tu restaurante";
 
   return (
-    <div className="min-h-screen bg-[var(--color-cream)] px-4 py-8">
-      <div className="mx-auto max-w-lg">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-ember)]">Menú digital</p>
-        <h1 className="mt-2 text-4xl">Carta del cliente</h1>
+    <AppShell title="Menú cliente" restaurantName={name} role={membership?.role}>
+      <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-6">
+        <h2 className="text-2xl">Menú digital / QR</h2>
         <p className="mt-2 text-[var(--color-muted)]">
-          Equivale a clientmenu / webmenu. El carrito y pago QR van en el siguiente bloque.
+          Comparte este enlace o genera un QR apuntando a él. Los clientes ven tu carta,
+          arman carrito y envían a cocina eligiendo mesa.
         </p>
-        <div className="mt-6 overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)]">
-          {(products || []).length === 0 ? (
-            <p className="p-4 text-[var(--color-muted)]">Sin productos visibles (RLS o seed).</p>
-          ) : (
-            (products || []).map((p) => (
-              <div key={p.name} className="flex justify-between border-b border-[var(--color-line)] px-4 py-3 last:border-0">
-                <span className="font-semibold">{p.name}</span>
-                <span>{money(p.price)}</span>
-              </div>
-            ))
-          )}
-        </div>
-        <p className="mt-6 text-center text-sm">
-          <a href="/dashboard" className="font-semibold">Ir al panel</a>
-        </p>
+        {rid ? (
+          <>
+            <code className="mt-4 block break-all rounded-xl bg-[var(--color-cream)] px-3 py-2 text-sm">
+              /m/{rid}
+            </code>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link
+                href={`/m/${rid}`}
+                className="inline-flex h-12 items-center rounded-full bg-[var(--color-ember)] px-6 font-semibold text-white"
+              >
+                Abrir menú público
+              </Link>
+              <Link
+                href={`/kiosko/${rid}`}
+                className="inline-flex h-12 items-center rounded-full border border-[var(--color-line)] bg-[var(--color-cream)] px-6 font-semibold"
+              >
+                Abrir kiosko
+              </Link>
+              <Link
+                href={`/mesero/${rid}`}
+                className="inline-flex h-12 items-center rounded-full border border-[var(--color-line)] bg-[var(--color-cream)] px-6 font-semibold"
+              >
+                Acceso mesero
+              </Link>
+            </div>
+          </>
+        ) : (
+          <p className="mt-4 text-[var(--color-wine)]">Sin restaurante vinculado.</p>
+        )}
       </div>
-    </div>
+    </AppShell>
   );
 }
