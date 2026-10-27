@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { PLANS } from "@/lib/plans";
-
-const PLAN_IDS = new Set(PLANS.map((p) => p.id));
+import { getSiteUrl, mpFetch, planAmount } from "@/lib/mercadopago";
 
 export async function POST(request) {
   try {
@@ -11,16 +9,13 @@ export async function POST(request) {
     const billing = body?.billing === "anual" ? "anual" : "mensual";
     const restaurantId = body?.restaurantId;
 
-    if (!planId || !PLAN_IDS.has(planId) || !restaurantId) {
+    if (!planId || !restaurantId || !["ventas", "restaurante", "plus"].includes(planId)) {
       return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
     }
 
-    const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
-    if (!token) {
-      return NextResponse.json(
-        { error: "Falta MERCADOPAGO_ACCESS_TOKEN en el servidor (.env.local / Vercel)" },
-        { status: 500 },
-      );
+    const amount = planAmount(planId, billing);
+    if (amount == null) {
+      return NextResponse.json({ error: "Plan inválido" }, { status: 400 });
     }
 
     const supabase = await createClient();
@@ -29,66 +24,83 @@ export async function POST(request) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    const plan = PLANS.find((p) => p.id === planId);
-    const amount = billing === "anual" ? plan.yearly : plan.monthly;
-    const origin =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      request.headers.get("origin") ||
-      "http://localhost:3000";
-
-    const preference = {
-      items: [
-        {
-          title: `Wapifood · ${plan.title} (${billing})`,
-          quantity: 1,
-          unit_price: Number(amount),
-          currency_id: "MXN",
-        },
-      ],
-      external_reference: JSON.stringify({
-        restaurantId,
-        planId,
-        billing,
-        userId: auth.user.id,
-      }),
-      metadata: {
-        restaurant_id: restaurantId,
-        plan_id: planId,
-        billing,
-        user_id: auth.user.id,
-      },
-      back_urls: {
-        success: `${origin}/pagos/exito`,
-        failure: `${origin}/pagos?status=failure`,
-        pending: `${origin}/pagos?status=pending`,
-      },
-      auto_return: "approved",
-      notification_url: `${origin}/api/mercadopago/webhook`,
-    };
-
-    const res = await fetch("https://api.mercadopago.com/checkout/preferences", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(preference),
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: data?.message || data?.error || "Error Mercado Pago", detail: data },
-        { status: 400 },
-      );
+    // Solo owner/admin
+    const { data: mem } = await supabase
+      .from("memberships")
+      .select("role")
+      .eq("restaurant_id", restaurantId)
+      .eq("user_id", auth.user.id)
+      .maybeSingle();
+    if (!mem || !["owner", "admin"].includes(String(mem.role))) {
+      return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
     }
 
+    const origin = getSiteUrl(request);
+    const titles = {
+      ventas: "Plan Ventas",
+      restaurante: "Plan Restaurante",
+      plus: "Plan Restaurante Plus",
+    };
+
+    // Igual que API vieja: preference + notification_url (webhook)
+    const external_reference = JSON.stringify({
+      restaurantId,
+      planId,
+      billing,
+      userId: auth.user.id,
+    });
+
+    const preference = await mpFetch("/checkout/preferences", {
+      method: "POST",
+      body: {
+        items: [
+          {
+            title: `Wapifood · ${titles[planId]} (${billing})`,
+            quantity: 1,
+            unit_price: Number(amount),
+            currency_id: "MXN",
+          },
+        ],
+        payer: { email: auth.user.email },
+        external_reference,
+        metadata: {
+          restaurant_id: restaurantId,
+          plan_id: planId,
+          billing,
+          user_id: auth.user.id,
+        },
+        back_urls: {
+          success: `${origin}/pagos/exito`,
+          failure: `${origin}/pagos?status=failure`,
+          pending: `${origin}/pagos?status=pending`,
+        },
+        auto_return: "approved",
+        notification_url: `${origin}/api/mercadopago/webhook`,
+        payment_methods: { installments: 1 },
+      },
+    });
+
+    // Registro pendiente (opcional, para auditoría)
+    await supabase.from("subscriptions").insert({
+      restaurant_id: restaurantId,
+      plan: planId,
+      status: "pending",
+      amount,
+      billing,
+      provider: "mercadopago",
+      provider_ref: preference.id,
+    });
+
     return NextResponse.json({
-      id: data.id,
-      init_point: data.init_point,
-      sandbox_init_point: data.sandbox_init_point,
+      id: preference.id,
+      init_point: preference.init_point,
+      sandbox_init_point: preference.sandbox_init_point,
     });
   } catch (e) {
-    return NextResponse.json({ error: e.message || "Error" }, { status: 500 });
+    console.error("MP checkout", e.detail || e);
+    return NextResponse.json(
+      { error: e.message || "Error Mercado Pago", detail: e.detail },
+      { status: e.status || 500 },
+    );
   }
 }

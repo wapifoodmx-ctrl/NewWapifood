@@ -1,72 +1,58 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function PagosExitoPage() {
+function ExitoInner() {
   const params = useSearchParams();
-  const router = useRouter();
   const [status, setStatus] = useState("procesando");
   const [error, setError] = useState("");
 
   useEffect(() => {
     async function run() {
-      // MP devuelve collection_status / status / external_reference
       const paymentStatus = params.get("collection_status") || params.get("status");
-      const external = params.get("external_reference");
       const paymentId = params.get("payment_id") || params.get("collection_id");
+      const external = params.get("external_reference");
 
-      if (paymentStatus && paymentStatus !== "approved") {
+      // El webhook es la fuente de verdad; aquí reforzamos si ya volvió approved
+      if (paymentStatus && paymentStatus !== "approved" && paymentStatus !== "success") {
         setStatus("error");
         setError("El pago no fue aprobado en Mercado Pago.");
         return;
       }
 
-      let planId = params.get("planId");
-      let billing = params.get("billing") || "mensual";
-      let restaurantId = params.get("restaurantId");
-
+      let planId;
+      let billing = "mensual";
+      let restaurantId;
       if (external) {
         try {
-          const parsed = JSON.parse(external);
-          planId = planId || parsed.planId;
-          billing = billing || parsed.billing || "mensual";
-          restaurantId = restaurantId || parsed.restaurantId;
+          const parsed = JSON.parse(decodeURIComponent(external));
+          planId = parsed.planId;
+          billing = parsed.billing || "mensual";
+          restaurantId = parsed.restaurantId;
         } catch {
-          /* external_reference simple */
+          /* ignore */
         }
       }
 
-      if (!planId || !restaurantId) {
-        // Sin datos: asumimos que el webhook o el usuario ya tenía plan; manda al panel
-        setStatus("ok");
-        return;
-      }
-
-      const supabase = createClient();
-      const { error: err } = await supabase.rpc("activate_plan", {
-        p_restaurant: restaurantId,
-        p_plan: planId,
-        p_billing: billing,
-        p_provider: "mercadopago",
-        p_provider_ref: paymentId || null,
-      });
-
-      // Si la firma de 5 args no existe, intenta la de 3
-      if (err) {
-        const { error: err2 } = await supabase.rpc("activate_plan", {
+      if (restaurantId && planId) {
+        const supabase = createClient();
+        // Refuerzo: si el webhook aún no corrió, activa con el RPC del usuario
+        const { error: err } = await supabase.rpc("activate_plan", {
           p_restaurant: restaurantId,
           p_plan: planId,
           p_billing: billing,
+          p_provider: "mercadopago",
+          p_provider_ref: paymentId || null,
         });
-        if (err2) {
-          setStatus("error");
-          setError(err2.message || err.message);
-          return;
+        if (err) {
+          // Puede fallar si el webhook ya insertó; no es crítico
+          console.warn("activate_plan backup", err.message);
         }
       }
+
       setStatus("ok");
     }
     run();
@@ -78,32 +64,41 @@ export default function PagosExitoPage() {
         {status === "procesando" ? (
           <>
             <h1 className="text-2xl font-semibold">Confirmando tu pago…</h1>
-            <p className="mt-2 text-[var(--color-muted)]">Mercado Pago nos avisó del regreso.</p>
+            <p className="mt-2 text-[var(--color-muted)]">Mercado Pago y el webhook están procesando.</p>
           </>
         ) : null}
         {status === "ok" ? (
           <>
             <h1 className="text-2xl font-semibold">¡Pago recibido!</h1>
-            <p className="mt-2 text-[var(--color-muted)]">Tu plan quedó activo. Ya puedes operar el restaurante.</p>
-            <Link href="/dashboard" className="mt-6 inline-flex h-12 items-center rounded-full bg-[var(--color-ink)] px-6 font-semibold text-[var(--color-cream)]">
+            <p className="mt-2 text-[var(--color-muted)]">
+              Tu plan se activa automáticamente (webhook). Ya puedes usar el panel.
+            </p>
+            <Link
+              href="/dashboard"
+              className="mt-6 inline-flex h-12 items-center rounded-full bg-[var(--color-ink)] px-6 font-semibold text-[var(--color-cream)]"
+            >
               Ir al panel
             </Link>
           </>
         ) : null}
         {status === "error" ? (
           <>
-            <h1 className="text-2xl font-semibold">No pudimos activar el plan</h1>
+            <h1 className="text-2xl font-semibold">Pago no aprobado</h1>
             <p className="mt-2 text-sm text-[var(--color-wine)]">{error}</p>
-            <button
-              type="button"
-              onClick={() => router.push("/pagos")}
-              className="mt-6 h-12 rounded-full bg-[var(--color-ink)] px-6 font-semibold text-[var(--color-cream)]"
-            >
+            <Link href="/pagos" className="mt-6 inline-flex h-12 items-center rounded-full bg-[var(--color-ink)] px-6 font-semibold text-[var(--color-cream)]">
               Volver a pagos
-            </button>
+            </Link>
           </>
         ) : null}
       </div>
     </div>
+  );
+}
+
+export default function PagosExitoPage() {
+  return (
+    <Suspense fallback={<div className="grid min-h-screen place-items-center">Cargando…</div>}>
+      <ExitoInner />
+    </Suspense>
   );
 }

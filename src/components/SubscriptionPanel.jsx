@@ -11,7 +11,8 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
-  const current = subs[0];
+  const current =
+    subs.find((s) => s.status === "active" || s.status === "trialing") || subs[0];
   const meta = current ? planMeta(current.plan) : null;
   const active =
     current &&
@@ -28,7 +29,6 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
     setSubs(data || []);
   }
 
-  /** Pago real con Mercado Pago */
   async function payWithMP(planId) {
     setErr("");
     setMsg("");
@@ -41,7 +41,6 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo crear el pago");
-
       const url = data.init_point || data.sandbox_init_point;
       if (!url) throw new Error("Mercado Pago no devolvió link de pago");
       window.location.href = url;
@@ -51,7 +50,6 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
     }
   }
 
-  /** Solo si no hay token MP: activación manual de emergencia */
   async function activateManual(planId) {
     setErr("");
     setMsg("");
@@ -65,7 +63,7 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
       });
       if (error) throw error;
       await refreshSubs();
-      setMsg("Plan activado (modo manual). En producción usa Mercado Pago.");
+      setMsg("Plan activado en modo prueba (sin Mercado Pago).");
     } catch (e) {
       setErr(e.message || "No se pudo activar");
     } finally {
@@ -87,66 +85,30 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
                 ? ` · vigente hasta ${new Date(current.ends_at).toLocaleDateString("es-MX")}`
                 : ""}
             </p>
-            <p className="mt-1 text-sm text-[var(--color-muted)]">
-              {active
-                ? "Tu restaurante puede operar con normalidad."
-                : "Plan vencido o inactivo: renueva con Mercado Pago."}
-            </p>
           </>
         ) : (
-          <>
-            <h2 className="mt-2 text-3xl">Sin plan registrado</h2>
-            <p className="mt-1 text-[var(--color-muted)]">Elige un plan y paga con Mercado Pago.</p>
-          </>
+          <h2 className="mt-2 text-3xl">Sin plan registrado</h2>
         )}
       </section>
 
       <div className="flex justify-center">
         <div className="inline-flex rounded-full border border-[var(--color-line)] bg-[var(--color-cream)] p-1">
-          <button
-            type="button"
-            onClick={() => setBilling("mensual")}
-            className={`h-10 rounded-full px-5 text-sm font-semibold ${
-              billing === "mensual" ? "bg-[var(--color-ink)] text-[var(--color-cream)]" : "text-[var(--color-muted)]"
-            }`}
-          >
-            Mensual
-          </button>
-          <button
-            type="button"
-            onClick={() => setBilling("anual")}
-            className={`h-10 rounded-full px-5 text-sm font-semibold ${
-              billing === "anual" ? "bg-[var(--color-ink)] text-[var(--color-cream)]" : "text-[var(--color-muted)]"
-            }`}
-          >
-            Anual
-          </button>
+          <button type="button" onClick={() => setBilling("mensual")} className={`h-10 rounded-full px-5 text-sm font-semibold ${billing === "mensual" ? "bg-[var(--color-ink)] text-[var(--color-cream)]" : "text-[var(--color-muted)]"}`}>Mensual</button>
+          <button type="button" onClick={() => setBilling("anual")} className={`h-10 rounded-full px-5 text-sm font-semibold ${billing === "anual" ? "bg-[var(--color-ink)] text-[var(--color-cream)]" : "text-[var(--color-muted)]"}`}>Anual</button>
         </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         {PLANS.map((p) => {
           const price = billing === "anual" ? p.yearly : p.monthly;
-          const isCurrent = current?.plan === p.id && active;
           return (
-            <article
-              key={p.id}
-              className={`rounded-2xl border p-5 ${
-                isCurrent
-                  ? "border-[var(--color-ember)] bg-[var(--color-cream)]"
-                  : "border-[var(--color-line)] bg-[var(--color-paper)]"
-              }`}
-            >
+            <article key={p.id} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5">
               <h3 className="text-xl font-semibold">{p.title}</h3>
               <p className="mt-2 text-3xl font-semibold">
                 {moneyMX(price)}
-                <span className="ml-1 text-sm font-normal text-[var(--color-muted)]">
-                  / {billing === "anual" ? "año" : "mes"}
-                </span>
+                <span className="ml-1 text-sm font-normal text-[var(--color-muted)]">/ {billing === "anual" ? "año" : "mes"}</span>
               </p>
-              <p className="mt-2 text-sm text-[var(--color-muted)]">
-                Hasta {p.mesas} mesas · {p.meseros} meseros
-              </p>
+              <p className="mt-2 text-sm text-[var(--color-muted)]">Hasta {p.mesas} mesas · {p.meseros} meseros</p>
               <button
                 type="button"
                 disabled={loading}
@@ -155,13 +117,8 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
               >
                 {loading ? "Redirigiendo…" : "Pagar con Mercado Pago"}
               </button>
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => activateManual(p.id)}
-                className="mt-2 h-9 w-full text-xs font-semibold text-[var(--color-muted)] underline"
-              >
-                Activar sin pago (solo pruebas)
+              <button type="button" disabled={loading} onClick={() => activateManual(p.id)} className="mt-2 h-9 w-full text-xs font-semibold text-[var(--color-muted)] underline">
+                Activar sin pago (pruebas)
               </button>
             </article>
           );
@@ -177,7 +134,7 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
           <ul className="space-y-2 text-sm">
             {subs.map((s) => (
               <li key={s.id} className="rounded-xl border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2">
-                {s.plan} · {s.status} · {moneyMX(s.amount)} · {s.billing || "—"} · {s.provider || "—"}
+                {s.plan} · {s.status} · {moneyMX(s.amount)} · {s.provider || "—"}
                 {s.ends_at ? ` · hasta ${new Date(s.ends_at).toLocaleDateString("es-MX")}` : ""}
               </li>
             ))}
