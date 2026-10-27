@@ -65,6 +65,7 @@ export function WaiterMenu({ restaurantId, restaurantName, products, categories,
         p_items: cart.map((i) => ({ product_id: i.product_id, qty: i.qty })),
         p_customer_name: waiter?.name || "Mesero",
         p_notes: null,
+        p_confirm_code: null,
       });
       if (error) throw error;
       setCart([]);

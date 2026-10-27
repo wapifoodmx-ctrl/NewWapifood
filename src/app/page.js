@@ -117,7 +117,10 @@ export default function LandingPage() {
       </section>
 
       <footer className="mx-auto max-w-6xl px-4 py-8 text-sm text-[var(--color-muted)]">
-        Wapifood · software de operación para restaurantes
+        Wapifood · software de operación para restaurantes ·{" "}
+        <Link href="/terminos" className="underline">
+          Términos
+        </Link>
       </footer>
     </div>
   );

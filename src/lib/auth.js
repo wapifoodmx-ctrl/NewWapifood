@@ -19,7 +19,22 @@ export async function getMembership(supabase, userId) {
   return data;
 }
 
-/** Usuario autenticado + restaurante asegurado (SaaS automático). */
+export async function getActivePlan(supabase, restaurantId) {
+  if (!restaurantId) return null;
+  const { data } = await supabase
+    .from("subscriptions")
+    .select("*")
+    .eq("restaurant_id", restaurantId)
+    .in("status", ["active", "trialing"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  if (data.ends_at && new Date(data.ends_at) < new Date()) return null;
+  return data;
+}
+
+/** Usuario + restaurante automático. */
 export async function requireTenant() {
   const { supabase, user } = await requireUser();
   let membership = await getMembership(supabase, user.id);
@@ -28,8 +43,21 @@ export async function requireTenant() {
       await ensureRestaurant(supabase, "Mi restaurante");
       membership = await getMembership(supabase, user.id);
     } catch {
-      // Si falta el RPC 005, el dashboard mostrará guía mínima interna
+      /* RPC ausente */
     }
   }
   return { supabase, user, membership };
+}
+
+/**
+ * Igual que requireTenant pero redirige a /pagos si no hay plan/trial vigente.
+ * Excepciones: el caller no debe usarlo en /pagos.
+ */
+export async function requireTenantWithPlan() {
+  const ctx = await requireTenant();
+  const rid = ctx.membership?.restaurant_id;
+  if (!rid) return ctx;
+  const plan = await getActivePlan(ctx.supabase, rid);
+  if (!plan) redirect("/pagos?motivo=plan");
+  return { ...ctx, plan };
 }

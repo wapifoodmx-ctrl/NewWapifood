@@ -3,10 +3,10 @@ export const dynamic = "force-dynamic";
 import { AppShell } from "@/components/AppShell";
 import { InsumosManager } from "@/components/InsumosManager";
 import { StockMovesList } from "@/components/StockMovesList";
-import { requireTenant } from "@/lib/auth";
+import { requireTenant, requireTenantWithPlan } from "@/lib/auth";
 
 export default async function InsumosPage() {
-  const { supabase, membership } = await requireTenant();
+  const { supabase, membership } = await requireTenantWithPlan();
   if (!membership?.restaurant_id) {
     return <AppShell title="Insumos"><p>Sin restaurante.</p></AppShell>;
   }

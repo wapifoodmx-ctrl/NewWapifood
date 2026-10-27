@@ -9,7 +9,7 @@ export async function loadPublicMenu(restaurantId) {
     .maybeSingle();
   if (error || !restaurant) return null;
 
-  const [{ data: products }, { data: categories }, { data: tables }, { data: theme }] =
+  const [{ data: products }, { data: categories }, { data: tables }, { data: theme }, { data: profile }] =
     await Promise.all([
       supabase
         .from("products")
@@ -17,11 +17,7 @@ export async function loadPublicMenu(restaurantId) {
         .eq("restaurant_id", restaurantId)
         .eq("active", true)
         .order("name"),
-      supabase
-        .from("categories")
-        .select("id,name")
-        .eq("restaurant_id", restaurantId)
-        .order("name"),
+      supabase.from("categories").select("id,name").eq("restaurant_id", restaurantId).order("name"),
       supabase
         .from("dining_tables")
         .select("id,number,seats")
@@ -33,6 +29,11 @@ export async function loadPublicMenu(restaurantId) {
         .select("primary_color,secondary_color,logo_url")
         .eq("restaurant_id", restaurantId)
         .maybeSingle(),
+      supabase
+        .from("restaurant_profiles")
+        .select("require_confirm_code,delivery_enabled,confirmation_code")
+        .eq("restaurant_id", restaurantId)
+        .maybeSingle(),
     ]);
 
   return {
@@ -41,5 +42,6 @@ export async function loadPublicMenu(restaurantId) {
     categories: categories || [],
     tables: tables || [],
     theme: theme || null,
+    profile: profile || null,
   };
 }

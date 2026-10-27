@@ -4,10 +4,6 @@ import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
 
-/**
- * Menú digital compartido: cliente (/m/...), kiosko y base visual.
- * mode: "client" | "kiosk"
- */
 export function DigitalMenu({
   restaurant,
   theme,
@@ -15,32 +11,32 @@ export function DigitalMenu({
   categories,
   tables,
   mode = "client",
+  requireConfirmCode = false,
+  deliveryEnabled = false,
 }) {
   const primary = theme?.primary_color || "#c45c26";
   const secondary = theme?.secondary_color || "#1c1917";
   const [cat, setCat] = useState("");
-  const [cart, setCart] = useState([]); // {product_id, name, price, qty}
+  const [cart, setCart] = useState([]);
   const [tableId, setTableId] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [notes, setNotes] = useState("");
+  const [confirmCode, setConfirmCode] = useState("");
   const [openCart, setOpenCart] = useState(false);
-  const [status, setStatus] = useState(""); // success | error msg
+  const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
 
   const list = useMemo(
     () => products.filter((p) => !cat || p.category_id === cat),
     [products, cat],
   );
-
   const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const count = cart.reduce((s, i) => s + i.qty, 0);
 
   function add(p) {
     setCart((c) => {
       const found = c.find((x) => x.product_id === p.id);
-      if (found) {
-        return c.map((x) => (x.product_id === p.id ? { ...x, qty: x.qty + 1 } : x));
-      }
+      if (found) return c.map((x) => (x.product_id === p.id ? { ...x, qty: x.qty + 1 } : x));
       return [...c, { product_id: p.id, name: p.name, price: Number(p.price), qty: 1 }];
     });
     setStatus("");
@@ -48,9 +44,7 @@ export function DigitalMenu({
 
   function changeQty(id, delta) {
     setCart((c) =>
-      c
-        .map((x) => (x.product_id === id ? { ...x, qty: x.qty + delta } : x))
-        .filter((x) => x.qty > 0),
+      c.map((x) => (x.product_id === id ? { ...x, qty: x.qty + delta } : x)).filter((x) => x.qty > 0),
     );
   }
 
@@ -58,6 +52,9 @@ export function DigitalMenu({
     setStatus("");
     if (!tableId) return setStatus("Elige tu mesa.");
     if (cart.length === 0) return setStatus("El carrito está vacío.");
+    if (requireConfirmCode && !confirmCode.trim()) {
+      return setStatus("Pide el código de confirmación al mesero o caja.");
+    }
     setLoading(true);
     const supabase = createClient();
     try {
@@ -67,9 +64,11 @@ export function DigitalMenu({
         p_items: cart.map((i) => ({ product_id: i.product_id, qty: i.qty })),
         p_customer_name: customerName || null,
         p_notes: notes || null,
+        p_confirm_code: requireConfirmCode ? confirmCode.trim() : null,
       });
       if (error) throw error;
       setCart([]);
+      setConfirmCode("");
       setOpenCart(false);
       setStatus(`ok:${data}`);
     } catch (e) {
@@ -98,6 +97,9 @@ export function DigitalMenu({
                 {mode === "kiosk" ? "Kiosko" : "Menú digital"}
               </p>
               <h1 className="text-2xl font-semibold leading-none">{restaurant.name}</h1>
+              {deliveryEnabled ? (
+                <p className="mt-1 text-xs opacity-80">Delivery disponible · consulta en caja</p>
+              ) : null}
             </div>
           </div>
           <button
@@ -126,9 +128,7 @@ export function DigitalMenu({
         <div className="flex gap-2 overflow-x-auto pb-3">
           <Chip active={!cat} onClick={() => setCat("")} color={primary}>Todos</Chip>
           {categories.map((c) => (
-            <Chip key={c.id} active={cat === c.id} onClick={() => setCat(c.id)} color={primary}>
-              {c.name}
-            </Chip>
+            <Chip key={c.id} active={cat === c.id} onClick={() => setCat(c.id)} color={primary}>{c.name}</Chip>
           ))}
         </div>
 
@@ -143,26 +143,16 @@ export function DigitalMenu({
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="font-semibold">{p.name}</h3>
-                {p.description ? (
-                  <p className="line-clamp-2 text-sm text-black/50">{p.description}</p>
-                ) : null}
+                {p.description ? <p className="line-clamp-2 text-sm text-black/50">{p.description}</p> : null}
                 <div className="mt-2 flex items-center justify-between">
                   <span className="font-semibold" style={{ color: primary }}>{money(p.price)}</span>
-                  <button
-                    type="button"
-                    onClick={() => add(p)}
-                    className="h-9 rounded-full px-4 text-sm font-semibold text-white"
-                    style={{ background: primary }}
-                  >
+                  <button type="button" onClick={() => add(p)} className="h-9 rounded-full px-4 text-sm font-semibold text-white" style={{ background: primary }}>
                     Agregar
                   </button>
                 </div>
               </div>
             </article>
           ))}
-          {list.length === 0 ? (
-            <p className="rounded-2xl bg-white p-6 text-center text-black/50">No hay productos en esta categoría.</p>
-          ) : null}
         </div>
       </main>
 
@@ -171,11 +161,8 @@ export function DigitalMenu({
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-semibold">Tu pedido</h2>
-              <button type="button" onClick={() => setOpenCart(false)} className="text-sm font-semibold text-black/50">
-                Cerrar
-              </button>
+              <button type="button" onClick={() => setOpenCart(false)} className="text-sm font-semibold text-black/50">Cerrar</button>
             </div>
-
             {cart.length === 0 ? (
               <p className="mt-4 text-black/50">El carrito está vacío.</p>
             ) : (
@@ -195,14 +182,9 @@ export function DigitalMenu({
                 ))}
               </ul>
             )}
-
             <label className="mt-4 block text-sm font-semibold">
               Mesa *
-              <select
-                value={tableId}
-                onChange={(e) => setTableId(e.target.value)}
-                className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-[#f4efe6] px-3 font-normal"
-              >
+              <select value={tableId} onChange={(e) => setTableId(e.target.value)} className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-[#f4efe6] px-3 font-normal">
                 <option value="">Selecciona mesa</option>
                 {tables.map((t) => (
                   <option key={t.id} value={t.id}>Mesa {t.number}</option>
@@ -211,29 +193,28 @@ export function DigitalMenu({
             </label>
             <label className="mt-2 block text-sm font-semibold">
               Nombre (opcional)
-              <input
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-[#f4efe6] px-3 font-normal"
-              />
+              <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-[#f4efe6] px-3 font-normal" />
             </label>
             <label className="mt-2 block text-sm font-semibold">
               Notas
-              <input
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Sin cebolla, etc."
-                className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-[#f4efe6] px-3 font-normal"
-              />
+              <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Sin cebolla, etc." className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-[#f4efe6] px-3 font-normal" />
             </label>
-
+            {requireConfirmCode ? (
+              <label className="mt-2 block text-sm font-semibold">
+                Código de confirmación *
+                <input
+                  value={confirmCode}
+                  onChange={(e) => setConfirmCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="Lo da el mesero o caja"
+                  className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-[#f4efe6] px-3 text-center text-xl tracking-[0.3em] font-normal"
+                />
+              </label>
+            ) : null}
             <p className="mt-4 flex justify-between text-lg font-semibold">
               <span>Total</span>
               <span style={{ color: primary }}>{money(total)}</span>
             </p>
-
             {status && !ok ? <p className="mt-2 text-sm text-red-700">{status}</p> : null}
-
             <button
               type="button"
               disabled={loading || cart.length === 0}

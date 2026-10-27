@@ -82,6 +82,27 @@ export function InsumosManager({ restaurantId, initialIngredients }) {
     setItems((xs) => xs.filter((x) => x.id !== id));
   }
 
+  async function merma(id) {
+    const raw = prompt("Cantidad a dar de merma:", "1");
+    if (raw == null) return;
+    const qty = Number(raw);
+    if (!qty || qty <= 0) return setErr("Cantidad de merma inválida");
+    const supabase = createClient();
+    const { error } = await supabase.rpc("register_merma", {
+      p_ingredient: id,
+      p_qty: qty,
+      p_note: "merma",
+    });
+    if (error) return setErr(error.message);
+    const row = items.find((i) => i.id === id);
+    setItems((xs) =>
+      xs.map((x) =>
+        x.id === id ? { ...x, stock: Math.max(0, Number(x.stock) - qty) } : x,
+      ),
+    );
+    setMsg(`Merma registrada${row ? ` en ${row.name}` : ""}`);
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -101,6 +122,7 @@ export function InsumosManager({ restaurantId, initialIngredients }) {
               {low ? <p className="mt-1 text-sm font-semibold text-[var(--color-wine)]">Bajo mínimo</p> : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" onClick={() => restock(ing.id, ing.unit)} className="h-9 rounded-full bg-[var(--color-cream)] px-3 text-sm font-semibold">Entrada</button>
+                <button type="button" onClick={() => merma(ing.id)} className="h-9 rounded-full px-3 text-sm font-semibold text-[var(--color-wine)]">Merma</button>
                 <button type="button" onClick={() => startEdit(ing)} className="h-9 rounded-full px-3 text-sm font-semibold text-[var(--color-ember)]">Editar</button>
                 <button type="button" onClick={() => remove(ing.id)} className="h-9 rounded-full px-3 text-sm font-semibold text-[var(--color-wine)]">Eliminar</button>
               </div>

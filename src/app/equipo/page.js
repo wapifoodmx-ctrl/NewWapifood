@@ -1,10 +1,10 @@
 export const dynamic = "force-dynamic";
 
 import { AppShell } from "@/components/AppShell";
-import { requireTenant } from "@/lib/auth";
+import { requireTenant, requireTenantWithPlan } from "@/lib/auth";
 
 export default async function EquipoPage() {
-  const { supabase, membership, user } = await requireTenant();
+  const { supabase, membership, user } = await requireTenantWithPlan();
   if (!membership?.restaurant_id) {
     return <AppShell title="Equipo"><p>Sin restaurante.</p></AppShell>;
   }

@@ -2,10 +2,10 @@ export const dynamic = "force-dynamic";
 
 import { AppShell } from "@/components/AppShell";
 import { RecetasManager } from "@/components/RecetasManager";
-import { requireTenant } from "@/lib/auth";
+import { requireTenant, requireTenantWithPlan } from "@/lib/auth";
 
 export default async function RecetasPage() {
-  const { supabase, membership } = await requireTenant();
+  const { supabase, membership } = await requireTenantWithPlan();
   if (!membership?.restaurant_id) {
     return <AppShell title="Recetas"><p>Sin restaurante.</p></AppShell>;
   }

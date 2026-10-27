@@ -3,12 +3,12 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { money } from "@/lib/format";
-import { requireTenant } from "@/lib/auth";
+import { requireTenant, requireTenantWithPlan } from "@/lib/auth";
 import { MODULES } from "@/lib/modules";
 import { planMeta } from "@/lib/plans";
 
 export default async function DashboardPage() {
-  const { supabase, membership } = await requireTenant();
+  const { supabase, membership } = await requireTenantWithPlan();
   const restaurantId = membership?.restaurant_id;
   const restaurantName = membership?.restaurants?.name || "Mi restaurante";
 

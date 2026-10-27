@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { getMembership, requireUser } from "@/lib/auth";
+import { getMembership, requireUser, requireTenantWithPlan } from "@/lib/auth";
 
 export default async function PantallasPage() {
   const { supabase, user } = await requireUser();
@@ -24,6 +24,18 @@ export default async function PantallasPage() {
             Muestra pedidos en cocina / listos. Ideal en monitor de cocina.
           </p>
         </Link>
+        {membership?.restaurant_id ? (
+          <Link
+            href={`/vista/${membership.restaurant_id}/cocina`}
+            className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-6 hover:border-[var(--color-ember)]"
+          >
+            <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-ember)]">TV / tablet</p>
+            <h2 className="mt-2 text-2xl">Cocina externa</h2>
+            <p className="mt-2 text-sm text-[var(--color-muted)]">
+              Vista sin menú de administración, para pantalla dedicada.
+            </p>
+          </Link>
+        ) : null}
         <Link
           href="/pos"
           className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-6 hover:border-[var(--color-ember)]"

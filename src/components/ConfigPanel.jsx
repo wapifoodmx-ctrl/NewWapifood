@@ -13,6 +13,9 @@ export function ConfigPanel({ restaurant, profile }) {
     city: profile?.city || "",
     schedule: profile?.schedule || "",
     logo_url: restaurant?.logo_url || "",
+    confirmation_code: profile?.confirmation_code || "",
+    require_confirm_code: profile?.require_confirm_code !== false,
+    delivery_enabled: !!profile?.delivery_enabled,
   });
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -31,12 +34,17 @@ export function ConfigPanel({ restaurant, profile }) {
       const supabase = createClient();
       const url = await uploadPublicImage(supabase, restaurant.id, file, "logos");
       set("logo_url", url);
-      setMsg("Logo subido. Guarda los cambios para aplicarlo.");
+      setMsg("Logo subido. Guarda los cambios.");
     } catch (e2) {
-      setErr(e2.message || "No se pudo subir el logo (¿corriste SQL 006 y el bucket?)");
+      setErr(e2.message || "No se pudo subir el logo");
     } finally {
       setLoading(false);
     }
+  }
+
+  function regenCode() {
+    const code = String(Math.floor(1000 + Math.random() * 9000));
+    set("confirmation_code", code);
   }
 
   async function onSave(e) {
@@ -45,6 +53,10 @@ export function ConfigPanel({ restaurant, profile }) {
     setMsg("");
     if (!form.name.trim() || form.name.trim().length < 2) {
       setErr("El nombre del restaurante debe tener al menos 2 caracteres.");
+      return;
+    }
+    if (form.require_confirm_code && (!form.confirmation_code || form.confirmation_code.length < 4)) {
+      setErr("El código de confirmación debe tener al menos 4 dígitos.");
       return;
     }
     setLoading(true);
@@ -63,6 +75,9 @@ export function ConfigPanel({ restaurant, profile }) {
         address: form.address || null,
         city: form.city || null,
         schedule: form.schedule || null,
+        confirmation_code: form.confirmation_code || null,
+        require_confirm_code: form.require_confirm_code,
+        delivery_enabled: form.delivery_enabled,
         updated_at: new Date().toISOString(),
       });
       if (e2) throw e2;
@@ -89,7 +104,6 @@ export function ConfigPanel({ restaurant, profile }) {
           Subir logo
           <input type="file" accept="image/*" className="hidden" onChange={onLogo} />
         </label>
-        <p className="mt-2 text-xs text-[var(--color-muted)]">JPG/PNG. Público en el menú digital.</p>
       </div>
 
       <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5">
@@ -100,8 +114,34 @@ export function ConfigPanel({ restaurant, profile }) {
           <Field label="WhatsApp" value={form.whatsapp} onChange={(v) => set("whatsapp", v)} />
           <Field label="Ciudad" value={form.city} onChange={(v) => set("city", v)} />
           <Field label="Dirección" value={form.address} onChange={(v) => set("address", v)} className="sm:col-span-2" />
-          <Field label="Horario" value={form.schedule} onChange={(v) => set("schedule", v)} placeholder="Lun–Dom 12:00–22:00" className="sm:col-span-2" />
+          <Field label="Horario" value={form.schedule} onChange={(v) => set("schedule", v)} className="sm:col-span-2" />
         </div>
+
+        <div className="mt-6 rounded-xl bg-[var(--color-cream)] p-4">
+          <h3 className="font-semibold">Pedidos del menú digital</h3>
+          <label className="mt-3 flex items-center gap-2 text-sm font-semibold">
+            <input type="checkbox" checked={form.require_confirm_code} onChange={(e) => set("require_confirm_code", e.target.checked)} />
+            Pedir código de confirmación al cliente
+          </label>
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <label className="block flex-1 text-sm font-semibold">
+              Código
+              <input
+                value={form.confirmation_code}
+                onChange={(e) => set("confirmation_code", e.target.value.replace(/\D/g, "").slice(0, 6))}
+                className="mt-1 h-11 w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-paper)] px-3 font-normal tracking-[0.2em]"
+              />
+            </label>
+            <button type="button" onClick={regenCode} className="h-11 rounded-full bg-[var(--color-paper)] px-4 text-sm font-semibold">
+              Generar
+            </button>
+          </div>
+          <label className="mt-3 flex items-center gap-2 text-sm font-semibold">
+            <input type="checkbox" checked={form.delivery_enabled} onChange={(e) => set("delivery_enabled", e.target.checked)} />
+            Delivery activo (aviso en menú público)
+          </label>
+        </div>
+
         {err ? <p className="mt-3 text-sm text-[var(--color-wine)]">{err}</p> : null}
         {msg ? <p className="mt-3 text-sm text-[var(--color-sage)]">{msg}</p> : null}
         <button type="submit" disabled={loading} className="mt-5 h-12 rounded-full bg-[var(--color-ink)] px-6 font-semibold text-[var(--color-cream)] disabled:opacity-60">

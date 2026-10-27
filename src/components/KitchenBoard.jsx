@@ -19,8 +19,22 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
   }
 
   useEffect(() => {
-    const t = setInterval(refresh, 8000);
-    return () => clearInterval(t);
+    refresh();
+    const channel = supabase
+      .channel(`kitchen-${restaurantId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders", filter: `restaurant_id=eq.${restaurantId}` },
+        () => {
+          refresh();
+        },
+      )
+      .subscribe();
+    const t = setInterval(refresh, 12000);
+    return () => {
+      clearInterval(t);
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurantId]);
 
@@ -29,8 +43,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: "lista" } : o)));
   }
 
-  async function markServed(id, tableId) {
-    // Vuelve a abierta en piso / lista para cobro — mantiene mesa ocupada
+  async function markServed(id) {
     await supabase.from("orders").update({ status: "abierta" }).eq("id", id);
     setOrders((prev) => prev.filter((o) => o.id !== id));
   }
@@ -39,7 +52,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
     return (
       <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-8 text-center">
         <p className="text-2xl font-semibold">Cocina libre</p>
-        <p className="mt-2 text-[var(--color-muted)]">Las comandas aparecerán aquí al enviarse desde el POS.</p>
+        <p className="mt-2 text-[var(--color-muted)]">Las comandas aparecen al enviarse desde POS o menú.</p>
         <button type="button" onClick={refresh} className="mt-4 h-11 rounded-full bg-[var(--color-cream)] px-5 text-sm font-semibold">
           Actualizar
         </button>
@@ -50,7 +63,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-[var(--color-muted)]">Se actualiza sola cada 8 s</p>
+        <p className="text-sm text-[var(--color-muted)]">Tiempo real + respaldo cada 12 s</p>
         <button type="button" onClick={refresh} className="h-10 rounded-full bg-[var(--color-cream)] px-4 text-sm font-semibold">
           Actualizar ahora
         </button>
@@ -60,11 +73,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
           <article key={order.id} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-4">
             <div className="flex items-center justify-between">
               <h3 className="text-2xl">Mesa {order.dining_tables?.number ?? "?"}</h3>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-bold uppercase text-white ${
-                  order.status === "lista" ? "bg-[var(--color-sage)]" : "bg-[var(--color-ember)]"
-                }`}
-              >
+              <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase text-white ${order.status === "lista" ? "bg-[var(--color-sage)]" : "bg-[var(--color-ember)]"}`}>
                 {order.status}
               </span>
             </div>
@@ -76,19 +85,11 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
               ))}
             </ul>
             {order.status === "cocina" ? (
-              <button
-                type="button"
-                onClick={() => markReady(order.id)}
-                className="h-11 w-full rounded-xl bg-[var(--color-sage)] font-semibold text-white"
-              >
+              <button type="button" onClick={() => markReady(order.id)} className="h-11 w-full rounded-xl bg-[var(--color-sage)] font-semibold text-white">
                 Marcar lista
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={() => markServed(order.id, order.table_id)}
-                className="h-11 w-full rounded-xl bg-[var(--color-ink)] font-semibold text-[var(--color-cream)]"
-              >
+              <button type="button" onClick={() => markServed(order.id)} className="h-11 w-full rounded-xl bg-[var(--color-ink)] font-semibold text-[var(--color-cream)]">
                 Entregada al piso
               </button>
             )}

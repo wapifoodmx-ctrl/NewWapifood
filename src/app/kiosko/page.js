@@ -2,10 +2,10 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { requireTenant } from "@/lib/auth";
+import { requireTenant, requireTenantWithPlan } from "@/lib/auth";
 
 export default async function KioskoIndexPage() {
-  const { membership } = await requireTenant();
+  const { membership } = await requireTenantWithPlan();
   const rid = membership?.restaurant_id;
 
   return (

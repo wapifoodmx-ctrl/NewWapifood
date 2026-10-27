@@ -1,12 +1,11 @@
 export const dynamic = "force-dynamic";
 
 import { AppShell } from "@/components/AppShell";
-import { getMembership, requireUser } from "@/lib/auth";
+import { requireTenantWithPlan } from "@/lib/auth";
 import { PosBoard } from "@/components/PosBoard";
 
 export default async function PosPage() {
-  const { supabase, user } = await requireUser();
-  const membership = await getMembership(supabase, user.id);
+  const { supabase, membership } = await requireTenantWithPlan();
   if (!membership?.restaurant_id) {
     return (
       <AppShell title="Punto de venta">

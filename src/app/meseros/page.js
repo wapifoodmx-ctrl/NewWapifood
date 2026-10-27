@@ -2,11 +2,10 @@ export const dynamic = "force-dynamic";
 
 import { AppShell } from "@/components/AppShell";
 import { WaitersPanel } from "@/components/WaitersPanel";
-import { getMembership, requireUser } from "@/lib/auth";
+import { requireTenantWithPlan } from "@/lib/auth";
 
 export default async function MeserosPage() {
-  const { supabase, user } = await requireUser();
-  const membership = await getMembership(supabase, user.id);
+  const { supabase, membership } = await requireTenantWithPlan();
   if (!membership?.restaurant_id) {
     return <AppShell title="Meseros"><p>Sin restaurante.</p></AppShell>;
   }
@@ -26,7 +25,7 @@ export default async function MeserosPage() {
   return (
     <AppShell title="Meseros" restaurantName={membership.restaurants?.name} role={membership.role}>
       <p className="mb-4 text-[var(--color-muted)]">
-        Altas, códigos de acceso y asignación de mesas (como en Wapifood original).
+        Altas, códigos de acceso y asignación de mesas.
       </p>
       <WaitersPanel
         restaurantId={rid}
