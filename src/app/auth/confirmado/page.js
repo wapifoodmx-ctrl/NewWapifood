@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 
 export const metadata = { title: "Correo confirmado · Wapifood" };

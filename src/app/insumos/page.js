@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { AppShell } from "@/components/AppShell";
 import { RestockButton } from "@/components/RestockButton";
 import { getMembership, requireUser } from "@/lib/auth";

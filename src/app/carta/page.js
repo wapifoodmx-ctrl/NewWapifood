@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { AppShell } from "@/components/AppShell";
 import { money } from "@/lib/format";
 import { getMembership, requireUser } from "@/lib/auth";

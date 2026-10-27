@@ -1,8 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  // Cache Components + cookies()/auth rompe el build en rutas protegidas.
+  // Este es un SaaS con sesión: preferimos builds estables en Vercel.
   turbopack: {
     rules: {
       "*.css": {
