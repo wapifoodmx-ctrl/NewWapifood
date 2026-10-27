@@ -2,18 +2,24 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { requireTenant, requireTenantOperational, requireTenantSetup, requireTenantWithPlan } from "@/lib/auth";
+import { requireTenantOperational } from "@/lib/auth";
 
 export default async function KioskoIndexPage() {
-  const { membership } = await requireTenantOperational();
+  const { membership, operational, setupOnly } = await requireTenantOperational();
   const rid = membership?.restaurant_id;
 
   return (
-    <AppShell title="Kiosko" restaurantName={membership?.restaurants?.name} role={membership?.role} operational={operational} setupOnly={setupOnly}>
+    <AppShell
+      title="Kiosko"
+      restaurantName={membership?.restaurants?.name}
+      role={membership?.role}
+      operational={operational}
+      setupOnly={setupOnly}
+    >
       <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-6">
         <h2 className="text-2xl">Kiosko del restaurante</h2>
         <p className="mt-2 text-[var(--color-muted)]">
-          Abre esta pantalla en una tablet del local para que los clientes armen su pedido.
+          Tablet del local para que el cliente arme su pedido. Requiere plan activo.
         </p>
         {rid ? (
           <Link

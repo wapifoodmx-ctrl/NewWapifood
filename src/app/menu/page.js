@@ -2,20 +2,25 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { requireTenant, requireTenantOperational, requireTenantSetup, requireTenantWithPlan } from "@/lib/auth";
+import { requireTenantOperational } from "@/lib/auth";
 
 export default async function MenuIndexPage() {
-  const { membership } = await requireTenantOperational();
+  const { membership, operational, setupOnly } = await requireTenantOperational();
   const rid = membership?.restaurant_id;
   const name = membership?.restaurants?.name || "Tu restaurante";
 
   return (
-    <AppShell title="Menú cliente" restaurantName={name} role={membership?.role} operational={operational} setupOnly={setupOnly}>
+    <AppShell
+      title="Menú QR"
+      restaurantName={name}
+      role={membership?.role}
+      operational={operational}
+      setupOnly={setupOnly}
+    >
       <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-6">
         <h2 className="text-2xl">Menú digital / QR</h2>
         <p className="mt-2 text-[var(--color-muted)]">
-          Comparte este enlace o genera un QR apuntando a él. Los clientes ven tu carta,
-          arman carrito y envían a cocina eligiendo mesa.
+          Comparte este enlace con tus clientes. Requiere plan activo.
         </p>
         {rid ? (
           <>

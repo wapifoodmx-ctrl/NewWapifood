@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { modulesForMode } from "@/lib/modules";
+import { MODULES } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/client";
 
 export function AppShell({
@@ -15,7 +15,6 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const modules = modulesForMode(operational);
 
   async function signOut() {
     const supabase = createClient();
@@ -28,11 +27,11 @@ export function AppShell({
     <div className="min-h-screen bg-[var(--color-cream)] text-[var(--color-ink)]">
       {setupOnly ? (
         <div className="border-b border-[var(--color-ember)] bg-[var(--color-ember)] px-4 py-2 text-center text-sm font-semibold text-white">
-          Modo configuración (trial) — puedes armar carta, mesas e insumos.{" "}
+          Modo configuración — arma tu restaurante.{" "}
           <Link href="/pagos" className="underline">
-            Activa tu plan
+            Activa el plan
           </Link>{" "}
-          para vender en POS, menú QR, kiosko y meseros.
+          para vender (POS, tickets, menú QR, kiosko, meseros).
         </div>
       ) : null}
       <header className="sticky top-0 z-20 border-b border-[var(--color-line)] bg-[var(--color-paper)]/95 backdrop-blur">
@@ -41,7 +40,7 @@ export function AppShell({
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-muted)]">
               {restaurantName || "Wapifood"}
               {role ? ` · ${role}` : ""}
-              {operational ? " · plan activo" : " · setup"}
+              {operational ? " · plan activo" : ""}
             </p>
             <h1 className="text-2xl leading-none">{title}</h1>
           </div>
@@ -54,8 +53,9 @@ export function AppShell({
           </button>
         </div>
         <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-3 pb-3">
-          {modules.map((m) => {
-            const on = pathname === m.href || pathname.startsWith(m.href + "/");
+          {MODULES.map((m) => {
+            const on = pathname === m.href || (m.href !== "/" && pathname.startsWith(m.href + "/"));
+            const needsPlan = m.group === "ops" && setupOnly;
             return (
               <Link
                 key={m.id}
@@ -65,8 +65,10 @@ export function AppShell({
                     ? "bg-[var(--color-ink)] text-[var(--color-cream)]"
                     : "bg-[var(--color-cream)] text-[var(--color-ink)]"
                 }`}
+                title={needsPlan ? "Requiere plan activo" : m.title}
               >
                 {m.title}
+                {needsPlan ? " 🔒" : ""}
               </Link>
             );
           })}

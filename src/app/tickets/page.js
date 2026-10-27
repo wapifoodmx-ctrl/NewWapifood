@@ -20,7 +20,9 @@ export default async function TicketsPage() {
   const [{ data: orders, error: ordersError }, { data: products }] = await Promise.all([
     supabase
       .from("orders")
-      .select("id,status,method,opened_at,closed_at,table_id,order_items(product_id,qty,unit_price),dining_tables(number)")
+      .select(
+        "id,status,method,opened_at,closed_at,table_id,order_items(product_id,qty,unit_price),dining_tables(number)",
+      )
       .eq("restaurant_id", rid)
       .eq("status", "pagada")
       .order("closed_at", { ascending: false })
@@ -28,7 +30,6 @@ export default async function TicketsPage() {
     supabase.from("products").select("id,name").eq("restaurant_id", rid),
   ]);
 
-  // Mapa serializable (no funciones) para Client Components
   const productNames = Object.fromEntries((products || []).map((p) => [p.id, p.name]));
 
   return (
@@ -40,11 +41,11 @@ export default async function TicketsPage() {
       setupOnly={setupOnly}
     >
       <p className="mb-4 text-[var(--color-muted)]">
-        Historial de cuentas pagadas. Puedes reimprimir cada ticket.
+        Historial de cuentas pagadas. Ruta: <code className="rounded bg-[var(--color-cream)] px-1">/tickets</code>
       </p>
 
       {ordersError ? (
-        <div className="rounded-2xl border border-[var(--color-wine)] bg-[var(--color-paper)] p-5 text-sm text-[var(--color-wine)]">
+        <div className="mb-4 rounded-2xl border border-[var(--color-wine)] bg-[var(--color-paper)] p-5 text-sm text-[var(--color-wine)]">
           No se pudieron cargar los tickets: {ordersError.message}
         </div>
       ) : null}
@@ -52,7 +53,7 @@ export default async function TicketsPage() {
       <div className="space-y-3">
         {(orders || []).length === 0 ? (
           <p className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5 text-[var(--color-muted)]">
-            Aún no hay tickets. Cuando cobres una mesa en el POS aparecerán aquí.
+            Aún no hay tickets. Cobra una mesa en el Punto de venta y aparecerán aquí.
           </p>
         ) : (
           (orders || []).map((o) => (
