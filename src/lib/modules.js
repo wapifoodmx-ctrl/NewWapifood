@@ -12,5 +12,6 @@ export const MODULES = [
   { id: "pantallas", title: "Pantallas", href: "/pantallas", legacy: "pages/pantallas.js", status: "live" },
   { id: "menu-cliente", title: "Menú cliente", href: "/menu", legacy: "pages/clientmenu.js", status: "live" },
   { id: "kiosko", title: "Kiosko", href: "/kiosko", legacy: "pages/kiosko.js", status: "live" },
-  { id: "pagos", title: "Pagos / plan", href: "/pagos", legacy: "pages/payments.js", status: "shell" },
+  { id: "pagos", title: "Pagos / plan", href: "/pagos", legacy: "pages/payments.js", status: "live" },
+  { id: "equipo", title: "Equipo", href: "/equipo", legacy: "memberships", status: "live" },
 ];

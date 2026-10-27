@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { money } from "@/lib/format";
 import { requireTenant } from "@/lib/auth";
 import { MODULES } from "@/lib/modules";
+import { planMeta } from "@/lib/plans";
 
 export default async function DashboardPage() {
   const { supabase, membership } = await requireTenant();
@@ -17,9 +18,10 @@ export default async function DashboardPage() {
   let ticketCount = 0;
   let lowStock = [];
   let series = [0, 0, 0, 0, 0, 0, 0];
+  let sub = null;
 
   if (restaurantId) {
-    const [{ count: ot }, { data: orders }, { data: ings }] = await Promise.all([
+    const [{ count: ot }, { data: orders }, { data: ings }, { data: subs }] = await Promise.all([
       supabase
         .from("dining_tables")
         .select("*", { count: "exact", head: true })
@@ -33,6 +35,12 @@ export default async function DashboardPage() {
         .from("ingredients")
         .select("name,stock,min_stock,unit")
         .eq("restaurant_id", restaurantId),
+      supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("restaurant_id", restaurantId)
+        .order("created_at", { ascending: false })
+        .limit(1),
     ]);
 
     openTables = ot || 0;
@@ -46,8 +54,8 @@ export default async function DashboardPage() {
       0,
     );
     lowStock = (ings || []).filter((i) => Number(i.stock) <= Number(i.min_stock));
+    sub = (subs || [])[0] || null;
 
-    // Serie simple últimos 7 días (conteo de órdenes pagadas)
     const now = new Date();
     series = Array.from({ length: 7 }, (_, idx) => {
       const day = new Date(now);
@@ -58,6 +66,7 @@ export default async function DashboardPage() {
   }
 
   const max = Math.max(...series, 1);
+  const plan = sub ? planMeta(sub.plan) : null;
 
   return (
     <AppShell title="Panel" restaurantName={restaurantName} role={membership?.role}>
@@ -65,13 +74,27 @@ export default async function DashboardPage() {
         <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5">
           <h2 className="text-2xl">Activando tu restaurante…</h2>
           <p className="mt-2 text-[var(--color-muted)]">
-            Si este mensaje no desaparece al recargar, falta ejecutar en Supabase el SQL
-            <code className="mx-1 rounded bg-[var(--color-cream)] px-1">005_auto_onboarding.sql</code>
-            (solo una vez, por el equipo técnico).
+            Si no desaparece, ejecuta en Supabase <code className="rounded bg-[var(--color-cream)] px-1">005_auto_onboarding.sql</code> y <code className="rounded bg-[var(--color-cream)] px-1">008_panel_d_subscriptions.sql</code>.
           </p>
         </div>
       ) : (
         <>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] px-4 py-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-muted)]">Plan</p>
+              <p className="font-semibold">
+                {plan?.title || "Sin plan"}{" "}
+                <span className="text-sm font-normal text-[var(--color-muted)]">
+                  {sub ? `· ${sub.status}` : ""}
+                  {sub?.ends_at ? ` · hasta ${new Date(sub.ends_at).toLocaleDateString("es-MX")}` : ""}
+                </span>
+              </p>
+            </div>
+            <Link href="/pagos" className="h-10 rounded-full bg-[var(--color-cream)] px-4 text-sm font-semibold leading-10">
+              Administrar plan
+            </Link>
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Stat label="Vendido (pagado)" value={money(sales)} />
             <Stat label="Tickets pagados" value={String(ticketCount)} />
@@ -88,7 +111,6 @@ export default async function DashboardPage() {
                     <div
                       className="w-full rounded-t-lg bg-[var(--color-ember)]"
                       style={{ height: `${Math.max(8, (v / max) * 100)}%` }}
-                      title={`${v} órdenes`}
                     />
                     <span className="text-[10px] text-[var(--color-muted)]">D{i + 1}</span>
                   </div>

@@ -1,19 +1,27 @@
 export const dynamic = "force-dynamic";
 
 import { AppShell } from "@/components/AppShell";
-import { getMembership, requireUser } from "@/lib/auth";
+import { SubscriptionPanel } from "@/components/SubscriptionPanel";
+import { requireTenant } from "@/lib/auth";
 
-export default async function Page() {
-  const { supabase, user } = await requireUser();
-  const membership = await getMembership(supabase, user.id);
+export default async function PagosPage() {
+  const { supabase, membership } = await requireTenant();
+  if (!membership?.restaurant_id) {
+    return <AppShell title="Pagos"><p>Sin restaurante.</p></AppShell>;
+  }
+
+  const { data: subs } = await supabase
+    .from("subscriptions")
+    .select("*")
+    .eq("restaurant_id", membership.restaurant_id)
+    .order("created_at", { ascending: false });
+
   return (
-    <AppShell title="Pagos y suscripción" restaurantName={membership?.restaurants?.name} role={membership?.role}>
-      <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5">
-        <h2 className="text-2xl">Pagos y suscripción</h2>
-        <p className="mt-2 text-[var(--color-muted)]">
-          Módulo en migración desde <code>pages/payments.js</code>. Ruta reservada; la lógica completa se porta en el siguiente bloque.
-        </p>
-      </div>
+    <AppShell title="Pagos / plan" restaurantName={membership.restaurants?.name} role={membership.role}>
+      <p className="mb-4 text-[var(--color-muted)]">
+        Plan SaaS del restaurante. Hoy la activación es manual de prueba; la pasarela (Stripe/Mercado Pago) se conecta después sin cambiar el modelo.
+      </p>
+      <SubscriptionPanel restaurantId={membership.restaurant_id} initialSubs={subs || []} />
     </AppShell>
   );
 }
