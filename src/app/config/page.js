@@ -1,19 +1,30 @@
 export const dynamic = "force-dynamic";
 
 import { AppShell } from "@/components/AppShell";
-import { getMembership, requireUser } from "@/lib/auth";
+import { ConfigPanel } from "@/components/ConfigPanel";
+import { requireTenant } from "@/lib/auth";
 
-export default async function Page() {
-  const { supabase, user } = await requireUser();
-  const membership = await getMembership(supabase, user.id);
+export default async function ConfigPage() {
+  const { supabase, membership } = await requireTenant();
+  if (!membership?.restaurant_id) {
+    return (
+      <AppShell title="Restaurante">
+        <p>Sin restaurante. Recarga o vuelve a iniciar sesión.</p>
+      </AppShell>
+    );
+  }
+
+  const [{ data: restaurant }, { data: profile }] = await Promise.all([
+    supabase.from("restaurants").select("*").eq("id", membership.restaurant_id).single(),
+    supabase.from("restaurant_profiles").select("*").eq("restaurant_id", membership.restaurant_id).maybeSingle(),
+  ]);
+
   return (
-    <AppShell title="Restaurante" restaurantName={membership?.restaurants?.name} role={membership?.role}>
-      <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5">
-        <h2 className="text-2xl">Restaurante</h2>
-        <p className="mt-2 text-[var(--color-muted)]">
-          Módulo en migración desde <code>pages/user.js</code>. Ruta reservada; la lógica completa se porta en el siguiente bloque.
-        </p>
-      </div>
+    <AppShell title="Restaurante" restaurantName={membership.restaurants?.name} role={membership.role}>
+      <p className="mb-4 text-[var(--color-muted)]">
+        Datos del local, contacto y logo (público para el menú digital).
+      </p>
+      <ConfigPanel restaurant={restaurant} profile={profile} />
     </AppShell>
   );
 }

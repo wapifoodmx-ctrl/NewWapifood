@@ -1,16 +1,17 @@
 /** Inventario de pantallas del SaaS legacy (Comanadas/WapifoodFront main) */
 export const MODULES = [
   { id: "dashboard", title: "Panel", href: "/dashboard", legacy: "pages/dashboard.js", status: "live" },
+  { id: "config", title: "Restaurante", href: "/config", legacy: "pages/user.js", status: "live" },
+  { id: "carta", title: "Carta", href: "/carta", legacy: "pages/menu.js", status: "live" },
+  { id: "insumos", title: "Insumos", href: "/insumos", legacy: "pages/inventarios.js", status: "live" },
+  { id: "recetas", title: "Recetas", href: "/recetas", legacy: "pages/recetas.js", status: "live" },
+  { id: "mesas", title: "Mesas", href: "/mesas", legacy: "tables API", status: "live" },
   { id: "pos", title: "Punto de venta", href: "/pos", legacy: "pages/puntodeventa.js", status: "live" },
   { id: "kitchen", title: "Cocina", href: "/cocina", legacy: "pages/cocina.js", status: "live" },
-  { id: "carta", title: "Carta", href: "/carta", legacy: "pages/menu.js", status: "live" },
-  { id: "insumos", title: "Insumos", href: "/insumos", legacy: "pages/inventarios.js + microservicio", status: "live" },
-  { id: "recetas", title: "Recetas", href: "/recetas", legacy: "pages/recetas.js", status: "live" },
   { id: "meseros", title: "Meseros", href: "/meseros", legacy: "pages/meseros.js", status: "live" },
   { id: "menu-cliente", title: "Menú cliente", href: "/menu", legacy: "pages/clientmenu.js", status: "live" },
   { id: "kiosko", title: "Kiosko", href: "/kiosko", legacy: "pages/kiosko.js", status: "shell" },
   { id: "pantallas", title: "Pantallas", href: "/pantallas", legacy: "pages/pantallas.js", status: "shell" },
   { id: "tickets", title: "Tickets", href: "/tickets", legacy: "pages/tickets.js", status: "shell" },
   { id: "pagos", title: "Pagos / plan", href: "/pagos", legacy: "pages/payments.js", status: "shell" },
-  { id: "config", title: "Restaurante", href: "/config", legacy: "pages/user.js", status: "shell" },
 ];
