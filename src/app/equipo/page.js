@@ -1,12 +1,12 @@
 export const dynamic = "force-dynamic";
 
 import { AppShell } from "@/components/AppShell";
-import { requireTenant, requireTenantWithPlan } from "@/lib/auth";
+import { requireTenant, requireTenantWithPlan, requireTenantSetup } from "@/lib/auth";
 
 export default async function EquipoPage() {
-  const { supabase, membership, user } = await requireTenantWithPlan();
+  const { supabase, membership, user } = await requireTenantSetup();
   if (!membership?.restaurant_id) {
-    return <AppShell title="Equipo"><p>Sin restaurante.</p></AppShell>;
+    return <AppShell title="Equipo" operational={operational} setupOnly={setupOnly}><p>Sin restaurante.</p></AppShell>;
   }
 
   const { data: members } = await supabase
@@ -15,7 +15,7 @@ export default async function EquipoPage() {
     .eq("restaurant_id", membership.restaurant_id);
 
   return (
-    <AppShell title="Equipo" restaurantName={membership.restaurants?.name} role={membership.role}>
+    <AppShell title="Equipo" restaurantName={membership.restaurants?.name} role={membership.role} operational={operational} setupOnly={setupOnly}>
       <p className="mb-4 text-[var(--color-muted)]">
         Miembros del restaurante (roles multi-tenant). Los meseros de piso usan código en /mesero, no cuenta aquí.
       </p>

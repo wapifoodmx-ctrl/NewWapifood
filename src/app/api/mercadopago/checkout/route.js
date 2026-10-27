@@ -71,7 +71,7 @@ export async function POST(request) {
         },
         back_urls: {
           success: `${origin}/pagos/exito`,
-          failure: `${origin}/pagos?status=failure`,
+          failure: `${origin}/pagos/error`,
           pending: `${origin}/pagos?status=pending`,
         },
         auto_return: "approved",

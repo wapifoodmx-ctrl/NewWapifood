@@ -3,12 +3,12 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { money } from "@/lib/format";
-import { requireTenant, requireTenantWithPlan } from "@/lib/auth";
+import { requireTenantSetup } from "@/lib/auth";
 import { MODULES } from "@/lib/modules";
 import { planMeta } from "@/lib/plans";
 
 export default async function DashboardPage() {
-  const { supabase, membership } = await requireTenantWithPlan();
+  const { supabase, membership, operational, setupOnly } = await requireTenantSetup();
   const restaurantId = membership?.restaurant_id;
   const restaurantName = membership?.restaurants?.name || "Mi restaurante";
 
@@ -69,7 +69,7 @@ export default async function DashboardPage() {
   const plan = sub ? planMeta(sub.plan) : null;
 
   return (
-    <AppShell title="Panel" restaurantName={restaurantName} role={membership?.role}>
+    <AppShell title="Panel" restaurantName={restaurantName} role={membership?.role} operational={operational} setupOnly={setupOnly}>
       {!restaurantId ? (
         <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5">
           <h2 className="text-2xl">Activando tu restaurante…</h2>
@@ -139,6 +139,12 @@ export default async function DashboardPage() {
 
           <section className="mt-6">
             <h2 className="mb-3 text-2xl">Módulos</h2>
+            {setupOnly ? (
+              <p className="mb-3 text-sm text-[var(--color-muted)]">
+                Estás en trial: configura carta, mesas e insumos. Las ventas se habilitan al activar el plan.
+              </p>
+            ) : null}
+
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {MODULES.filter((m) => m.href !== "/dashboard").map((m) => (
                 <Link

@@ -3,13 +3,13 @@ export const dynamic = "force-dynamic";
 import { AppShell } from "@/components/AppShell";
 import { ConfigPanel } from "@/components/ConfigPanel";
 import { ThemePanel } from "@/components/ThemePanel";
-import { requireTenant, requireTenantWithPlan } from "@/lib/auth";
+import { requireTenant, requireTenantWithPlan, requireTenantSetup } from "@/lib/auth";
 
 export default async function ConfigPage() {
-  const { supabase, membership } = await requireTenantWithPlan();
+  const { supabase, membership, operational, setupOnly } = await requireTenantSetup();
   if (!membership?.restaurant_id) {
     return (
-      <AppShell title="Restaurante">
+      <AppShell title="Restaurante" operational={operational} setupOnly={setupOnly}>
         <p>Sin restaurante. Recarga o vuelve a iniciar sesión.</p>
       </AppShell>
     );
@@ -22,7 +22,7 @@ export default async function ConfigPage() {
   ]);
 
   return (
-    <AppShell title="Restaurante" restaurantName={membership.restaurants?.name} role={membership.role}>
+    <AppShell title="Restaurante" restaurantName={membership.restaurants?.name} role={membership.role} operational={operational} setupOnly={setupOnly}>
       <p className="mb-4 text-[var(--color-muted)]">
         Datos del local, contacto, logo y colores del menú digital.
       </p>

@@ -3,12 +3,12 @@ export const dynamic = "force-dynamic";
 import { AppShell } from "@/components/AppShell";
 import { InsumosManager } from "@/components/InsumosManager";
 import { StockMovesList } from "@/components/StockMovesList";
-import { requireTenant, requireTenantWithPlan } from "@/lib/auth";
+import { requireTenant, requireTenantWithPlan, requireTenantSetup } from "@/lib/auth";
 
 export default async function InsumosPage() {
-  const { supabase, membership } = await requireTenantWithPlan();
+  const { supabase, membership, operational, setupOnly } = await requireTenantSetup();
   if (!membership?.restaurant_id) {
-    return <AppShell title="Insumos"><p>Sin restaurante.</p></AppShell>;
+    return <AppShell title="Insumos" operational={operational} setupOnly={setupOnly}><p>Sin restaurante.</p></AppShell>;
   }
   const rid = membership.restaurant_id;
   const { data: ingredients } = await supabase
@@ -32,7 +32,7 @@ export default async function InsumosPage() {
   const names = Object.fromEntries((ingredients || []).map((i) => [i.id, i.name]));
 
   return (
-    <AppShell title="Insumos" restaurantName={membership.restaurants?.name} role={membership.role}>
+    <AppShell title="Insumos" restaurantName={membership.restaurants?.name} role={membership.role} operational={operational} setupOnly={setupOnly}>
       <p className="mb-4 max-w-2xl text-[var(--color-muted)]">
         Inventario unificado. El stock baja al cobrar si el producto tiene receta.
       </p>

@@ -2,14 +2,14 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { getMembership, requireUser, requireTenantWithPlan } from "@/lib/auth";
+import { getMembership, requireUser, requireTenantWithPlan, requireTenantOperational } from "@/lib/auth";
 
 export default async function PantallasPage() {
   const { supabase, user } = await requireUser();
   const membership = await getMembership(supabase, user.id);
 
   return (
-    <AppShell title="Pantallas" restaurantName={membership?.restaurants?.name} role={membership?.role}>
+    <AppShell title="Pantallas" restaurantName={membership?.restaurants?.name} role={membership?.role} operational={operational} setupOnly={setupOnly}>
       <p className="mb-4 text-[var(--color-muted)]">
         Pantallas para cocina o turno. Abre en otra pestaña o tablet del local.
       </p>

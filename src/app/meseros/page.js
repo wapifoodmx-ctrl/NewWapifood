@@ -2,12 +2,12 @@ export const dynamic = "force-dynamic";
 
 import { AppShell } from "@/components/AppShell";
 import { WaitersPanel } from "@/components/WaitersPanel";
-import { requireTenantWithPlan } from "@/lib/auth";
+import { requireTenantWithPlan, requireTenantSetup, requireTenant } from "@/lib/auth";
 
 export default async function MeserosPage() {
-  const { supabase, membership } = await requireTenantWithPlan();
+  const { supabase, membership, operational, setupOnly } = await requireTenantSetup();
   if (!membership?.restaurant_id) {
-    return <AppShell title="Meseros"><p>Sin restaurante.</p></AppShell>;
+    return <AppShell title="Meseros" operational={operational} setupOnly={setupOnly}><p>Sin restaurante.</p></AppShell>;
   }
   const rid = membership.restaurant_id;
   const [{ data: waiters }, { data: tables }] = await Promise.all([
@@ -23,7 +23,7 @@ export default async function MeserosPage() {
   }
 
   return (
-    <AppShell title="Meseros" restaurantName={membership.restaurants?.name} role={membership.role}>
+    <AppShell title="Meseros" restaurantName={membership.restaurants?.name} role={membership.role} operational={operational} setupOnly={setupOnly}>
       <p className="mb-4 text-[var(--color-muted)]">
         Altas, códigos de acceso y asignación de mesas.
       </p>

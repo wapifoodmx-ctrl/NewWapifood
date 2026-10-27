@@ -1,14 +1,14 @@
 export const dynamic = "force-dynamic";
 
 import { AppShell } from "@/components/AppShell";
-import { requireTenantWithPlan } from "@/lib/auth";
+import { requireTenantOperational } from "@/lib/auth";
 import { PosBoard } from "@/components/PosBoard";
 
 export default async function PosPage() {
-  const { supabase, membership } = await requireTenantWithPlan();
+  const { supabase, membership, operational, setupOnly } = await requireTenantOperational();
   if (!membership?.restaurant_id) {
     return (
-      <AppShell title="Punto de venta">
+      <AppShell title="Punto de venta" operational={operational} setupOnly={setupOnly}>
         <p>Configura tu membership primero.</p>
       </AppShell>
     );
@@ -28,7 +28,7 @@ export default async function PosPage() {
     ]);
 
   return (
-    <AppShell title="Punto de venta" restaurantName={membership.restaurants?.name} role={membership.role}>
+    <AppShell title="Punto de venta" restaurantName={membership.restaurants?.name} role={membership.role} operational={operational} setupOnly={setupOnly}>
       <PosBoard
         restaurantId={rid}
         tables={tables || []}

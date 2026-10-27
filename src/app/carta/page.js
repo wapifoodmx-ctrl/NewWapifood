@@ -2,12 +2,12 @@ export const dynamic = "force-dynamic";
 
 import { AppShell } from "@/components/AppShell";
 import { CartaManager } from "@/components/CartaManager";
-import { requireTenant, requireTenantWithPlan } from "@/lib/auth";
+import { requireTenant, requireTenantWithPlan, requireTenantSetup } from "@/lib/auth";
 
 export default async function CartaPage() {
-  const { supabase, membership } = await requireTenantWithPlan();
+  const { supabase, membership, operational, setupOnly } = await requireTenantSetup();
   if (!membership?.restaurant_id) {
-    return <AppShell title="Carta"><p>Sin restaurante.</p></AppShell>;
+    return <AppShell title="Carta" operational={operational} setupOnly={setupOnly}><p>Sin restaurante.</p></AppShell>;
   }
   const rid = membership.restaurant_id;
   const [{ data: products }, { data: categories }] = await Promise.all([
@@ -16,7 +16,7 @@ export default async function CartaPage() {
   ]);
 
   return (
-    <AppShell title="Carta" restaurantName={membership.restaurants?.name} role={membership.role}>
+    <AppShell title="Carta" restaurantName={membership.restaurants?.name} role={membership.role} operational={operational} setupOnly={setupOnly}>
       <p className="mb-4 text-[var(--color-muted)]">
         Alta y edición de productos, categorías, precios, costos y fotos.
       </p>

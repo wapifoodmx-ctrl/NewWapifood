@@ -2,12 +2,12 @@ export const dynamic = "force-dynamic";
 
 import { AppShell } from "@/components/AppShell";
 import { RecetasManager } from "@/components/RecetasManager";
-import { requireTenant, requireTenantWithPlan } from "@/lib/auth";
+import { requireTenant, requireTenantWithPlan, requireTenantSetup } from "@/lib/auth";
 
 export default async function RecetasPage() {
-  const { supabase, membership } = await requireTenantWithPlan();
+  const { supabase, membership, operational, setupOnly } = await requireTenantSetup();
   if (!membership?.restaurant_id) {
-    return <AppShell title="Recetas"><p>Sin restaurante.</p></AppShell>;
+    return <AppShell title="Recetas" operational={operational} setupOnly={setupOnly}><p>Sin restaurante.</p></AppShell>;
   }
   const rid = membership.restaurant_id;
   const [{ data: products }, { data: ingredients }, { data: lines }] = await Promise.all([
@@ -21,7 +21,7 @@ export default async function RecetasPage() {
   const scoped = (lines || []).filter((l) => productIds.has(l.product_id));
 
   return (
-    <AppShell title="Recetas" restaurantName={membership.restaurants?.name} role={membership.role}>
+    <AppShell title="Recetas" restaurantName={membership.restaurants?.name} role={membership.role} operational={operational} setupOnly={setupOnly}>
       <p className="mb-4 text-[var(--color-muted)]">
         Define qué insumos consume cada producto. Al cobrar con <code>close_order</code> se descuenta el stock.
       </p>

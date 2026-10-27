@@ -2,12 +2,12 @@ export const dynamic = "force-dynamic";
 
 import { AppShell } from "@/components/AppShell";
 import { TicketCard } from "@/components/TicketCard";
-import { requireTenantWithPlan } from "@/lib/auth";
+import { requireTenantWithPlan, requireTenantOperational } from "@/lib/auth";
 
 export default async function TicketsPage() {
-  const { supabase, membership } = await requireTenantWithPlan();
+  const { supabase, membership, operational, setupOnly } = await requireTenantOperational();
   if (!membership?.restaurant_id) {
-    return <AppShell title="Tickets"><p>Sin restaurante.</p></AppShell>;
+    return <AppShell title="Tickets" operational={operational} setupOnly={setupOnly}><p>Sin restaurante.</p></AppShell>;
   }
 
   const { data: orders } = await supabase
@@ -25,7 +25,7 @@ export default async function TicketsPage() {
   const nameOf = (id) => products?.find((p) => p.id === id)?.name || "Producto";
 
   return (
-    <AppShell title="Tickets" restaurantName={membership.restaurants?.name} role={membership.role}>
+    <AppShell title="Tickets" restaurantName={membership.restaurants?.name} role={membership.role} operational={operational} setupOnly={setupOnly}>
       <p className="mb-4 text-[var(--color-muted)]">Historial de cuentas pagadas. Puedes imprimir cada ticket.</p>
       <div className="space-y-3">
         {(orders || []).length === 0 ? (

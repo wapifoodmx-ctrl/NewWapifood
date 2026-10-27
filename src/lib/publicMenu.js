@@ -9,6 +9,10 @@ export async function loadPublicMenu(restaurantId) {
     .maybeSingle();
   if (error || !restaurant) return null;
 
+  const { data: canOps } = await supabase.rpc("can_operate", {
+    p_restaurant: restaurantId,
+  });
+
   const [{ data: products }, { data: categories }, { data: tables }, { data: theme }, { data: profile }] =
     await Promise.all([
       supabase
@@ -43,5 +47,6 @@ export async function loadPublicMenu(restaurantId) {
     tables: tables || [],
     theme: theme || null,
     profile: profile || null,
+    canOperate: !!canOps,
   };
 }
