@@ -139,6 +139,7 @@ export default async function DashboardPage() {
 
           <section className="mt-6">
             <h2 className="mb-3 text-2xl">Módulos</h2>
+            {/* alertas inventario se ven en /insumos */}
             {setupOnly ? (
               <p className="mb-3 text-sm text-[var(--color-muted)]">
                 Estás en trial: configura carta, mesas e insumos. Las ventas se habilitan al activar el plan.

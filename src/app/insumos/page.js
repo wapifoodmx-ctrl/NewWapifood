@@ -13,7 +13,7 @@ export default async function InsumosPage() {
   const rid = membership.restaurant_id;
   const { data: ingredients } = await supabase
     .from("ingredients")
-    .select("*")
+    .select("id,name,unit,stock,min_stock,kind,expires_on,notes,created_at")
     .eq("restaurant_id", rid)
     .order("name");
 
@@ -22,7 +22,7 @@ export default async function InsumosPage() {
   if (ids.length) {
     const { data } = await supabase
       .from("stock_moves")
-      .select("*")
+      .select("id,name,unit,stock,min_stock,kind,expires_on,notes,created_at")
       .in("ingredient_id", ids)
       .order("created_at", { ascending: false })
       .limit(30);
