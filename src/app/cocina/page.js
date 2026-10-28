@@ -14,7 +14,7 @@ export default async function CocinaPage() {
     .from("orders")
     .select("*, order_items(*), dining_tables(number)")
     .eq("restaurant_id", rid)
-    .in("status", ["cocina", "lista"])
+    .in("status", ["cocina", "lista", "pendiente"])
     .order("opened_at", { ascending: true });
 
   const { data: products } = await supabase

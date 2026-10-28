@@ -97,6 +97,7 @@ export function WaiterApp({ restaurantId, restaurantName, products, categories, 
         p_customer_name: session?.name || "Mesero",
         p_notes: null,
         p_confirm_code: null,
+        p_source: "mesero",
       });
       if (error) throw error;
       setCart([]);

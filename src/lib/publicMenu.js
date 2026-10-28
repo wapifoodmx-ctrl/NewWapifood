@@ -24,7 +24,7 @@ export async function loadPublicMenu(restaurantId) {
       supabase.from("categories").select("id,name").eq("restaurant_id", restaurantId).order("name"),
       supabase
         .from("dining_tables")
-        .select("id,number,seats")
+        .select("id,number,seats,channel_type,access_pin")
         .eq("restaurant_id", restaurantId)
         .eq("active", true)
         .order("number"),

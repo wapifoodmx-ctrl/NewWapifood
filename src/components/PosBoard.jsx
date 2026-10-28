@@ -39,7 +39,7 @@ export function PosBoard({ restaurantId, tables, products, categories, initialOr
     if (existing) return;
     const { data: created, error } = await supabase
       .from("orders")
-      .insert({ restaurant_id: restaurantId, table_id: tableId, status: "abierta" })
+      .insert({ restaurant_id: restaurantId, table_id: tableId, status: "abierta", source: "pos" })
       .select("*, order_items(*)")
       .single();
     if (error) return setNotice(error.message);
@@ -147,7 +147,7 @@ export function PosBoard({ restaurantId, tables, products, categories, initialOr
       <section>
         <h2 className="mb-3 text-3xl">Mesas</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {tables.filter((t) => t.active !== false).map((t) => {
+          {tables.filter((t) => t.active !== false && (t.channel_type || "piso") !== "kiosko").map((t) => {
             const live = orders.find(
               (o) => o.table_id === t.id && o.status !== "pagada" && o.status !== "cancelada",
             );
@@ -166,8 +166,12 @@ export function PosBoard({ restaurantId, tables, products, categories, initialOr
                     : "border-[var(--color-line)] bg-[var(--color-paper)]"
                 }`}
               >
-                <p className="text-2xl font-semibold">Mesa {t.number}</p>
-                <p className="text-sm opacity-80">{t.seats} lugares</p>
+                <p className="text-2xl font-semibold">
+                  {t.channel_type === "caja" ? "Caja" : `Mesa ${t.number}`}
+                </p>
+                <p className="text-sm opacity-80">
+                  {t.seats} lugares · {t.channel_type || "piso"}
+                </p>
                 <p className="mt-2 text-sm font-semibold">
                   {live ? `Ocupada · ${live.status}` : "Libre"}
                 </p>

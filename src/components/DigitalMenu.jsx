@@ -13,12 +13,14 @@ export function DigitalMenu({
   mode = "client",
   requireConfirmCode = false,
   deliveryEnabled = false,
+  orderSource = "web_menu",
+  fixedTableId = null,
 }) {
   const primary = theme?.primary_color || "#c45c26";
   const secondary = theme?.secondary_color || "#1c1917";
   const [cat, setCat] = useState("");
   const [cart, setCart] = useState([]);
-  const [tableId, setTableId] = useState("");
+  const [tableId, setTableId] = useState(fixedTableId || "");
   const [customerName, setCustomerName] = useState("");
   const [notes, setNotes] = useState("");
   const [confirmCode, setConfirmCode] = useState("");
@@ -65,6 +67,7 @@ export function DigitalMenu({
         p_customer_name: customerName || null,
         p_notes: notes || null,
         p_confirm_code: requireConfirmCode ? confirmCode.trim() : null,
+        p_source: orderSource,
       });
       if (error) throw error;
       setCart([]);
@@ -120,8 +123,12 @@ export function DigitalMenu({
       <main className="mx-auto max-w-lg px-4 py-5 pb-28">
         {ok ? (
           <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
-            <p className="font-semibold">¡Pedido enviado a cocina!</p>
-            <p className="text-sm">Tu comanda ya está en preparación. Gracias.</p>
+            <p className="font-semibold">¡Pedido recibido!</p>
+            <p className="text-sm">
+              {orderSource === "web_menu"
+                ? "Si es un encargo web, el restaurante lo confirmará antes de cocina."
+                : "Tu comanda ya está en preparación."}
+            </p>
           </div>
         ) : null}
 

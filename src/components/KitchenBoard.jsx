@@ -13,7 +13,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
       .from("orders")
       .select("*, order_items(*), dining_tables(number)")
       .eq("restaurant_id", restaurantId)
-      .in("status", ["cocina", "lista"])
+      .in("status", ["cocina", "lista", "pendiente"])
       .order("opened_at", { ascending: true });
     setOrders(data || []);
   }
@@ -41,6 +41,13 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
   async function markReady(id) {
     await supabase.from("orders").update({ status: "lista" }).eq("id", id);
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: "lista" } : o)));
+  }
+
+  async function confirmWeb(id) {
+    const { error } = await supabase.rpc("confirm_web_order", { p_order: id });
+    if (!error) {
+      setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: "cocina", needs_confirmation: false } : o)));
+    }
   }
 
   async function markServed(id) {
@@ -84,7 +91,11 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
                 </li>
               ))}
             </ul>
-            {order.status === "cocina" ? (
+            {order.status === "pendiente" ? (
+              <button type="button" onClick={() => confirmWeb(order.id)} className="h-11 w-full rounded-xl bg-[var(--color-ember)] font-semibold text-white">
+                Confirmar → cocina
+              </button>
+            ) : order.status === "cocina" ? (
               <button type="button" onClick={() => markReady(order.id)} className="h-11 w-full rounded-xl bg-[var(--color-sage)] font-semibold text-white">
                 Marcar lista
               </button>

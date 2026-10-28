@@ -14,11 +14,20 @@ export default async function KioskPage({ params }) {
       <div className="grid min-h-screen place-items-center bg-[#f4efe6] px-4">
         <div className="max-w-md rounded-3xl bg-white p-8 text-center shadow-sm">
           <h1 className="text-2xl font-semibold">Kiosko inactivo</h1>
-          <p className="mt-2 text-black/60">Se requiere un plan activo de Wapifood para operar el kiosko.</p>
+          <p className="mt-2 text-black/60">Se requiere un plan activo.</p>
         </div>
       </div>
     );
   }
+
+  const kioskTable =
+    data.tables.find((t) => t.channel_type === "kiosko") ||
+    data.tables[0] ||
+    null;
+
+  // loadPublicMenu may not return channel_type - fetch tables with type via products path
+  // tables from publicMenu might lack channel_type if select limited - update publicMenu
+
   return (
     <DigitalMenu
       restaurant={data.restaurant}
@@ -29,6 +38,8 @@ export default async function KioskPage({ params }) {
       mode="kiosk"
       requireConfirmCode={false}
       deliveryEnabled={!!data.profile?.delivery_enabled}
+      orderSource="kiosko"
+      fixedTableId={kioskTable?.id || null}
     />
   );
 }
