@@ -96,6 +96,12 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
           <p className="mt-1 font-mono text-[11px] text-[var(--color-walnut)]">
             {order.public_code || order.id?.slice(0, 8)}
           </p>
+          {order.order_type === "domicilio" ? (
+            <p className="mt-1 text-xs text-[var(--color-saffron-glow)]">
+              Domicilio: {order.delivery_address || "—"}
+              {order.customer_phone ? ` · ${order.customer_phone}` : ""}
+            </p>
+          ) : null}
           {order.cancel_reason ? (
             <p className="mt-1 text-xs text-[var(--color-wine)]">Motivo: {order.cancel_reason}</p>
           ) : null}
