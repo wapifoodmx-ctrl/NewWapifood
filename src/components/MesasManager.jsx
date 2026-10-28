@@ -139,6 +139,11 @@ export function MesasManager({ restaurantId, initialTables }) {
                   </option>
                 ))}
               </select>
+              {(t.channel_type === "tablet" || t.channel_type === "piso") ? (
+                <p className="mt-2 break-all font-mono text-[10px] text-[var(--color-walnut)]">
+                  Tablet: /tablet/{t.id}
+                </p>
+              ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" onClick={() => toggle(t)} className="text-xs font-semibold">
                   {t.active ? "Desactivar" : "Activar"}

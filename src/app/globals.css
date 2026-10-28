@@ -1,28 +1,127 @@
 @import "tailwindcss";
 
+/* DESIGN.md — Amrit Palace tokens (adaptados a SaaS/POS usable) */
 :root {
-  --color-ink: #1c1917;
-  --color-cream: #f4efe6;
-  --color-paper: #fffdf8;
-  --color-line: #e4dcd0;
-  --color-muted: #6f675e;
-  --color-ember: #c45c26;
-  --color-sage: #2f6b4f;
-  --color-wine: #8f2d2d;
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
-  --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+  /* Design system */
+  --color-parchment: #d8cbb8;
+  --color-linen: #bfb4a3;
+  --color-warm-stone: #b6ab9c;
+  --color-walnut: #978e81;
+  --color-espresso: #615b53;
+  --color-onyx-warm: #2c2c2c;
+  --color-midnight-roast: #292622;
+  --color-saffron-glow: #d49653;
+
+  /* Alias legacy (componentes existentes) */
+  --color-ink: var(--color-onyx-warm);
+  --color-cream: var(--color-parchment);
+  --color-paper: #f3ebe0;
+  --color-line: var(--color-warm-stone);
+  --color-muted: var(--color-espresso);
+  --color-ember: var(--color-saffron-glow);
+  --color-sage: #5a6b4a;
+  --color-wine: #8a3f2b;
+
+  --font-display: var(--font-display), "Cormorant Garamond", Georgia, serif;
+  --font-sans: var(--font-sans), "DM Sans", system-ui, sans-serif;
+
+  --radius-control: 3px;
+  --radius-card: 0px;
+  --touch: 44px;
 }
 
-html, body { height: 100%; }
+@theme {
+  --color-parchment: #d8cbb8;
+  --color-linen: #bfb4a3;
+  --color-warm-stone: #b6ab9c;
+  --color-walnut: #978e81;
+  --color-espresso: #615b53;
+  --color-onyx-warm: #2c2c2c;
+  --color-midnight-roast: #292622;
+  --color-saffron-glow: #d49653;
+  --radius-sm: 3px;
+}
+
+html,
+body {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  background: var(--color-cream);
-  color: var(--color-ink);
+  background: var(--color-parchment);
+  color: var(--color-onyx-warm);
   font-family: var(--font-sans);
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
 }
-h1, h2, h3 {
+
+h1,
+h2,
+h3 {
   font-family: var(--font-display);
-  letter-spacing: -0.02em;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--color-onyx-warm);
 }
-button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+
+/* Controles táctiles mínimos (POS / meseros / tablets) */
+button,
+[role="button"],
+input,
+select,
+textarea {
+  font-family: var(--font-sans);
+}
+
+button:not(:disabled),
+[role="button"]:not(:disabled) {
+  cursor: pointer;
+}
+
+/* Utilidades de layout del panel */
+.wf-card {
+  border: 1px solid var(--color-warm-stone);
+  background: var(--color-paper);
+  border-radius: var(--radius-card);
+}
+
+.wf-btn {
+  min-height: var(--touch);
+  border-radius: var(--radius-control);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.wf-btn-primary {
+  background: var(--color-onyx-warm);
+  color: var(--color-parchment);
+}
+
+.wf-btn-accent {
+  background: var(--color-saffron-glow);
+  color: var(--color-midnight-roast);
+}
+
+.wf-input {
+  min-height: var(--touch);
+  border: 1px solid var(--color-warm-stone);
+  background: var(--color-parchment);
+  border-radius: var(--radius-control);
+  padding: 0 12px;
+  width: 100%;
+}
+
+.wf-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-espresso);
+}

@@ -24,57 +24,60 @@ export function AppShell({
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-cream)] text-[var(--color-ink)]">
+    <div className="min-h-screen bg-[var(--color-parchment)] text-[var(--color-onyx-warm)]">
       {setupOnly ? (
-        <div className="border-b border-[var(--color-ember)] bg-[var(--color-ember)] px-4 py-2 text-center text-sm font-semibold text-white">
-          Modo configuración — arma tu restaurante.{" "}
+        <div className="border-b border-[var(--color-saffron-glow)] bg-[var(--color-saffron-glow)] px-4 py-2 text-center text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-midnight-roast)]">
+          Modo configuración —{" "}
           <Link href="/pagos" className="underline">
-            Activa el plan
+            activa tu plan
           </Link>{" "}
-          para vender (POS, tickets, menú QR, kiosko, meseros).
+          para vender
         </div>
       ) : null}
-      <header className="sticky top-0 z-20 border-b border-[var(--color-line)] bg-[var(--color-paper)]/95 backdrop-blur">
+
+      <header className="sticky top-0 z-20 border-b border-[var(--color-warm-stone)] bg-[var(--color-paper)]/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-muted)]">
+          <div className="min-w-0">
+            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-espresso)]">
               {restaurantName || "Wapifood"}
               {role ? ` · ${role}` : ""}
-              {operational ? " · plan activo" : ""}
+              {operational ? " · activo" : ""}
             </p>
-            <h1 className="text-2xl leading-none">{title}</h1>
+            <h1 className="truncate text-[28px] font-normal leading-none sm:text-[32px]">{title}</h1>
           </div>
           <button
             type="button"
             onClick={signOut}
-            className="h-11 rounded-full border border-[var(--color-line)] bg-[var(--color-cream)] px-4 text-sm font-semibold"
+            className="wf-btn h-11 shrink-0 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-4"
           >
             Salir
           </button>
         </div>
+
         <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-3 pb-3">
           {MODULES.map((m) => {
-            const on = pathname === m.href || (m.href !== "/" && pathname.startsWith(m.href + "/"));
+            const on = pathname === m.href || (m.href !== "/" && pathname.startsWith(`${m.href}/`));
             const needsPlan = m.group === "ops" && setupOnly;
             return (
               <Link
                 key={m.id}
                 href={m.href}
-                className={`flex h-10 shrink-0 items-center rounded-full px-3 text-sm font-semibold ${
-                  on
-                    ? "bg-[var(--color-ink)] text-[var(--color-cream)]"
-                    : "bg-[var(--color-cream)] text-[var(--color-ink)]"
-                }`}
                 title={needsPlan ? "Requiere plan activo" : m.title}
+                className={`flex h-10 shrink-0 items-center rounded-[3px] px-3 text-[12px] font-semibold uppercase tracking-[0.04em] ${
+                  on
+                    ? "bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]"
+                    : "bg-[var(--color-parchment)] text-[var(--color-onyx-warm)]"
+                }`}
               >
                 {m.title}
-                {needsPlan ? " 🔒" : ""}
+                {needsPlan ? " · plan" : ""}
               </Link>
             );
           })}
         </nav>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6 pb-16">{children}</main>
+
+      <main className="mx-auto max-w-6xl px-4 py-6 pb-20">{children}</main>
     </div>
   );
 }
