@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { AppShell } from "@/components/AppShell";
-import { TicketCard } from "@/components/TicketCard";
+import { TicketsBoard } from "@/components/TicketsBoard";
 import { requireTenantOperational } from "@/lib/auth";
 
 export default async function TicketsPage() {
@@ -21,12 +21,11 @@ export default async function TicketsPage() {
     supabase
       .from("orders")
       .select(
-        "id,status,method,opened_at,closed_at,table_id,order_items(product_id,qty,unit_price),dining_tables(number)",
+        "id,status,method,source,opened_at,closed_at,table_id,public_code,cancel_reason,needs_confirmation,order_items(product_id,qty,unit_price),dining_tables(number)",
       )
       .eq("restaurant_id", rid)
-      .eq("status", "pagada")
-      .order("closed_at", { ascending: false })
-      .limit(50),
+      .order("opened_at", { ascending: false })
+      .limit(80),
     supabase.from("products").select("id,name").eq("restaurant_id", rid),
   ]);
 
@@ -40,27 +39,16 @@ export default async function TicketsPage() {
       operational={operational}
       setupOnly={setupOnly}
     >
-      <p className="mb-4 text-[var(--color-muted)]">
-        Historial de cuentas pagadas. Ruta: <code className="rounded bg-[var(--color-cream)] px-1">/tickets</code>
+      <p className="mb-4 text-sm text-[var(--color-espresso)]">
+        Historial y seguimiento tipo beeper. Cada orden tiene enlace público{" "}
+        <code className="bg-[var(--color-paper)] px-1">/t/…</code> para el cliente.
       </p>
-
       {ordersError ? (
-        <div className="mb-4 rounded-2xl border border-[var(--color-wine)] bg-[var(--color-paper)] p-5 text-sm text-[var(--color-wine)]">
-          No se pudieron cargar los tickets: {ordersError.message}
+        <div className="mb-4 border border-[var(--color-wine)] bg-[var(--color-paper)] p-4 text-sm text-[var(--color-wine)]">
+          Error: {ordersError.message}
         </div>
       ) : null}
-
-      <div className="space-y-3">
-        {(orders || []).length === 0 ? (
-          <p className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5 text-[var(--color-muted)]">
-            Aún no hay tickets. Cobra una mesa en el Punto de venta y aparecerán aquí.
-          </p>
-        ) : (
-          (orders || []).map((o) => (
-            <TicketCard key={o.id} order={o} productNames={productNames} />
-          ))
-        )}
-      </div>
+      <TicketsBoard orders={orders || []} productNames={productNames} />
     </AppShell>
   );
 }

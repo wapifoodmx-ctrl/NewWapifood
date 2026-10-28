@@ -51,7 +51,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
   }
 
   async function markServed(id) {
-    await supabase.from("orders").update({ status: "abierta" }).eq("id", id);
+    await supabase.from("orders").update({ status: "entregada" }).eq("id", id);
     setOrders((prev) => prev.filter((o) => o.id !== id));
   }
 
@@ -101,7 +101,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
               </button>
             ) : (
               <button type="button" onClick={() => markServed(order.id)} className="h-11 w-full rounded-xl bg-[var(--color-ink)] font-semibold text-[var(--color-cream)]">
-                Entregada al piso
+                Marcar entregada
               </button>
             )}
           </article>

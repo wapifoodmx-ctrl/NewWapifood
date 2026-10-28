@@ -100,8 +100,14 @@ export function PosBoard({ restaurantId, tables, products, categories, initialOr
   async function cancelOrder() {
     if (!order) return;
     if (!confirm("¿Cancelar esta cuenta?")) return;
-    await supabase.from("orders").update({ status: "cancelada" }).eq("id", order.id);
-    await supabase.from("dining_tables").update({ state: "libre" }).eq("id", order.table_id);
+    const { error } = await supabase.rpc("cancel_order", {
+      p_order: order.id,
+      p_reason: "Cancelada en punto de venta",
+    });
+    if (error) {
+      setNotice(error.message);
+      return;
+    }
     setActiveTableId(null);
     await refresh();
     setNotice("Cuenta cancelada");
