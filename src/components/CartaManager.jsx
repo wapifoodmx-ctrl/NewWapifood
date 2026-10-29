@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import { confirmAsync } from "@/components/ui/confirm";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { money } from "@/lib/format";
 import { uploadPublicImage } from "@/lib/storage";
 
@@ -17,16 +19,25 @@ const emptyProduct = {
   image_url: "",
 };
 
+/**
+ * Carta admin — paridad gradual con pages/menu.js del WapifoodFront:
+ * categorías de primera clase + productos + foto + atajo a recetas.
+ */
 export function CartaManager({ restaurantId, initialProducts, initialCategories }) {
+  const [tab, setTab] = useState("productos"); // productos | categorias
   const [products, setProducts] = useState(initialProducts);
-  const [categories, setCategories] = useState(initialCategories);
+  const [categories, setCategories] = useState(
+    [...initialCategories].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name)),
+  );
   const [filter, setFilter] = useState("");
   const [catFilter, setCatFilter] = useState("");
+  const [onlyActive, setOnlyActive] = useState(false);
   const [form, setForm] = useState(emptyProduct);
   const [editingId, setEditingId] = useState(null);
   const [newCat, setNewCat] = useState("");
+  const [editCatId, setEditCatId] = useState(null);
+  const [editCatName, setEditCatName] = useState("");
   const [err, setErr] = useState("");
-  const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
   const catName = useMemo(() => {
@@ -34,7 +45,17 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
     return (id) => m.get(id) || "Sin categoría";
   }, [categories]);
 
+  const productCountByCat = useMemo(() => {
+    const m = {};
+    for (const p of products) {
+      const k = p.category_id || "_none";
+      m[k] = (m[k] || 0) + 1;
+    }
+    return m;
+  }, [products]);
+
   const list = products.filter((p) => {
+    if (onlyActive && p.active === false) return false;
     if (catFilter && p.category_id !== catFilter) return false;
     if (filter && !p.name.toLowerCase().includes(filter.toLowerCase())) return false;
     return true;
@@ -44,21 +65,96 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
     e.preventDefault();
     if (!newCat.trim()) return;
     setErr("");
+    setLoading(true);
     const supabase = createClient();
+    const sort_order = categories.length;
     const { data, error } = await supabase
       .from("categories")
-      .insert({ restaurant_id: restaurantId, name: newCat.trim() })
+      .insert({ restaurant_id: restaurantId, name: newCat.trim(), sort_order })
       .select("*")
       .single();
-    if (error) return setErr(error.message);
+    setLoading(false);
+    if (error) {
+      setErr(error.message);
+      toast.error(error.message);
+      return;
+    }
     setCategories((c) => [...c, data]);
     setNewCat("");
-    setMsg("Categoría creada");
-    toast.success("Categoría creada");
     toast.success("Categoría creada");
   }
 
+  async function saveCategoryName(id) {
+    if (!editCatName.trim()) return;
+    setLoading(true);
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("categories")
+      .update({ name: editCatName.trim() })
+      .eq("id", id)
+      .select("*")
+      .single();
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setCategories((cs) => cs.map((c) => (c.id === id ? data : c)));
+    setEditCatId(null);
+    toast.success("Categoría actualizada");
+  }
+
+  async function deleteCategory(cat) {
+    const count = productCountByCat[cat.id] || 0;
+    if (count > 0) {
+      toast.warning(`No se puede borrar: hay ${count} producto(s) en esta categoría.`);
+      return;
+    }
+    if (!(await confirmAsync(`¿Eliminar la categoría "${cat.name}"?`, { title: "Eliminar categoría" }))) {
+      return;
+    }
+    setLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("categories").delete().eq("id", cat.id);
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setCategories((cs) => cs.filter((c) => c.id !== cat.id));
+    if (catFilter === cat.id) setCatFilter("");
+    toast.success("Categoría eliminada");
+  }
+
+  async function moveCategory(cat, dir) {
+    const sorted = [...categories].sort(
+      (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name),
+    );
+    const idx = sorted.findIndex((c) => c.id === cat.id);
+    const swap = idx + dir;
+    if (swap < 0 || swap >= sorted.length) return;
+    const a = sorted[idx];
+    const b = sorted[swap];
+    const supabase = createClient();
+    const orderA = b.sort_order ?? swap;
+    const orderB = a.sort_order ?? idx;
+    const { error: e1 } = await supabase.from("categories").update({ sort_order: orderA }).eq("id", a.id);
+    const { error: e2 } = await supabase.from("categories").update({ sort_order: orderB }).eq("id", b.id);
+    if (e1 || e2) {
+      toast.error((e1 || e2).message + " — ¿corriste SQL 019?");
+      return;
+    }
+    setCategories((cs) =>
+      cs.map((c) => {
+        if (c.id === a.id) return { ...c, sort_order: orderA };
+        if (c.id === b.id) return { ...c, sort_order: orderB };
+        return c;
+      }),
+    );
+  }
+
   function startEdit(p) {
+    setTab("productos");
     setEditingId(p.id);
     setForm({
       name: p.name || "",
@@ -84,29 +180,42 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
       const supabase = createClient();
       const url = await uploadPublicImage(supabase, restaurantId, file, "products");
       setForm((f) => ({ ...f, image_url: url }));
+      toast.success("Foto lista. Guarda el producto.");
     } catch (e2) {
-      setErr(e2.message || "Error al subir imagen");
+      toast.error(e2.message || "No se pudo subir la imagen");
     } finally {
       setLoading(false);
+      e.target.value = "";
     }
   }
 
   async function onSave(e) {
     e.preventDefault();
     setErr("");
-    setMsg("");
-    if (!form.name.trim()) return setErr("El nombre es obligatorio.");
+    if (!form.name.trim()) {
+      setErr("El nombre es obligatorio.");
+      toast.error("El nombre es obligatorio.");
+      return;
+    }
     const price = Number(form.price);
     const cost = Number(form.cost || 0);
-    if (Number.isNaN(price) || price < 0) return setErr("Precio inválido.");
-    if (Number.isNaN(cost) || cost < 0) return setErr("Costo inválido.");
+    if (Number.isNaN(price) || price < 0) {
+      setErr("Precio inválido.");
+      toast.error("Precio inválido.");
+      return;
+    }
+    if (Number.isNaN(cost) || cost < 0) {
+      setErr("Costo inválido.");
+      toast.error("Costo inválido.");
+      return;
+    }
 
     setLoading(true);
     const supabase = createClient();
     const payload = {
       restaurant_id: restaurantId,
       name: form.name.trim(),
-      description: form.description || null,
+      description: form.description.trim() || null,
       price,
       cost,
       category_id: form.category_id || null,
@@ -124,20 +233,17 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
           .single();
         if (error) throw error;
         setProducts((ps) => ps.map((p) => (p.id === editingId ? data : p)));
-        setMsg("Producto actualizado");
-      toast.success("Producto actualizado");
-      toast.success("Producto actualizado");
+        toast.success("Producto actualizado");
       } else {
         const { data, error } = await supabase.from("products").insert(payload).select("*").single();
         if (error) throw error;
         setProducts((ps) => [data, ...ps]);
-        setMsg("Producto creado");
-      toast.success("Producto creado");
-      toast.success("Producto creado");
+        toast.success("Producto creado");
       }
       resetForm();
     } catch (e3) {
       setErr(e3.message || "No se pudo guardar");
+      toast.error(e3.message || "No se pudo guardar");
     } finally {
       setLoading(false);
     }
@@ -151,137 +257,328 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
       .eq("id", p.id)
       .select("*")
       .single();
-    if (error) return setErr(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     setProducts((ps) => ps.map((x) => (x.id === p.id ? data : x)));
+    toast.info(data.active ? "Producto activo en el menú" : "Producto oculto del menú");
   }
 
   async function removeProduct(id) {
-    if (!(await confirmAsync("¿Eliminar este producto?", { title: "Eliminar producto" }))) return;
+    if (!(await confirmAsync("¿Eliminar este producto? Esta acción no se puede deshacer.", { title: "Eliminar producto" }))) {
+      return;
+    }
+    setLoading(true);
     const supabase = createClient();
     const { error } = await supabase.from("products").delete().eq("id", id);
-    if (error) return setErr(error.message);
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     setProducts((ps) => ps.filter((p) => p.id !== id));
+    if (editingId === id) resetForm();
+    toast.success("Producto eliminado");
   }
 
-  return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-      <div>
-        <div className="mb-3 flex flex-wrap gap-2">
-          <input
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="Buscar producto…"
-            className="h-11 flex-1 rounded-xl border border-[var(--color-line)] bg-[var(--color-paper)] px-3"
-          />
-          <select
-            value={catFilter}
-            onChange={(e) => setCatFilter(e.target.value)}
-            className="h-11 rounded-xl border border-[var(--color-line)] bg-[var(--color-paper)] px-3"
-          >
-            <option value="">Todas las categorías</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
+  const sortedCats = [...categories].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name),
+  );
 
-        <div className="overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)]">
-          {list.length === 0 ? (
-            <p className="p-5 text-[var(--color-muted)]">No hay productos. Crea el primero →</p>
-          ) : (
-            list.map((p) => (
-              <div key={p.id} className="flex items-center gap-3 border-b border-[var(--color-line)] px-4 py-3 last:border-0">
-                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-[var(--color-cream)]">
-                  {p.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.image_url} alt="" className="h-full w-full object-cover" />
-                  ) : null}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{p.name}</p>
-                  <p className="text-sm text-[var(--color-muted)]">
-                    {catName(p.category_id)} · {p.active ? "Activo" : "Inactivo"}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold">{money(p.price)}</p>
-                  <p className="text-xs text-[var(--color-muted)]">costo {money(p.cost)}</p>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <button type="button" onClick={() => startEdit(p)} className="text-xs font-semibold text-[var(--color-ember)]">Editar</button>
-                  <button type="button" onClick={() => toggleActive(p)} className="text-xs font-semibold">{p.active ? "Pausar" : "Activar"}</button>
-                  <button type="button" onClick={() => removeProduct(p.id)} className="text-xs font-semibold text-[var(--color-wine)]">Eliminar</button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+  return (
+    <div className="relative">
+      <LoadingOverlay visible={loading} message="Procesando carta…" />
+
+      <div className="mb-4 flex flex-wrap gap-1">
+        {[
+          { id: "productos", label: "Productos" },
+          { id: "categorias", label: "Categorías" },
+        ].map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            className={`h-10 rounded-[3px] px-4 text-xs font-semibold uppercase tracking-wide ${
+              tab === t.id
+                ? "bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]"
+                : "bg-[var(--color-paper)] text-[var(--color-onyx-warm)]"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      <div className="space-y-4">
-        <form onSubmit={addCategory} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-4">
-          <h3 className="text-lg font-semibold">Nueva categoría</h3>
-          <div className="mt-2 flex gap-2">
-            <input value={newCat} onChange={(e) => setNewCat(e.target.value)} placeholder="Ej. Tacos" className="h-11 flex-1 rounded-xl border border-[var(--color-line)] bg-[var(--color-cream)] px-3" />
-            <button type="submit" className="h-11 rounded-full bg-[var(--color-cream)] px-4 text-sm font-semibold">Añadir</button>
-          </div>
-        </form>
-
-        <form onSubmit={onSave} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-4">
-          <h3 className="text-lg font-semibold">{editingId ? "Editar producto" : "Nuevo producto"}</h3>
-          <label className="mt-3 block text-sm font-semibold">
-            Nombre *
-            <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-cream)] px-3 font-normal" />
-          </label>
-          <label className="mt-2 block text-sm font-semibold">
-            Descripción
-            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-cream)] px-3 py-2 font-normal" />
-          </label>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <label className="block text-sm font-semibold">
-              Precio *
-              <input required type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-cream)] px-3 font-normal" />
-            </label>
-            <label className="block text-sm font-semibold">
-              Costo
-              <input type="number" min="0" step="0.01" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-cream)] px-3 font-normal" />
-            </label>
-          </div>
-          <label className="mt-2 block text-sm font-semibold">
-            Categoría
-            <select value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-cream)] px-3 font-normal">
-              <option value="">Sin categoría</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </label>
-          <label className="mt-2 flex items-center gap-2 text-sm font-semibold">
-            <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} />
-            Activo en menú
-          </label>
-          <label className="mt-2 inline-flex h-10 cursor-pointer items-center rounded-full bg-[var(--color-cream)] px-4 text-sm font-semibold">
-            {form.image_url ? "Cambiar foto" : "Subir foto"}
-            <input type="file" accept="image/*" className="hidden" onChange={onImage} />
-          </label>
-          {form.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={form.image_url} alt="" className="mt-2 h-20 w-20 rounded-lg object-cover" />
-          ) : null}
-          {err ? <p className="mt-2 text-sm text-[var(--color-wine)]">{err}</p> : null}
-          {msg ? <p className="mt-2 text-sm text-[var(--color-sage)]">{msg}</p> : null}
-          <div className="mt-3 flex gap-2">
-            <button type="submit" disabled={loading} className="h-11 flex-1 rounded-full bg-[var(--color-ink)] font-semibold text-[var(--color-cream)] disabled:opacity-60">
-              {loading ? "…" : editingId ? "Actualizar" : "Crear"}
-            </button>
-            {editingId ? (
-              <button type="button" onClick={resetForm} className="h-11 rounded-full border border-[var(--color-line)] px-4 text-sm font-semibold">
-                Cancelar
-              </button>
+      {tab === "categorias" ? (
+        <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+          <div className="space-y-2">
+            {sortedCats.map((c, i) => (
+              <article
+                key={c.id}
+                className="flex flex-wrap items-center justify-between gap-3 border border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-4 py-3"
+              >
+                <div className="min-w-0 flex-1">
+                  {editCatId === c.id ? (
+                    <input
+                      value={editCatName}
+                      onChange={(e) => setEditCatName(e.target.value)}
+                      className="h-10 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-2"
+                    />
+                  ) : (
+                    <>
+                      <p className="font-semibold">{c.name}</p>
+                      <p className="text-xs text-[var(--color-walnut)]">
+                        {productCountByCat[c.id] || 0} producto(s)
+                      </p>
+                    </>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" className="text-xs font-semibold" onClick={() => moveCategory(c, -1)} disabled={i === 0}>
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs font-semibold"
+                    onClick={() => moveCategory(c, 1)}
+                    disabled={i === sortedCats.length - 1}
+                  >
+                    ↓
+                  </button>
+                  {editCatId === c.id ? (
+                    <button type="button" className="text-xs font-semibold" onClick={() => saveCategoryName(c.id)}>
+                      Guardar
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="text-xs font-semibold"
+                      onClick={() => {
+                        setEditCatId(c.id);
+                        setEditCatName(c.name);
+                      }}
+                    >
+                      Renombrar
+                    </button>
+                  )}
+                  <button type="button" className="text-xs font-semibold" onClick={() => { setCatFilter(c.id); setTab("productos"); }}>
+                    Ver productos
+                  </button>
+                  <button type="button" className="text-xs font-semibold text-[var(--color-wine)]" onClick={() => deleteCategory(c)}>
+                    Eliminar
+                  </button>
+                </div>
+              </article>
+            ))}
+            {!sortedCats.length ? (
+              <p className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-5 text-[var(--color-espresso)]">
+                Aún no hay categorías. Créalas primero: arman el menú.
+              </p>
             ) : null}
           </div>
-        </form>
-      </div>
+          <form onSubmit={addCategory} className="h-fit border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
+            <h2 className="text-xl font-normal">Nueva categoría</h2>
+            <p className="mt-1 text-sm text-[var(--color-espresso)]">
+              Las categorías organizan la carta en POS, mesero, QR y kiosko.
+            </p>
+            <input
+              value={newCat}
+              onChange={(e) => setNewCat(e.target.value)}
+              placeholder="Ej. Tacos, Bebidas…"
+              className="mt-3 h-11 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-3"
+            />
+            <button type="submit" className="mt-3 h-11 w-full rounded-[3px] bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]">
+              Crear categoría
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+          <div>
+            <div className="mb-3 flex flex-wrap gap-2">
+              <input
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="Buscar producto…"
+                className="h-10 min-w-[160px] flex-1 border border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-3 text-sm"
+              />
+              <select
+                value={catFilter}
+                onChange={(e) => setCatFilter(e.target.value)}
+                className="h-10 border border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-2 text-sm"
+              >
+                <option value="">Todas las categorías</option>
+                {sortedCats.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <label className="flex h-10 items-center gap-2 border border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-3 text-xs font-semibold">
+                <input type="checkbox" checked={onlyActive} onChange={(e) => setOnlyActive(e.target.checked)} />
+                Solo activos
+              </label>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {list.map((p) => (
+                <article
+                  key={p.id}
+                  className={`border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4 ${
+                    p.active === false ? "opacity-60" : ""
+                  }`}
+                >
+                  <div className="flex gap-3">
+                    {p.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.image_url} alt="" className="h-16 w-16 shrink-0 object-cover" />
+                    ) : (
+                      <div className="grid h-16 w-16 shrink-0 place-items-center bg-[var(--color-parchment)] text-[10px] text-[var(--color-walnut)]">
+                        Sin foto
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-saffron-glow)]">
+                        {catName(p.category_id)}
+                      </p>
+                      <h3 className="truncate text-lg font-normal">{p.name}</h3>
+                      <p className="text-sm text-[var(--color-espresso)]">
+                        {money(p.price)}
+                        {p.cost != null ? ` · costo ${money(p.cost)}` : ""}
+                      </p>
+                      {p.description ? (
+                        <p className="mt-1 line-clamp-2 text-xs text-[var(--color-walnut)]">{p.description}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" onClick={() => startEdit(p)} className="text-xs font-semibold">
+                      Editar
+                    </button>
+                    <button type="button" onClick={() => toggleActive(p)} className="text-xs font-semibold">
+                      {p.active === false ? "Activar" : "Desactivar"}
+                    </button>
+                    <Link href={`/recetas?product=${p.id}`} className="text-xs font-semibold text-[var(--color-saffron-glow)]">
+                      Receta
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => removeProduct(p.id)}
+                      className="text-xs font-semibold text-[var(--color-wine)]"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </article>
+              ))}
+              {!list.length ? (
+                <p className="col-span-full border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-5 text-[var(--color-espresso)]">
+                  No hay productos con este filtro. Crea categorías y luego productos.
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          <form onSubmit={onSave} className="h-fit border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
+            <h2 className="text-xl font-normal">{editingId ? "Editar producto" : "Nuevo producto"}</h2>
+            <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-[var(--color-espresso)]">
+              Nombre *
+              <input
+                required
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                className="mt-1 h-11 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-3 font-normal normal-case"
+              />
+            </label>
+            <label className="mt-2 block text-xs font-semibold uppercase tracking-wide text-[var(--color-espresso)]">
+              Categoría
+              <select
+                value={form.category_id}
+                onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}
+                className="mt-1 h-11 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-2 font-normal normal-case"
+              >
+                <option value="">Sin categoría</option>
+                {sortedCats.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--color-espresso)]">
+                Precio *
+                <input
+                  value={form.price}
+                  onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+                  className="mt-1 h-11 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-3 font-normal normal-case"
+                />
+              </label>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--color-espresso)]">
+                Costo
+                <input
+                  value={form.cost}
+                  onChange={(e) => setForm((f) => ({ ...f, cost: e.target.value }))}
+                  className="mt-1 h-11 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-3 font-normal normal-case"
+                />
+              </label>
+            </div>
+            <label className="mt-2 block text-xs font-semibold uppercase tracking-wide text-[var(--color-espresso)]">
+              Descripción
+              <textarea
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                rows={3}
+                className="mt-1 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-3 py-2 font-normal normal-case"
+              />
+            </label>
+            <label className="mt-2 flex items-center gap-2 text-sm font-semibold">
+              <input
+                type="checkbox"
+                checked={form.active}
+                onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))}
+              />
+              Activo en el menú
+            </label>
+            <label className="mt-3 inline-flex h-10 cursor-pointer items-center rounded-[3px] bg-[var(--color-parchment)] px-4 text-xs font-semibold uppercase">
+              {form.image_url ? "Cambiar foto" : "Subir foto"}
+              <input type="file" accept="image/*" className="hidden" onChange={onImage} />
+            </label>
+            {form.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={form.image_url} alt="" className="mt-2 h-20 w-20 object-cover" />
+            ) : null}
+            {err ? <p className="mt-2 text-sm text-[var(--color-wine)]">{err}</p> : null}
+            <div className="mt-3 flex gap-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="h-11 flex-1 rounded-[3px] bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)] disabled:opacity-60"
+              >
+                {editingId ? "Actualizar" : "Crear"}
+              </button>
+              {editingId ? (
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="h-11 rounded-[3px] border border-[var(--color-warm-stone)] px-4 text-xs font-semibold uppercase"
+                >
+                  Cancelar
+                </button>
+              ) : null}
+            </div>
+            {editingId ? (
+              <Link
+                href={`/recetas?product=${editingId}`}
+                className="mt-3 block text-center text-xs font-semibold uppercase text-[var(--color-saffron-glow)]"
+              >
+                Configurar receta / insumos →
+              </Link>
+            ) : null}
+          </form>
+        </div>
+      )}
     </div>
   );
 }

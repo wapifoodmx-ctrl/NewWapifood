@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/components/ui/Toast";
 
-export function RecetasManager({ products, ingredients, initialLines }) {
+export function RecetasManager({ products, ingredients, initialLines, focusProductId = null }) {
   const [lines, setLines] = useState(initialLines);
-  const [productId, setProductId] = useState(products[0]?.id || "");
+  const [productId, setProductId] = useState(focusProductId || products[0]?.id || "");
   const [ingredientId, setIngredientId] = useState(ingredients[0]?.id || "");
   const [qty, setQty] = useState("1");
   const [err, setErr] = useState("");
@@ -29,7 +30,8 @@ export function RecetasManager({ products, ingredients, initialLines }) {
       .upsert({ product_id: productId, ingredient_id: ingredientId, qty: q }, { onConflict: "product_id,ingredient_id" })
       .select("*")
       .single();
-    if (error) return setErr(error.message);
+    if (error) { setErr(error.message); toast.error(error.message); return; }
+    toast.success("Línea de receta guardada");
     setLines((ls) => {
       const rest = ls.filter((l) => !(l.product_id === productId && l.ingredient_id === ingredientId));
       return [...rest, data];

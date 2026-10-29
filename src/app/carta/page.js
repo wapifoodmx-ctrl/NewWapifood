@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { AppShell } from "@/components/AppShell";
 import { CartaManager } from "@/components/CartaManager";
-import { requireTenant, requireTenantWithPlan, requireTenantSetup } from "@/lib/auth";
+import { requireTenantSetup } from "@/lib/auth";
 
 export default async function CartaPage() {
   const { supabase, membership, operational, setupOnly } = await requireTenantSetup();
@@ -12,7 +12,7 @@ export default async function CartaPage() {
   const rid = membership.restaurant_id;
   const [{ data: products }, { data: categories }] = await Promise.all([
     supabase.from("products").select("*").eq("restaurant_id", rid).order("name"),
-    supabase.from("categories").select("*").eq("restaurant_id", rid).order("name"),
+    supabase.from("categories").select("*").eq("restaurant_id", rid).order("sort_order").order("name"),
   ]);
 
   return (
