@@ -19,10 +19,18 @@ export const metadata = {
   description: "SaaS de operación para restaurantes",
 };
 
+// Aplica el tema guardado antes del primer pintado para evitar el destello claro.
+const themeScript = `try{if(localStorage.getItem('theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}`;
+
 export default function RootLayout({ children }) {
   return (
-    <html lang="es">
-      <body className={`${display.variable} ${sans.variable} antialiased`}><AppProviders>{children}</AppProviders></body>
+    <html lang="es" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
+      <body className={`${display.variable} ${sans.variable} antialiased`}>
+        <AppProviders>{children}</AppProviders>
+      </body>
     </html>
   );
 }

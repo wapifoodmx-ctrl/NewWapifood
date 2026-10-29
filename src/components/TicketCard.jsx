@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { money } from "@/lib/format";
 import { itemStatusMeta, statusMeta } from "@/lib/orderStatus";
-import { statusMeta } from "@/lib/orderStatus";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 
@@ -87,7 +86,7 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-xl font-semibold">Mesa {order.dining_tables?.number ?? "—"}</p>
-            <span className={`rounded-[3px] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white ${meta.color}`}>
+            <span className={`rounded-[3px] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--color-parchment)] ${meta.color}`}>
               {meta.label}
             </span>
           </div>

@@ -54,7 +54,7 @@ export function BeeperClient({
         <p className="mt-1 text-sm text-[var(--color-espresso)]">
           Mesa {tableNumber ?? "—"} · código {publicCode || orderId.slice(0, 8)}
         </p>
-        <div className={`mt-6 rounded-[3px] px-4 py-4 text-white ${meta.color}`}>
+        <div className={`mt-6 rounded-[3px] px-4 py-4 text-[var(--color-parchment)] ${meta.color}`}>
           <p className="text-xs font-bold uppercase tracking-wide opacity-90">Estado</p>
           <p className="text-2xl font-semibold">{meta.label || metaLabel}</p>
           <p className="mt-1 text-sm opacity-90">{meta.detail || metaDetail}</p>

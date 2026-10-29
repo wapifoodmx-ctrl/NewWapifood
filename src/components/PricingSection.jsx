@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+import SplitText from "@/components/SplitText";
+import PixelCard from "@/components/PixelCard";
 
 const PLANS = [
   {
@@ -75,7 +77,14 @@ const money = (n) =>
 
 export function PricingSection() {
   const [billing, setBilling] = useState("mensual");
-
+  const appTheme = useSyncExternalStore(
+    (cb) => {
+      window.addEventListener("themechange", cb);
+      return () => window.removeEventListener("themechange", cb);
+    },
+    () => (document.documentElement.classList.contains("dark") ? "dark" : "light"),
+    () => "light"
+  );
   return (
     <section id="precios" className="border-t border-[var(--color-line)] bg-[var(--color-paper)] py-16">
       <div className="mx-auto max-w-6xl px-4">
@@ -83,7 +92,7 @@ export function PricingSection() {
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-ember)]">
             Precios claros
           </p>
-          <h2 className="mt-2 text-4xl">Elige el plan de tu restaurante</h2>
+          <SplitText tag="h2" text="Elige el plan de tu restaurante" className="mt-2 text-4xl" effect="blur" />
           <p className="mt-3 text-[var(--color-muted)]">
             Mismos paquetes que en Wapifood original. Sin sorpresas: mesas, meseros y
             módulos incluidos según el plan.
@@ -119,21 +128,22 @@ export function PricingSection() {
           {PLANS.map((plan) => {
             const price = billing === "mensual" ? plan.monthly : plan.yearly;
             const period = billing === "mensual" ? "mxn / mes" : "mxn / año";
-            return (
-              <article
-                key={plan.id}
-                className={`relative flex flex-col rounded-[1.75rem] border p-6 ${
-                  plan.popular
-                    ? "border-[var(--color-ember)] bg-[var(--color-cream)] shadow-sm"
-                    : "border-[var(--color-line)] bg-[var(--color-cream)]/40"
-                }`}
-              >
+            const body = (
+              <>
                 {plan.popular ? (
-                  <span className="absolute -top-3 left-6 rounded-full bg-[var(--color-ember)] px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+                  <span className="mb-3 block w-fit rounded-full bg-[var(--color-ember)] px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
                     Más popular
                   </span>
                 ) : null}
-                <h3 className="text-2xl">{plan.title}</h3>
+                <SplitText
+                  tag="h3"
+                  text={plan.title}
+                  className="text-2xl"
+                  effect="blur"
+                  duration={1}
+                  delay={25}
+                  textAlign="left"
+                />
                 <p className="mt-1 text-sm text-[var(--color-muted)]">{plan.subtitle}</p>
                 <p className="mt-5">
                   <span className="text-4xl font-semibold tracking-tight">{money(price)}</span>
@@ -165,7 +175,22 @@ export function PricingSection() {
                 >
                   Empezar con {plan.title.replace("Plan ", "")}
                 </Link>
-              </article>
+              </>
+            );
+            return (
+              <PixelCard
+                key={plan.id}
+                theme={appTheme}
+                radius={28}
+                opacity={0.28}
+                fade={0.65}
+                spotlight={0.45}
+                glow={0.35}
+                className="flex flex-col"
+                style={{ width: "100%", height: "auto", minHeight: "420px", display: "block", padding: "1.5rem" }}
+              >
+                {body}
+              </PixelCard>
             );
           })}
         </div>

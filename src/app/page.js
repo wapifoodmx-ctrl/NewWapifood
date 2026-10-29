@@ -1,5 +1,11 @@
 import Link from "next/link";
 import { PricingSection } from "@/components/PricingSection";
+import SplitText from "@/components/SplitText";
+import ThemeToggle from "@/components/ThemeToggle";
+import RotatingText from "@/components/RotatingText";
+
+// Titulares: blur en vez de rise para no recortar descendentes con line-height 1.05.
+const TITLE = { effect: "blur", duration: 1, delay: 25, textAlign: "left" };
 
 const features = [
   { t: "Punto de venta", d: "Mesas, cuentas, cobro y ticket en un solo flujo." },
@@ -20,12 +26,24 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[var(--color-cream)] text-[var(--color-ink)]">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
-        <p className="text-xl font-semibold tracking-tight">Wapifood</p>
+        <p className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+          Wapifood
+          <RotatingText
+            texts={["Punto de venta", "Restaurantes", "Fácil", "Te ayuda", "Inventarios"]}
+            splitBy="words"
+            effect="slide"
+            direction="up"
+            rotationInterval={2500}
+            staggerDuration={0.03}
+            mainClassName="text-[var(--color-ember)]"
+          />
+        </p>
         <div className="flex gap-2">
+          <ThemeToggle />
           <a href="#precios" className="hidden h-11 items-center rounded-full px-4 text-sm font-semibold text-[var(--color-muted)] sm:inline-flex">
             Precios
           </a>
-          <Link href="/login" className="inline-flex h-11 items-center rounded-full border border-[var(--color-line)] px-4 text-sm font-semibold">
+          <Link href="/login" className="hidden h-11 items-center rounded-full border border-[var(--color-line)] px-4 text-sm font-semibold sm:inline-flex">
             Entrar
           </Link>
           <Link href="/login" className="inline-flex h-11 items-center rounded-full bg-[var(--color-ink)] px-4 text-sm font-semibold text-[var(--color-cream)]">
@@ -39,9 +57,14 @@ export default function LandingPage() {
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-ember)]">
             SaaS para restaurantes
           </p>
-          <h1 className="mt-3 text-5xl leading-[1.05] sm:text-6xl">
-            Menú digital, punto de venta y cocina en un solo lugar
-          </h1>
+          <SplitText
+            {...TITLE}
+            tag="h1"
+            splitType="words"
+            delay={60}
+            text="Menú digital, punto de venta y cocina en un solo lugar"
+            className="mt-3 text-5xl leading-[1.05] sm:text-6xl"
+          />
           <p className="mt-4 max-w-xl text-lg text-[var(--color-muted)]">
             Wapifood es el software para operar tu restaurante: ventas, mesas,
             cocina, inventario y menú al cliente. Crea tu cuenta y empieza sin
@@ -74,12 +97,12 @@ export default function LandingPage() {
 
       <section className="border-t border-[var(--color-line)] bg-[var(--color-paper)] py-14">
         <div className="mx-auto max-w-6xl px-4">
-          <h2 className="text-3xl">Cómo funciona</h2>
+          <SplitText {...TITLE} tag="h2" text="Cómo funciona" className="text-3xl" />
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {steps.map((s) => (
               <article key={s.n} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-cream)] p-5">
                 <p className="text-sm font-bold text-[var(--color-ember)]">{s.n}</p>
-                <h3 className="mt-2 text-xl">{s.t}</h3>
+                <SplitText {...TITLE} tag="h3" text={s.t} className="mt-2 text-xl" />
                 <p className="mt-2 text-sm text-[var(--color-muted)]">{s.d}</p>
               </article>
             ))}
@@ -89,11 +112,11 @@ export default function LandingPage() {
 
       <section id="modulos" className="py-14">
         <div className="mx-auto max-w-6xl px-4">
-          <h2 className="text-3xl">Todo lo que necesitas en el piso</h2>
+          <SplitText {...TITLE} tag="h2" text="Todo lo que necesitas en el piso" className="text-3xl" />
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((f) => (
               <article key={f.t} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5">
-                <h3 className="text-xl">{f.t}</h3>
+                <SplitText {...TITLE} tag="h3" text={f.t} className="text-xl" />
                 <p className="mt-2 text-sm text-[var(--color-muted)]">{f.d}</p>
               </article>
             ))}
@@ -105,7 +128,13 @@ export default function LandingPage() {
 
       <section className="border-t border-[var(--color-line)] bg-[var(--color-ink)] py-14 text-[var(--color-cream)]">
         <div className="mx-auto max-w-6xl px-4 text-center">
-          <h2 className="text-3xl">Listo para tu restaurante</h2>
+          <SplitText
+            {...TITLE}
+            tag="h2"
+            text="Listo para tu restaurante"
+            className="text-3xl"
+            textAlign="center"
+          />
           <p className="mx-auto mt-3 max-w-xl text-[var(--color-cream)]/75">
             Crea tu cuenta en minutos. Nosotros preparamos tu espacio de trabajo
             automáticamente.

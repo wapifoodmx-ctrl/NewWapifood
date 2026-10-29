@@ -125,3 +125,20 @@ button:not(:disabled),
   text-transform: uppercase;
   color: var(--color-espresso);
 }
+
+/* Tema oscuro: se invierten los neutros y sage/wine se aclaran para seguir
+   leyéndose como texto. Como fondo llevan --color-parchment, que aquí es
+   oscuro. Los alias de :root siguen a estos valores. */
+.dark {
+  color-scheme: dark;
+  --color-parchment: #17150f;
+  --color-linen: #201d16;
+  --color-warm-stone: #3a352b;
+  --color-walnut: #8a8274;
+  --color-espresso: #c4b9a7;
+  --color-onyx-warm: #f1eade;
+  --color-saffron-glow: #dfa467;
+  --color-paper: #211e18;
+  --color-sage: #93a878;
+  --color-wine: #d4785c;
+}

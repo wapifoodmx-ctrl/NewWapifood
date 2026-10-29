@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { MODULES } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/client";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export function AppShell({
   children,
@@ -45,13 +46,16 @@ export function AppShell({
             </p>
             <h1 className="truncate text-[28px] font-normal leading-none sm:text-[32px]">{title}</h1>
           </div>
-          <button
-            type="button"
-            onClick={signOut}
-            className="wf-btn h-11 shrink-0 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-4"
-          >
-            Salir
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <ThemeToggle />
+            <button
+              type="button"
+              onClick={signOut}
+              className="wf-btn h-11 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-4"
+            >
+              Salir
+            </button>
+          </div>
         </div>
 
         <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-3 pb-3">
