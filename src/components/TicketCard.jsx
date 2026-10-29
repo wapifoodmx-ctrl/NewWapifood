@@ -5,6 +5,7 @@ import Link from "next/link";
 import { money } from "@/lib/format";
 import { statusMeta } from "@/lib/orderStatus";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/components/ui/Toast";
 
 export function TicketCard({ order, productNames = {}, onChanged }) {
   const meta = statusMeta(order.status);
@@ -33,14 +34,15 @@ export function TicketCard({ order, productNames = {}, onChanged }) {
   function printTicket() {
     const w = window.open("", "_blank", "width=360,height=640");
     if (!w) {
-      alert("Permite ventanas emergentes para imprimir.");
+      toast.warning("Permite ventanas emergentes para imprimir.");
       return;
     }
     const rows = (order.order_items || [])
       .map((i) => {
         const line = Number(i.unit_price) * Number(i.qty);
-        return `<tr><td style="padding:4px 0">${i.qty} × ${productName(i.product_id)}</td>
-          <td style="padding:4px 0;text-align:right">${money(line)}</td></tr>`;
+        const note = i.notes ? `<div style="font-size:11px;color:#666">${i.notes}</div>` : "";
+        return `<tr><td style="padding:6px 0;vertical-align:top">${i.qty} × ${productName(i.product_id)}${note}</td>
+          <td style="padding:6px 0;text-align:right;vertical-align:top">${money(line)}</td></tr>`;
       })
       .join("");
     const code = order.public_code || order.id?.slice(0, 8);
@@ -49,7 +51,7 @@ export function TicketCard({ order, productNames = {}, onChanged }) {
 h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
 .total{display:flex;justify-content:space-between;font-weight:700;margin-top:12px;border-top:1px dashed #999;padding-top:8px}
 </style></head><body>
-<h1>Wapifood · Mesa ${order.dining_tables?.number ?? "—"}</h1>
+<h1>Wapifood</h1><p style="margin:0 0 8px;font-size:13px">Mesa ${order.dining_tables?.number ?? "—"} · ${(order.source||"pos").toUpperCase()}</p>
 <p style="color:#555;font-size:11px">${meta.label} · ${order.method || ""} · ${whenLabel(order.closed_at || order.opened_at)}</p>
 <p style="font-size:11px">Código: ${code}</p>
 <table>${rows}</table>
@@ -69,7 +71,7 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
       p_reason: reason,
     });
     if (error) {
-      alert(error.message);
+      toast.error(error.message);
       return;
     }
     onChanged?.();
