@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/components/ui/Toast";
+import { confirmAsync } from "@/components/ui/confirm";
 
 const CHANNELS = [
   { id: "caja", label: "Caja (POS)" },
@@ -91,7 +93,7 @@ export function MesasManager({ restaurantId, initialTables }) {
   }
 
   async function remove(id) {
-    if (!confirm("¿Eliminar mesa?")) return;
+    if (!(await confirmAsync("¿Eliminar esta mesa?", { title: "Eliminar mesa" }))) return;
     const supabase = createClient();
     const { error } = await supabase.from("dining_tables").delete().eq("id", id);
     if (error) return setErr(error.message);

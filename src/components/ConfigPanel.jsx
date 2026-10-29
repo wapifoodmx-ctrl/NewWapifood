@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { uploadPublicImage } from "@/lib/storage";
+import { toast } from "@/components/ui/Toast";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import {
   formatMxPhoneDisplay,
   isValidMxPhone,
@@ -65,9 +67,13 @@ export function ConfigPanel({ restaurant, profile }) {
       }
       set("logo_url", savedLogo.logo_url || url);
       setMsg("Logo actualizado y guardado.");
+      toast.success("Logo actualizado y guardado.");
+      toast.success("Logo actualizado y guardado.");
       router.refresh();
     } catch (e2) {
-      setErr(e2.message || "No se pudo subir el logo");
+      const m = e2.message || "No se pudo subir el logo";
+      setErr(m);
+      toast.error(m);
     } finally {
       setLoading(false);
       e.target.value = "";
@@ -141,15 +147,21 @@ export function ConfigPanel({ restaurant, profile }) {
       if (e2) throw e2;
 
       setMsg("Cambios guardados.");
+      toast.success("Cambios guardados.");
+      toast.success("Cambios guardados.");
       router.refresh();
     } catch (e3) {
-      setErr(e3.message || "No se pudo guardar");
+      const m = e3.message || "No se pudo guardar";
+      setErr(m);
+      toast.error(m);
     } finally {
       setLoading(false);
     }
   }
 
   return (
+    <>
+    <LoadingOverlay visible={loading} message={loading ? "Guardando…" : "Procesando…"} />
     <form onSubmit={onSave} className="grid gap-6 lg:grid-cols-[240px_1fr]">
       <div className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4 text-center">
         <div className="mx-auto grid h-36 w-36 place-items-center overflow-hidden border border-[var(--color-warm-stone)] bg-[var(--color-parchment)]">
@@ -266,6 +278,7 @@ export function ConfigPanel({ restaurant, profile }) {
         </button>
       </div>
     </form>
+    </>
   );
 }
 

@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/components/ui/Toast";
+import { confirmAsync } from "@/components/ui/confirm";
 
 const empty = {
   name: "",
@@ -98,6 +100,7 @@ export function InsumosManager({ restaurantId, initialIngredients }) {
         if (error) throw error;
         setItems((xs) => xs.map((x) => (x.id === editingId ? data : x)));
         setMsg("Insumo actualizado");
+      toast.success("Insumo actualizado");
       } else {
         const { data, error } = await supabase
           .from("ingredients")
@@ -107,6 +110,7 @@ export function InsumosManager({ restaurantId, initialIngredients }) {
         if (error) throw error;
         setItems((xs) => [data, ...xs]);
         setMsg("Insumo creado");
+      toast.success("Insumo creado");
       }
       setEditingId(null);
       setForm(empty);
@@ -130,7 +134,7 @@ export function InsumosManager({ restaurantId, initialIngredients }) {
   }
 
   async function remove(id) {
-    if (!confirm("¿Eliminar insumo?")) return;
+    if (!(await confirmAsync("¿Eliminar este insumo?", { title: "Eliminar insumo" }))) return;
     const supabase = createClient();
     const { error } = await supabase.from("ingredients").delete().eq("id", id);
     if (error) return setErr(error.message);

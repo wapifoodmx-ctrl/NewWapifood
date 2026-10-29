@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/components/ui/Toast";
+import { confirmAsync } from "@/components/ui/confirm";
 import { money } from "@/lib/format";
 import { uploadPublicImage } from "@/lib/storage";
 
@@ -52,6 +54,8 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
     setCategories((c) => [...c, data]);
     setNewCat("");
     setMsg("Categoría creada");
+    toast.success("Categoría creada");
+    toast.success("Categoría creada");
   }
 
   function startEdit(p) {
@@ -121,11 +125,15 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
         if (error) throw error;
         setProducts((ps) => ps.map((p) => (p.id === editingId ? data : p)));
         setMsg("Producto actualizado");
+      toast.success("Producto actualizado");
+      toast.success("Producto actualizado");
       } else {
         const { data, error } = await supabase.from("products").insert(payload).select("*").single();
         if (error) throw error;
         setProducts((ps) => [data, ...ps]);
         setMsg("Producto creado");
+      toast.success("Producto creado");
+      toast.success("Producto creado");
       }
       resetForm();
     } catch (e3) {
@@ -148,7 +156,7 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
   }
 
   async function removeProduct(id) {
-    if (!confirm("¿Eliminar este producto?")) return;
+    if (!(await confirmAsync("¿Eliminar este producto?", { title: "Eliminar producto" }))) return;
     const supabase = createClient();
     const { error } = await supabase.from("products").delete().eq("id", id);
     if (error) return setErr(error.message);

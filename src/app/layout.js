@@ -1,5 +1,6 @@
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
 import "./globals.css";
+import { AppProviders } from "@/components/ui/AppProviders";
 
 const display = Cormorant_Garamond({
   subsets: ["latin"],
@@ -21,7 +22,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="es">
-      <body className={`${display.variable} ${sans.variable} antialiased`}>{children}</body>
+      <body className={`${display.variable} ${sans.variable} antialiased`}><AppProviders>{children}</AppProviders></body>
     </html>
   );
 }
