@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/components/ui/Toast";
 
 export function WaitersPanel({ restaurantId, initialWaiters, tables, initialAssignments }) {
   const [waiters, setWaiters] = useState(initialWaiters);

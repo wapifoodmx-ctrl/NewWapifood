@@ -3,23 +3,36 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
+import { toast } from "@/components/ui/Toast";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
+import { statusMeta } from "@/lib/orderStatus";
 
 const SESSION_KEY = "wapifood_waiter_session";
 
 /**
- * Mini-sistema del mesero (NO panel admin).
- * Login por código → solo mesas asignadas → tomar pedido → cocina.
+ * Mini-sistema del mesero (paridad meseroMenu del Front).
+ * Login por código → mesas asignadas → pedido → cocina → ver activas / historial corto.
  */
-export function WaiterApp({ restaurantId, restaurantName, products, categories, tables, canOperate }) {
+export function WaiterApp({
+  restaurantId,
+  restaurantName,
+  products,
+  categories,
+  tables,
+  canOperate,
+}) {
   const [session, setSession] = useState(null);
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [tableId, setTableId] = useState("");
   const [cart, setCart] = useState([]);
   const [cat, setCat] = useState("");
-  const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState("pedir"); // pedir | activas
+  const [tab, setTab] = useState("pedir"); // pedir | activas | historial
+  const [activeOrders, setActiveOrders] = useState([]);
+  const [history, setHistory] = useState([]);
+
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     try {
@@ -35,34 +48,76 @@ export function WaiterApp({ restaurantId, restaurantName, products, categories, 
   const allowedTables = useMemo(() => {
     if (!session) return [];
     const ids = session.table_ids || [];
-    if (!ids.length) return tables;
+    if (!ids.length) return tables.filter((t) => t.channel_type !== "kiosko");
     return tables.filter((t) => ids.includes(t.id));
   }, [session, tables]);
 
-  const list = products.filter((p) => !cat || p.category_id === cat);
+  const list = products.filter((p) => p.active !== false && (!cat || p.category_id === cat));
   const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const productName = (id) => products.find((p) => p.id === id)?.name || "Producto";
+
+  async function loadOrders() {
+    if (!session) return;
+    const tableIds = allowedTables.map((t) => t.id);
+    if (!tableIds.length) {
+      setActiveOrders([]);
+      setHistory([]);
+      return;
+    }
+    const { data: act } = await supabase
+      .from("orders")
+      .select("id,status,source,opened_at,waiter_id,order_items(product_id,qty),dining_tables(number)")
+      .eq("restaurant_id", restaurantId)
+      .in("table_id", tableIds)
+      .in("status", ["abierta", "cocina", "lista", "pendiente"])
+      .order("opened_at", { ascending: false })
+      .limit(30);
+
+    const { data: hist } = await supabase
+      .from("orders")
+      .select("id,status,source,opened_at,closed_at,waiter_id,order_items(product_id,qty,unit_price),dining_tables(number)")
+      .eq("restaurant_id", restaurantId)
+      .in("table_id", tableIds)
+      .in("status", ["pagada", "entregada", "cancelada"])
+      .order("opened_at", { ascending: false })
+      .limit(20);
+
+    setActiveOrders(act || []);
+    setHistory(hist || []);
+  }
+
+  useEffect(() => {
+    if (session) loadOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, tab]);
 
   async function login(e) {
     e.preventDefault();
     setError("");
     if (!canOperate) {
-      setError("El restaurante no tiene plan activo. No se puede operar como mesero.");
+      setError("El restaurante no tiene plan activo.");
       return;
     }
     setLoading(true);
-    const supabase = createClient();
     try {
       const { data, error: err } = await supabase.rpc("waiter_login", {
         p_restaurant: restaurantId,
-        p_code: code,
+        p_code: code.trim(),
       });
       if (err) throw err;
-      const s = { ...data, restaurant_id: restaurantId, restaurant_name: restaurantName };
+      const s = {
+        ...data,
+        access_code: code.trim(),
+        restaurant_id: restaurantId,
+        restaurant_name: restaurantName,
+      };
       localStorage.setItem(SESSION_KEY, JSON.stringify(s));
       setSession(s);
       setCode("");
+      toast.success(`Hola, ${data?.name || "mesero"}`);
     } catch (e2) {
       setError(e2.message || "Código inválido");
+      toast.error(e2.message || "Código inválido");
     } finally {
       setLoading(false);
     }
@@ -83,14 +138,18 @@ export function WaiterApp({ restaurantId, restaurantName, products, categories, 
     });
   }
 
+  function dec(id) {
+    setCart((c) =>
+      c.map((x) => (x.product_id === id ? { ...x, qty: x.qty - 1 } : x)).filter((x) => x.qty > 0),
+    );
+  }
+
   async function send() {
-    setMsg("");
-    if (!tableId) return setMsg("Elige una mesa");
-    if (!cart.length) return setMsg("Carrito vacío");
+    if (!tableId) return toast.warning("Elige una mesa");
+    if (!cart.length) return toast.warning("Carrito vacío");
     setLoading(true);
-    const supabase = createClient();
     try {
-      const { error } = await supabase.rpc("place_public_order", {
+      const { data: orderId, error } = await supabase.rpc("place_public_order", {
         p_restaurant: restaurantId,
         p_table: tableId,
         p_items: cart.map((i) => ({ product_id: i.product_id, qty: i.qty })),
@@ -100,10 +159,25 @@ export function WaiterApp({ restaurantId, restaurantName, products, categories, 
         p_source: "mesero",
       });
       if (error) throw error;
+
+      if (orderId && session?.id && session?.access_code) {
+        const { error: e2 } = await supabase.rpc("set_order_waiter", {
+          p_order: orderId,
+          p_waiter: session.id,
+          p_code: session.access_code,
+        });
+        if (e2) {
+          // no bloquea el pedido
+          console.warn(e2.message);
+        }
+      }
+
       setCart([]);
-      setMsg("Comanda enviada a cocina");
+      toast.success("Comanda enviada a cocina");
+      await loadOrders();
+      setTab("activas");
     } catch (e) {
-      setMsg(e.message || "Error al enviar");
+      toast.error(e.message || "Error al enviar");
     } finally {
       setLoading(false);
     }
@@ -111,12 +185,10 @@ export function WaiterApp({ restaurantId, restaurantName, products, categories, 
 
   if (!canOperate) {
     return (
-      <div className="grid min-h-screen place-items-center bg-[var(--color-cream)] px-4">
-        <div className="max-w-md rounded-3xl border border-[var(--color-line)] bg-[var(--color-paper)] p-8 text-center">
-          <h1 className="text-2xl font-semibold">Meseros no disponibles</h1>
-          <p className="mt-2 text-[var(--color-muted)]">
-            El dueño debe activar un plan de Wapifood para operar el canal de meseros.
-          </p>
+      <div className="grid min-h-screen place-items-center bg-[var(--color-parchment)] px-4">
+        <div className="max-w-md border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-8 text-center">
+          <h1 className="text-2xl font-normal">Mesero no disponible</h1>
+          <p className="mt-2 text-[var(--color-espresso)]">El restaurante necesita un plan activo.</p>
         </div>
       </div>
     );
@@ -124,26 +196,30 @@ export function WaiterApp({ restaurantId, restaurantName, products, categories, 
 
   if (!session) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--color-cream)] px-4">
-        <form onSubmit={login} className="w-full max-w-md rounded-3xl border border-[var(--color-line)] bg-[var(--color-paper)] p-6">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ember)]">Acceso mesero</p>
-          <h1 className="mt-2 text-3xl">{restaurantName}</h1>
-          <p className="mt-2 text-sm text-[var(--color-muted)]">
-            Este no es el panel del dueño. Solo personal de piso con su código.
+      <div className="flex min-h-screen items-center justify-center bg-[var(--color-parchment)] px-4">
+        <LoadingOverlay visible={loading} />
+        <form onSubmit={login} className="w-full max-w-sm border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-8">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-saffron-glow)]">
+            {restaurantName}
           </p>
-          <label className="mt-6 block text-sm font-semibold">
-            Código de acceso
-            <input
-              required
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              maxLength={8}
-              className="mt-1 h-14 w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-cream)] px-3 text-center text-3xl tracking-[0.35em]"
-            />
-          </label>
-          {error ? <p className="mt-3 text-sm text-[var(--color-wine)]">{error}</p> : null}
-          <button type="submit" disabled={loading} className="mt-5 h-12 w-full rounded-full bg-[var(--color-ink)] font-semibold text-[var(--color-cream)]">
-            {loading ? "…" : "Entrar"}
+          <h1 className="mt-2 text-3xl font-normal">Acceso mesero</h1>
+          <p className="mt-2 text-sm text-[var(--color-espresso)]">
+            Ingresa tu código de acceso (no uses la cuenta del dueño).
+          </p>
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            className="mt-5 h-12 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] text-center text-xl tracking-[0.25em]"
+            placeholder="Código"
+            autoFocus
+          />
+          {error ? <p className="mt-2 text-sm text-[var(--color-wine)]">{error}</p> : null}
+          <button
+            type="submit"
+            disabled={loading}
+            className="mt-4 h-12 w-full rounded-[3px] bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]"
+          >
+            Entrar
           </button>
         </form>
       </div>
@@ -151,108 +227,185 @@ export function WaiterApp({ restaurantId, restaurantName, products, categories, 
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-cream)]">
-      <header className="sticky top-0 z-10 border-b border-[var(--color-line)] bg-[var(--color-paper)] px-4 py-3">
-        <div className="mx-auto flex max-w-3xl items-center justify-between">
+    <div className="min-h-screen bg-[var(--color-parchment)] text-[var(--color-onyx-warm)]">
+      <LoadingOverlay visible={loading} message="Procesando…" />
+      <header className="border-b border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-4 py-3">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-2">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-ember)]">Mesero</p>
-            <h1 className="text-xl font-semibold">{session.name}</h1>
-            <p className="text-xs text-[var(--color-muted)]">{restaurantName}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-saffron-glow)]">
+              {session.restaurant_name || restaurantName}
+            </p>
+            <h1 className="text-xl font-normal">{session.name || "Mesero"}</h1>
           </div>
-          <button type="button" onClick={logout} className="text-sm font-semibold">
+          <button type="button" onClick={logout} className="text-xs font-semibold uppercase">
             Salir
           </button>
         </div>
-        <div className="mx-auto mt-3 flex max-w-3xl gap-2">
-          <button type="button" onClick={() => setTab("pedir")} className={`h-10 flex-1 rounded-full text-sm font-semibold ${tab === "pedir" ? "bg-[var(--color-ink)] text-[var(--color-cream)]" : "bg-[var(--color-cream)]"}`}>
-            Tomar pedido
-          </button>
-          <button type="button" onClick={() => setTab("mesas")} className={`h-10 flex-1 rounded-full text-sm font-semibold ${tab === "mesas" ? "bg-[var(--color-ink)] text-[var(--color-cream)]" : "bg-[var(--color-cream)]"}`}>
-            Mis mesas
-          </button>
+        <div className="mx-auto mt-2 flex max-w-3xl gap-1">
+          {[
+            { id: "pedir", label: "Pedir" },
+            { id: "activas", label: "Activas" },
+            { id: "historial", label: "Historial" },
+          ].map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={`h-10 flex-1 rounded-[3px] text-xs font-semibold uppercase ${
+                tab === t.id
+                  ? "bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]"
+                  : "bg-[var(--color-parchment)]"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-5 pb-32">
-        {tab === "mesas" ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {allowedTables.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => {
-                  setTableId(t.id);
-                  setTab("pedir");
-                }}
-                className={`rounded-2xl border p-4 text-left ${tableId === t.id ? "border-[var(--color-ember)] bg-[var(--color-ember)] text-white" : "border-[var(--color-line)] bg-[var(--color-paper)]"}`}
-              >
-                <p className="text-2xl font-semibold">Mesa {t.number}</p>
-                <p className="text-sm opacity-80">{t.seats} lugares</p>
-              </button>
-            ))}
-            {allowedTables.length === 0 ? (
-              <p className="col-span-full text-[var(--color-muted)]">No tienes mesas asignadas. Pide al dueño que te asigne en Meseros.</p>
-            ) : null}
-          </div>
-        ) : (
+      <main className="mx-auto max-w-3xl px-4 py-5 pb-24">
+        {tab === "pedir" ? (
           <>
-            <label className="mb-3 block text-sm font-semibold">
-              Mesa del pedido
+            <label className="block text-xs font-semibold uppercase">
+              Mesa
               <select
+                className="mt-1 h-11 w-full border border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-2 font-normal normal-case"
                 value={tableId}
                 onChange={(e) => setTableId(e.target.value)}
-                className="mt-1 h-12 w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-paper)] px-3"
               >
                 <option value="">Selecciona mesa</option>
                 {allowedTables.map((t) => (
                   <option key={t.id} value={t.id}>
                     Mesa {t.number}
+                    {t.channel_type === "tablet" ? " · tablet" : ""}
                   </option>
                 ))}
               </select>
             </label>
 
-            <div className="mb-3 flex gap-2 overflow-x-auto">
-              <button type="button" onClick={() => setCat("")} className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold ${!cat ? "bg-[var(--color-ink)] text-[var(--color-cream)]" : "bg-[var(--color-paper)]"}`}>
+            <div className="mt-3 flex gap-1 overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setCat("")}
+                className={`shrink-0 rounded-[3px] px-3 py-2 text-xs font-semibold uppercase ${
+                  !cat ? "bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]" : "bg-[var(--color-paper)]"
+                }`}
+              >
                 Todos
               </button>
               {categories.map((c) => (
-                <button key={c.id} type="button" onClick={() => setCat(c.id)} className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold ${cat === c.id ? "bg-[var(--color-ink)] text-[var(--color-cream)]" : "bg-[var(--color-paper)]"}`}>
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setCat(c.id)}
+                  className={`shrink-0 rounded-[3px] px-3 py-2 text-xs font-semibold uppercase ${
+                    cat === c.id
+                      ? "bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]"
+                      : "bg-[var(--color-paper)]"
+                  }`}
+                >
                   {c.name}
                 </button>
               ))}
             </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {list.map((p) => (
-                <button key={p.id} type="button" onClick={() => add(p)} className="rounded-xl border border-[var(--color-line)] bg-[var(--color-paper)] p-3 text-left">
-                  <p className="font-semibold">{p.name}</p>
-                  <p className="text-sm text-[var(--color-muted)]">{money(p.price)}</p>
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => add(p)}
+                  className="min-h-16 border border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-3 py-2 text-left"
+                >
+                  <span className="block font-semibold">{p.name}</span>
+                  <span className="text-sm text-[var(--color-espresso)]">{money(p.price)}</span>
                 </button>
               ))}
             </div>
-          </>
-        )}
-      </main>
 
-      {tab === "pedir" ? (
-        <div className="fixed bottom-0 left-0 right-0 border-t border-[var(--color-line)] bg-[var(--color-paper)] p-4">
-          <div className="mx-auto max-w-3xl">
-            <p className="font-semibold">Cuenta · {money(total)}</p>
-            <ul className="mt-1 max-h-20 overflow-y-auto text-sm text-[var(--color-muted)]">
-              {cart.map((i) => (
-                <li key={i.product_id}>
-                  {i.qty} × {i.name}
-                </li>
-              ))}
-            </ul>
-            {msg ? <p className="mt-1 text-sm">{msg}</p> : null}
-            <button type="button" disabled={loading} onClick={send} className="mt-2 h-12 w-full rounded-full bg-[var(--color-ember)] font-semibold text-white">
-              Enviar a cocina
+            <div className="fixed bottom-0 left-0 right-0 border-t border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-3">
+              <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+                <div className="min-w-0 flex-1 text-sm">
+                  {cart.map((i) => (
+                    <button key={i.product_id} type="button" onClick={() => dec(i.product_id)} className="mr-2">
+                      {i.qty}× {i.name}
+                    </button>
+                  ))}
+                  {!cart.length ? <span className="text-[var(--color-walnut)]">Carrito vacío</span> : null}
+                </div>
+                <div className="text-right">
+                  <p className="font-semibold">{money(total)}</p>
+                  <button
+                    type="button"
+                    onClick={send}
+                    className="mt-1 h-10 rounded-[3px] bg-[var(--color-onyx-warm)] px-4 text-xs font-semibold uppercase text-[var(--color-parchment)]"
+                  >
+                    Enviar cocina
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : null}
+
+        {tab === "activas" ? (
+          <div className="space-y-3">
+            <button type="button" onClick={loadOrders} className="text-xs font-semibold uppercase">
+              Actualizar
             </button>
+            {activeOrders.map((o) => (
+              <article key={o.id} className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
+                <div className="flex justify-between">
+                  <p className="font-semibold">Mesa {o.dining_tables?.number ?? "—"}</p>
+                  <span className="text-xs font-bold uppercase">{statusMeta(o.status).label}</span>
+                </div>
+                <ul className="mt-2 text-sm text-[var(--color-espresso)]">
+                  {(o.order_items || []).map((i) => (
+                    <li key={`${o.id}-${i.product_id}`}>
+                      {i.qty}× {productName(i.product_id)}
+                    </li>
+                  ))}
+                </ul>
+                {o.waiter_id === session.id ? (
+                  <p className="mt-1 text-[11px] text-[var(--color-saffron-glow)]">Tu comanda</p>
+                ) : null}
+              </article>
+            ))}
+            {!activeOrders.length ? (
+              <p className="text-[var(--color-walnut)]">No hay órdenes activas en tus mesas.</p>
+            ) : null}
           </div>
-        </div>
-      ) : null}
+        ) : null}
+
+        {tab === "historial" ? (
+          <div className="space-y-3">
+            <button type="button" onClick={loadOrders} className="text-xs font-semibold uppercase">
+              Actualizar
+            </button>
+            {history.map((o) => {
+              const tot = (o.order_items || []).reduce(
+                (s, i) => s + Number(i.unit_price || 0) * Number(i.qty),
+                0,
+              );
+              return (
+                <article key={o.id} className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
+                  <div className="flex justify-between gap-2">
+                    <p className="font-semibold">Mesa {o.dining_tables?.number ?? "—"}</p>
+                    <span className="text-xs font-bold uppercase">{statusMeta(o.status).label}</span>
+                  </div>
+                  <p className="text-sm text-[var(--color-espresso)]">{money(tot)}</p>
+                  <a href={`/t/${o.id}`} className="mt-1 inline-block text-xs font-semibold uppercase text-[var(--color-saffron-glow)]">
+                    Ver ticket
+                  </a>
+                </article>
+              );
+            })}
+            {!history.length ? (
+              <p className="text-[var(--color-walnut)]">Sin historial reciente en tus mesas.</p>
+            ) : null}
+          </div>
+        ) : null}
+      </main>
     </div>
   );
 }

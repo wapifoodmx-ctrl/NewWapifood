@@ -6,6 +6,7 @@ import { money } from "@/lib/format";
 import { requireTenantSetup } from "@/lib/auth";
 import { MODULES } from "@/lib/modules";
 import { planMeta } from "@/lib/plans";
+import { DashboardInsights } from "@/components/DashboardInsights";
 
 export default async function DashboardPage() {
   const { supabase, membership, operational, setupOnly } = await requireTenantSetup();
@@ -24,6 +25,8 @@ export default async function DashboardPage() {
   let topProducts = [];
   let pendingWeb = 0;
   let sub = null;
+  let productNames = {};
+  let list = [];
 
   if (restaurantId) {
     const [{ count: ot }, { data: orders }, { data: ings }, { data: subs }, { data: products }] =
@@ -53,7 +56,7 @@ export default async function DashboardPage() {
       ]);
 
     openTables = ot || 0;
-    const list = orders || [];
+    list = orders || [];
     openOrders = list.filter((o) => !["pagada", "cancelada"].includes(o.status)).length;
     pendingWeb = list.filter((o) => o.status === "pendiente").length;
     const paid = list.filter((o) => o.status === "pagada");
@@ -75,6 +78,7 @@ export default async function DashboardPage() {
     }
 
     const prodMap = Object.fromEntries((products || []).map((p) => [p.id, p.name]));
+    productNames = prodMap;
     const qtyByProd = {};
     for (const o of paid) {
       for (const i of o.order_items || []) {
@@ -255,6 +259,8 @@ export default async function DashboardPage() {
           Plan: <strong>{plan.title}</strong> ({sub?.status})
         </p>
       ) : null}
+
+      <DashboardInsights orders={list} productNames={productNames} />
 
       <section className="mt-6">
         <h2 className="mb-3 text-xl font-normal">Módulos</h2>
