@@ -51,12 +51,19 @@ export function ConfigPanel({ restaurant, profile }) {
       }
       const supabase = createClient();
       const url = await uploadPublicImage(supabase, restaurant.id, file, "logos");
-      const { error } = await supabase
+      const { data: savedLogo, error } = await supabase
         .from("restaurants")
         .update({ logo_url: url })
-        .eq("id", restaurant.id);
+        .eq("id", restaurant.id)
+        .select("id, logo_url")
+        .maybeSingle();
       if (error) throw error;
-      set("logo_url", url);
+      if (!savedLogo) {
+        throw new Error(
+          "El logo se subió al storage pero no se pudo guardar en el restaurante (permisos). Ejecuta SQL 018_fix_restaurants_rls.sql",
+        );
+      }
+      set("logo_url", savedLogo.logo_url || url);
       setMsg("Logo actualizado y guardado.");
       router.refresh();
     } catch (e2) {
@@ -101,14 +108,23 @@ export function ConfigPanel({ restaurant, profile }) {
     setLoading(true);
     const supabase = createClient();
     try {
-      const { error: e1 } = await supabase
+      const { data: savedRest, error: e1 } = await supabase
         .from("restaurants")
         .update({
           name,
           logo_url: form.logo_url || null,
         })
-        .eq("id", restaurant.id);
+        .eq("id", restaurant.id)
+        .select("id, name, logo_url")
+        .maybeSingle();
       if (e1) throw e1;
+      if (!savedRest) {
+        throw new Error(
+          "No se pudo actualizar el restaurante (nombre/logo). Ejecuta en Supabase el SQL 018_fix_restaurants_rls.sql",
+        );
+      }
+      set("name", savedRest.name || name);
+      if (savedRest.logo_url) set("logo_url", savedRest.logo_url);
 
       const { error: e2 } = await supabase.from("restaurant_profiles").upsert({
         restaurant_id: restaurant.id,
