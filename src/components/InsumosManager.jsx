@@ -171,6 +171,26 @@ export function InsumosManager({
     setMoveOpen(true);
   }
 
+  async function reloadMoves() {
+    const supabase = createClient();
+    const ids = items.map((i) => i.id);
+    if (!ids.length) {
+      setMoves([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from("stock_moves")
+      .select("id,ingredient_id,qty,reason,created_at")
+      .in("ingredient_id", ids)
+      .order("created_at", { ascending: false })
+      .limit(80);
+    if (error) {
+      toast.error("Kardex: " + error.message);
+      return;
+    }
+    setMoves(data || []);
+  }
+
   async function submitMove() {
     if (!moveIng) return;
     const qty = Number(moveQty);
@@ -196,18 +216,9 @@ export function InsumosManager({
           : x,
       ),
     );
-    setMoves((ms) => [
-      {
-        id: crypto.randomUUID(),
-        ingredient_id: moveIng.id,
-        qty: delta,
-        reason: moveNote || moveType,
-        created_at: new Date().toISOString(),
-      },
-      ...ms,
-    ]);
     setMoveOpen(false);
     toast.success(moveType === "entrada" ? "Entrada registrada" : "Merma registrada");
+    await reloadMoves();
   }
 
   const filters = [
@@ -234,7 +245,7 @@ export function InsumosManager({
             <button
               key={t.id}
               type="button"
-              onClick={() => setTab(t.id)}
+              onClick={() => { setTab(t.id); if (t.id === "kardex") reloadMoves(); }}
               className={`h-10 rounded-[3px] px-4 text-xs font-semibold uppercase ${
                 tab === t.id
                   ? "bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]"
@@ -264,7 +275,12 @@ export function InsumosManager({
         >
           {tab === "kardex" ? (
             <div>
-              <h2 className="mb-3 text-xl font-normal">Kardex / movimientos</h2>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h2 className="text-xl font-normal">Kardex / movimientos</h2>
+                <button type="button" onClick={reloadMoves} className="text-xs font-semibold uppercase">
+                  Actualizar
+                </button>
+              </div>
               <StockMovesList moves={moves} ingredientNames={names} />
             </div>
           ) : (

@@ -43,11 +43,10 @@ export function useInventoryUnlock(restaurantId, hasPin) {
 }
 
 /**
- * Modal cute de PIN (como antes).
- * El listado de insumos sigue montado debajo (no se “borra”).
+ * Modal de PIN solo sobre el contenido de Insumos (absolute),
+ * NO fixed fullscreen → el menú superior sigue clickeable.
  */
 export function InventoryPinGate({
-  restaurantId,
   hasPin,
   inventoryPin,
   unlocked,
@@ -68,21 +67,21 @@ export function InventoryPinGate({
   }
 
   return (
-    <div className="relative">
+    <div className="relative min-h-[50vh]">
       {children}
 
       {hasPin && !unlocked ? (
-        <div className="fixed inset-0 z-[1600] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]">
+        <div className="absolute inset-0 z-20 flex items-start justify-center bg-[var(--color-parchment)]/85 p-4 pt-10 backdrop-blur-[1px]">
           <form
             onSubmit={submit}
-            className="w-full max-w-sm border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-8 shadow-2xl"
+            className="w-full max-w-sm border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-8 shadow-xl"
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-saffron-glow)]">
               Seguridad
             </p>
             <h2 className="mt-2 text-3xl font-normal">PIN de inventario</h2>
             <p className="mt-2 text-sm text-[var(--color-espresso)]">
-              Ingresa el PIN para ver y editar insumos, entradas y mermas.
+              Desbloquea para ver y editar este módulo. Puedes ir a otras secciones del menú sin problema.
             </p>
             <input
               value={pin}
@@ -133,7 +132,7 @@ export function InventoryPinSettings({ restaurantId, initialPin }) {
     <form onSubmit={save} className="max-w-md border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-5">
       <h2 className="text-xl font-normal">PIN de inventario</h2>
       <p className="mt-1 text-sm text-[var(--color-espresso)]">
-        Con PIN activo se muestra el modal al entrar. Déjalo vacío para desactivar.
+        Con PIN activo se pide al usar Insumos. El menú superior siempre se puede usar.
       </p>
       <input
         value={pin}

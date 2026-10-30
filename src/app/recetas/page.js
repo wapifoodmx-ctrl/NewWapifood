@@ -18,11 +18,17 @@ export default async function RecetasPage({ searchParams }) {
   const focusProductId = params?.product || null;
   const rid = membership.restaurant_id;
 
-  const [{ data: products }, { data: ingredients }, { data: lines }] = await Promise.all([
-    supabase.from("products").select("id,name").eq("restaurant_id", rid).order("name"),
-    supabase.from("ingredients").select("id,name,unit").eq("restaurant_id", rid).order("name"),
-    supabase.from("recipe_lines").select("*"),
-  ]);
+  const [{ data: products }, { data: ingredients }, { data: lines }, { data: categories }] =
+    await Promise.all([
+      supabase
+        .from("products")
+        .select("id,name,category_id")
+        .eq("restaurant_id", rid)
+        .order("name"),
+      supabase.from("ingredients").select("id,name,unit").eq("restaurant_id", rid).order("name"),
+      supabase.from("recipe_lines").select("*"),
+      supabase.from("categories").select("id,name").eq("restaurant_id", rid).order("name"),
+    ]);
 
   const productIds = new Set((products || []).map((p) => p.id));
   const scoped = (lines || []).filter((l) => productIds.has(l.product_id));
@@ -46,6 +52,7 @@ export default async function RecetasPage({ searchParams }) {
         <RecetasManager
           products={products || []}
           ingredients={ingredients || []}
+          categories={categories || []}
           initialLines={scoped}
           focusProductId={focusProductId}
         />

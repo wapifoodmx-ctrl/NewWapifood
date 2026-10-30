@@ -1,3 +1,4 @@
+
 -- ============================================================
 -- L1–L5: Lógica de estados alineada a WapifoodFront
 -- - Status por ítem (Pendiente/Preparado/Cancelado)

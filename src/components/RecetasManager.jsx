@@ -16,23 +16,39 @@ import {
  * Recetas — qty siempre se guarda en unidad BASE del insumo (g/ml/pza),
  * como WapifoodFront (kilos↔gramos, litros↔ml en UI).
  */
-export function RecetasManager({ products, ingredients, initialLines, focusProductId = null }) {
+export function RecetasManager({ products, ingredients, categories = [], initialLines, focusProductId = null }) {
   const [lines, setLines] = useState(initialLines);
   const [productId, setProductId] = useState(focusProductId || products[0]?.id || "");
   const [ingredientId, setIngredientId] = useState(ingredients[0]?.id || "");
   const [qty, setQty] = useState("50");
   const [useLarge, setUseLarge] = useState(false); // true = capturar en kg o L
   const [err, setErr] = useState("");
+  const [search, setSearch] = useState("");
+  const [catFilter, setCatFilter] = useState("");
 
   const ingMap = useMemo(() => new Map(ingredients.map((i) => [i.id, i])), [ingredients]);
   const selectedIng = ingMap.get(ingredientId);
   const base = selectedIng ? baseUnit(selectedIng.unit) : "pza";
   const canToggle = selectedIng ? hasLargeSmall(selectedIng.unit) : false;
 
-  const byProduct = products.map((p) => ({
-    ...p,
-    lines: lines.filter((l) => l.product_id === p.id),
-  }));
+  const catName = useMemo(() => {
+    const m = new Map((categories || []).map((c) => [c.id, c.name]));
+    return (id) => m.get(id) || "Sin categoría";
+  }, [categories]);
+
+  const byProduct = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return products
+      .filter((p) => {
+        if (catFilter && p.category_id !== catFilter) return false;
+        if (q && !String(p.name || "").toLowerCase().includes(q)) return false;
+        return true;
+      })
+      .map((p) => ({
+        ...p,
+        lines: lines.filter((l) => l.product_id === p.id),
+      }));
+  }, [products, lines, search, catFilter]);
 
   function onPickIngredient(id) {
     setIngredientId(id);
@@ -133,6 +149,29 @@ export function RecetasManager({ products, ingredients, initialLines, focusProdu
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
       <div className="space-y-4">
+        <div className="flex flex-wrap gap-2">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar producto…"
+            className="h-11 min-w-[12rem] flex-1 border border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-3 text-sm"
+          />
+          <select
+            value={catFilter}
+            onChange={(e) => setCatFilter(e.target.value)}
+            className="h-11 border border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-2 text-sm"
+          >
+            <option value="">Todas las categorías</option>
+            {(categories || []).map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+        {!byProduct.length ? (
+          <p className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4 text-sm text-[var(--color-walnut)]">
+            Ningún producto coincide con el filtro.
+          </p>
+        ) : null}
         {byProduct.map((p) => (
           <article
             key={p.id}
@@ -141,6 +180,7 @@ export function RecetasManager({ products, ingredients, initialLines, focusProdu
             }`}
           >
             <h3 className="text-xl font-normal">{p.name}</h3>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-walnut)]">{catName(p.category_id)}</p>
             {p.lines.length ? (
               <ul className="mt-2 space-y-1 text-sm">
                 {p.lines.map((l) => (
