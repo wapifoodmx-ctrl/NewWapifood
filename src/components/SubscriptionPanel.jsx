@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { PLANS, moneyMX, planMeta } from "@/lib/plans";
+import PixelCard from "@/components/PixelCard";
 
 export function SubscriptionPanel({ restaurantId, initialSubs }) {
   const [subs, setSubs] = useState(initialSubs || []);
@@ -10,6 +11,14 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const appTheme = useSyncExternalStore(
+    (cb) => {
+      window.addEventListener("themechange", cb);
+      return () => window.removeEventListener("themechange", cb);
+    },
+    () => (document.documentElement.classList.contains("dark") ? "dark" : "light"),
+    () => "light"
+  );
 
   const current =
     subs.find((s) => s.status === "active" || s.status === "trialing") || subs[0];
@@ -43,6 +52,7 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
       if (!res.ok) throw new Error(data.error || "No se pudo crear el pago");
       const url = data.init_point || data.sandbox_init_point;
       if (!url) throw new Error("Mercado Pago no devolvió link de pago");
+      // eslint-disable-next-line react-hooks/immutability
       window.location.href = url;
     } catch (e) {
       setErr(e.message || "Error con Mercado Pago");
@@ -101,8 +111,8 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
       <div className="grid gap-4 lg:grid-cols-3">
         {PLANS.map((p) => {
           const price = billing === "anual" ? p.yearly : p.monthly;
-          return (
-            <article key={p.id} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5">
+          const body = (
+            <>
               <h3 className="text-xl font-semibold">{p.title}</h3>
               <p className="mt-2 text-3xl font-semibold">
                 {moneyMX(price)}
@@ -120,7 +130,29 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
               <button type="button" disabled={loading} onClick={() => activateManual(p.id)} className="mt-2 h-9 w-full text-xs font-semibold text-[var(--color-muted)] underline">
                 Activar sin pago (pruebas)
               </button>
-            </article>
+            </>
+          );
+          if (billing !== "mensual") {
+            return (
+              <article key={p.id} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5">
+                {body}
+              </article>
+            );
+          }
+          return (
+            <PixelCard
+              key={p.id}
+              theme={appTheme}
+              radius={24}
+              opacity={0.28}
+              fade={0.65}
+              spotlight={0.45}
+              glow={0.35}
+              className="flex flex-col"
+              style={{ width: "100%", height: "auto", minHeight: "260px", display: "block", padding: "1.25rem" }}
+            >
+              {body}
+            </PixelCard>
           );
         })}
       </div>
