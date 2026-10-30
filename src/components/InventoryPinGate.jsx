@@ -42,16 +42,25 @@ export function useInventoryUnlock(restaurantId, hasPin) {
   return { unlocked, lock, unlockOk };
 }
 
-export function InventoryPinGate({ restaurantId, hasPin, inventoryPin, unlocked, unlockOk, children }) {
+/**
+ * Ya NO tapa el listado. Solo muestra banner + formulario de PIN
+ * encima; los hijos (insumos) siempre se renderizan.
+ */
+export function InventoryPinGate({
+  restaurantId,
+  hasPin,
+  inventoryPin,
+  unlocked,
+  unlockOk,
+  children,
+}) {
   const [pin, setPin] = useState("");
-
-  if (!hasPin || unlocked) return children;
 
   function submit(e) {
     e.preventDefault();
     if (String(pin) === String(inventoryPin)) {
       unlockOk();
-      toast.success("Inventario desbloqueado");
+      toast.success("Inventario desbloqueado para editar");
       setPin("");
       return;
     }
@@ -59,26 +68,33 @@ export function InventoryPinGate({ restaurantId, hasPin, inventoryPin, unlocked,
   }
 
   return (
-    <div className="flex min-h-[40vh] items-center justify-center">
-      <form onSubmit={submit} className="w-full max-w-sm border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-6">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-saffron-glow)]">
-          Seguridad
-        </p>
-        <h2 className="mt-2 text-2xl font-normal">PIN de inventario</h2>
-        <p className="mt-2 text-sm text-[var(--color-espresso)]">
-          Este restaurante protege entradas y mermas con un PIN (como en WapifoodFront).
-        </p>
-        <input
-          value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
-          className="mt-4 h-12 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] text-center text-2xl tracking-[0.3em]"
-          inputMode="numeric"
-          autoFocus
-        />
-        <button type="submit" className="mt-4 h-11 w-full rounded-[3px] bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]">
-          Desbloquear
-        </button>
-      </form>
+    <div>
+      {hasPin && !unlocked ? (
+        <div className="mb-4 border border-[var(--color-saffron-glow)] bg-[var(--color-paper)] p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-saffron-glow)]">
+            Inventario protegido
+          </p>
+          <p className="mt-1 text-sm text-[var(--color-espresso)]">
+            Puedes <strong>ver</strong> los insumos. Para entradas, mermas o editar, ingresa el PIN.
+          </p>
+          <form onSubmit={submit} className="mt-3 flex flex-wrap items-center gap-2">
+            <input
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
+              className="h-11 w-40 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] text-center text-lg tracking-[0.25em]"
+              inputMode="numeric"
+              placeholder="PIN"
+            />
+            <button
+              type="submit"
+              className="h-11 rounded-[3px] bg-[var(--color-onyx-warm)] px-4 text-xs font-semibold uppercase text-[var(--color-parchment)]"
+            >
+              Desbloquear
+            </button>
+          </form>
+        </div>
+      ) : null}
+      {children}
     </div>
   );
 }
@@ -111,7 +127,7 @@ export function InventoryPinSettings({ restaurantId, initialPin }) {
     <form onSubmit={save} className="max-w-md border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-5">
       <h2 className="text-xl font-normal">PIN de inventario</h2>
       <p className="mt-1 text-sm text-[var(--color-espresso)]">
-        Si lo configuras, habrá que desbloquear el módulo en cada sesión del navegador.
+        Si lo configuras, las ediciones (no la vista) pedirán PIN en cada sesión del navegador.
       </p>
       <input
         value={pin}

@@ -80,6 +80,7 @@ export function InsumosManager({
   }, [items, filter]);
 
   function startEdit(i) {
+    if (!requireUnlock()) return;
     setEditingId(i.id);
     const stockDisp = fromBase(i.stock ?? 0, i.unit || "pza");
     const minDisp = fromBase(i.min_stock ?? 0, i.unit || "pza");
@@ -96,6 +97,7 @@ export function InsumosManager({
 
   async function onSave(e) {
     e.preventDefault();
+    if (!requireUnlock()) return;
     if (!form.name.trim()) return toast.error("Nombre obligatorio");
     const stockIn = Number(form.stock);
     const minIn = Number(form.min_stock);
@@ -140,6 +142,7 @@ export function InsumosManager({
   }
 
   async function remove(id) {
+    if (!requireUnlock()) return;
     if (!(await confirmAsync("¿Eliminar este insumo?", { title: "Eliminar insumo" }))) return;
     setLoading(true);
     const supabase = createClient();
@@ -150,7 +153,17 @@ export function InsumosManager({
     toast.success("Insumo eliminado");
   }
 
+  function requireUnlock() {
+    if (hasPin && !unlocked) {
+      toast.warning("Desbloquea el inventario con el PIN para editar.");
+      return false;
+    }
+    return true;
+  }
+
   function openMove(type, ing) {
+    if (!requireUnlock()) return;
+
     setMoveType(type);
     setMoveIng(ing);
     setMoveQty(type === "entrada" ? (ing.unit === "g" || ing.unit === "ml" ? "200" : "10") : "1");
@@ -206,7 +219,7 @@ export function InsumosManager({
   ];
 
   const tabs = [
-    { id: "insumos", label: "Insumos" },
+    { id: "insumos", label: `Insumos (${items.length})` },
     { id: "kardex", label: "Kardex" },
     { id: "seguridad", label: "PIN / Seguridad" },
   ];
@@ -317,8 +330,14 @@ export function InsumosManager({
                       </article>
                     );
                   })}
-                  {!list.length ? (
-                    <p className="col-span-full border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-5">No hay insumos en este filtro.</p>
+                  {!items.length ? (
+                    <p className="col-span-full border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-5">
+                      Aún no hay insumos. Crea el primero con el formulario de la derecha.
+                    </p>
+                  ) : !list.length ? (
+                    <p className="col-span-full border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-5">
+                      No hay insumos en este filtro ({items.length} en total).
+                    </p>
                   ) : null}
                 </div>
               </div>
