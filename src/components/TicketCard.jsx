@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { money } from "@/lib/format";
+import { itemStatusMeta, statusMeta } from "@/lib/orderStatus";
 import { statusMeta } from "@/lib/orderStatus";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";

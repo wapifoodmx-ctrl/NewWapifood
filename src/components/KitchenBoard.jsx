@@ -264,13 +264,20 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
                       Confirmar → cocina
                     </button>
                   ) : order.status === "lista" || order.status === "entregada" ? (
-                    <button
-                      type="button"
-                      onClick={() => markDelivered(order.id)}
-                      className="h-11 rounded-[3px] bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]"
-                    >
-                      {order.status === "entregada" ? "Entregada ✓" : "Marcar entregada"}
-                    </button>
+                    <>
+                      {isCaja ? (
+                        <p className="text-[11px] text-[var(--color-espresso)]">
+                          Caja (Mesa 1): lista para cobro en POS · Finalizado al cobrar
+                        </p>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => markDelivered(order.id)}
+                        className="h-11 rounded-[3px] bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]"
+                      >
+                        {order.status === "entregada" ? "Entregada ✓" : "Marcar entregada"}
+                      </button>
+                    </>
                   ) : (
                     <button
                       type="button"

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
+import { itemStatusMeta, statusMeta } from "@/lib/orderStatus";
 import { toast } from "@/components/ui/Toast";
 import { confirmAsync } from "@/components/ui/confirm";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
@@ -23,6 +24,7 @@ export function PosBoard({ restaurantId, tables, products, categories, initialOr
   const [payMethod, setPayMethod] = useState("efectivo");
   const [cashGiven, setCashGiven] = useState("");
   const [noteEdit, setNoteEdit] = useState(null); // { productId, notes }
+  const [orderDiscount, setOrderDiscount] = useState({ type: "", value: "" });
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -41,12 +43,27 @@ export function PosBoard({ restaurantId, tables, products, categories, initialOr
     return rank(a) - rank(b) || Number(a.number) - Number(b.number);
   });
 
-  const total = useMemo(() => {
-    return (order?.order_items || []).reduce(
-      (s, i) => s + Number(i.unit_price) * Number(i.qty),
-      0,
-    );
+  const subtotal = useMemo(() => {
+    return (order?.order_items || []).reduce((s, i) => {
+      if ((i.status || "pendiente") === "cancelado") return s;
+      let line = Number(i.unit_price) * Number(i.qty);
+      if (i.discount_type === "porcentaje") line -= line * (Number(i.discount_value) || 0) / 100;
+      if (i.discount_type === "monto") line -= Number(i.discount_value) || 0;
+      return s + Math.max(0, line);
+    }, 0);
   }, [order]);
+
+  const total = useMemo(() => {
+    let t = subtotal;
+    const od = order?.discount_amount != null ? Number(order.discount_amount) : 0;
+    if (od > 0) t = Math.max(0, t - od);
+    else if (order?.discount_type === "porcentaje") {
+      t = Math.max(0, t - t * (Number(order.discount_value) || 0) / 100);
+    } else if (order?.discount_type === "monto") {
+      t = Math.max(0, t - (Number(order.discount_value) || 0));
+    }
+    return t;
+  }, [order, subtotal]);
 
   const itemCount = (order?.order_items || []).reduce((s, i) => s + Number(i.qty), 0);
 
@@ -199,6 +216,22 @@ export function PosBoard({ restaurantId, tables, products, categories, initialOr
     toast.success("Cuenta cancelada");
   }
 
+  async function applyOrderDiscount() {
+    if (!order) return;
+    const type = orderDiscount.type || null;
+    const value = Number(orderDiscount.value || 0);
+    setLoading(true);
+    const { error } = await supabase.rpc("set_order_discount", {
+      p_order: order.id,
+      p_type: type || null,
+      p_value: value,
+    });
+    setLoading(false);
+    if (error) return toast.error(error.message + (error.message?.includes("set_order_discount") ? " — ¿SQL 024?" : ""));
+    await refresh();
+    toast.success("Descuento aplicado");
+  }
+
   function openPay() {
     if (!order) return;
     if (!(order.order_items || []).length) {
@@ -304,7 +337,7 @@ export function PosBoard({ restaurantId, tables, products, categories, initialOr
                     : `Mesa ${tableMap.get(activeTableId)?.number}`}
                 </h2>
                 <p className="text-sm text-[var(--color-espresso)]">
-                  Estado: {order?.status || "—"} · {itemCount} ítem(s)
+                  Estado: {order ? statusMeta(order.status).label : "—"} · {itemCount} ítem(s)
                 </p>
               </div>
               <button
@@ -424,7 +457,8 @@ export function PosBoard({ restaurantId, tables, products, categories, initialOr
                   <li key={`${i.order_id}-${i.product_id}`} className="border border-[var(--color-warm-stone)] p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="font-semibold">{p?.name || "Producto"}</p>
+                        <p className={`font-semibold ${itemStatusMeta(i.status).color}`}>{p?.name || "Producto"}</p>
+                        <p className="text-[10px] font-bold uppercase text-[var(--color-walnut)]">{itemStatusMeta(i.status).label}</p>
                         {i.notes ? (
                           <p className="text-xs text-[var(--color-saffron-glow)]">{i.notes}</p>
                         ) : null}
@@ -455,6 +489,31 @@ export function PosBoard({ restaurantId, tables, products, categories, initialOr
               ) : null}
             </ul>
             <div className="border-t border-[var(--color-warm-stone)] p-4">
+              <div className="mb-3 grid grid-cols-3 gap-2">
+                <select
+                  value={orderDiscount.type}
+                  onChange={(e) => setOrderDiscount((d) => ({ ...d, type: e.target.value }))}
+                  className="h-10 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-1 text-xs"
+                >
+                  <option value="">Sin desc.</option>
+                  <option value="porcentaje">% </option>
+                  <option value="monto">$</option>
+                </select>
+                <input
+                  value={orderDiscount.value}
+                  onChange={(e) => setOrderDiscount((d) => ({ ...d, value: e.target.value.replace(/[^\d.]/g, "") }))}
+                  placeholder="0"
+                  className="h-10 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-2 text-sm"
+                />
+                <button type="button" onClick={applyOrderDiscount} className="h-10 text-[10px] font-semibold uppercase">
+                  Aplicar
+                </button>
+              </div>
+              {subtotal !== total ? (
+                <p className="mb-1 flex justify-between text-sm text-[var(--color-espresso)]">
+                  <span>Subtotal</span><span>{money(subtotal)}</span>
+                </p>
+              ) : null}
               <p className="mb-3 flex justify-between text-lg font-semibold">
                 <span>Total</span>
                 <span>{money(total)}</span>

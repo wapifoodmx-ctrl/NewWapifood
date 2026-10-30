@@ -416,7 +416,7 @@ export function DigitalMenu({
                   onChange={(e) => setTableId(e.target.value)}
                 >
                   <option value="">Selecciona</option>
-                  {tables.map((t) => (
+                  {tables.filter((t) => t.state !== "no_disponible" && t.active !== false).map((t) => (
                     <option key={t.id} value={t.id}>
                       Mesa {t.number}
                     </option>

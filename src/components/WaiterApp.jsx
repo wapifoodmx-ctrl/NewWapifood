@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
 import { toast } from "@/components/ui/Toast";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
-import { statusMeta } from "@/lib/orderStatus";
+import { statusMeta, itemStatusMeta } from "@/lib/orderStatus";
 
 const SESSION_KEY = "wapifood_waiter_session";
 
@@ -66,7 +66,7 @@ export function WaiterApp({
     }
     const { data: act } = await supabase
       .from("orders")
-      .select("id,status,source,opened_at,waiter_id,order_items(product_id,qty),dining_tables(number)")
+      .select("id,status,source,opened_at,waiter_id,order_items(product_id,qty,status),dining_tables(number)")
       .eq("restaurant_id", restaurantId)
       .in("table_id", tableIds)
       .in("status", ["abierta", "cocina", "lista", "pendiente"])
@@ -361,8 +361,8 @@ export function WaiterApp({
                 </div>
                 <ul className="mt-2 text-sm text-[var(--color-espresso)]">
                   {(o.order_items || []).map((i) => (
-                    <li key={`${o.id}-${i.product_id}`}>
-                      {i.qty}× {productName(i.product_id)}
+                    <li key={`${o.id}-${i.product_id}`} className={itemStatusMeta(i.status).color}>
+                      {i.qty}× {productName(i.product_id)} · {itemStatusMeta(i.status).label}
                     </li>
                   ))}
                 </ul>
