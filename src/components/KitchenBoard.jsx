@@ -4,16 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
-import { statusMeta } from "@/lib/orderStatus";
+import { statusMeta, itemStatusMeta } from "@/lib/orderStatus";
 
 /**
- * Cocina — paridad VistaCocina + modalCocina del Front.
+ * Cocina alineada a VistaCocina + modalCocina (status por ÍTEM).
  */
 export function KitchenBoard({ restaurantId, initialOrders, products }) {
   const [orders, setOrders] = useState(initialOrders);
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [live, setLive] = useState(false);
+  const [queue, setQueue] = useState("pendientes"); // pendientes | preparados | todos
   const supabase = useMemo(() => createClient(), []);
   const nameOf = (id) => products.find((p) => p.id === id)?.name || "Producto";
 
@@ -21,10 +22,10 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
     const { data, error } = await supabase
       .from("orders")
       .select(
-        "id,status,source,order_type,customer_phone,delivery_address,opened_at,needs_confirmation,public_code,order_items(product_id,qty,unit_price,notes),dining_tables(number)",
+        "id,status,source,order_type,customer_phone,delivery_address,opened_at,needs_confirmation,public_code,table_id,order_items(product_id,qty,unit_price,notes,status),dining_tables(number,channel_type)",
       )
       .eq("restaurant_id", restaurantId)
-      .in("status", ["cocina", "lista", "pendiente"])
+      .in("status", ["cocina", "lista", "pendiente", "abierta", "entregada"])
       .order("opened_at", { ascending: true });
     if (error) {
       toast.error(error.message);
@@ -40,13 +41,14 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "orders", filter: `restaurant_id=eq.${restaurantId}` },
-        () => {
-          refresh();
-        },
+        () => refresh(),
       )
-      .subscribe((status) => {
-        setLive(status === "SUBSCRIBED");
-      });
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "order_items" },
+        () => refresh(),
+      )
+      .subscribe((status) => setLive(status === "SUBSCRIBED"));
     const t = setInterval(refresh, 10000);
     return () => {
       clearInterval(t);
@@ -55,14 +57,57 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurantId]);
 
-  async function markReady(id) {
+  const filtered = useMemo(() => {
+    return orders.filter((o) => {
+      if (o.status === "pendiente") return queue === "todos" || queue === "pendientes";
+      const items = o.order_items || [];
+      const active = items.filter((i) => i.status !== "cancelado");
+      const allPrep = active.length > 0 && active.every((i) => i.status === "preparado");
+      const anyPend = items.some((i) => i.status === "pendiente" || !i.status);
+      if (queue === "todos") return true;
+      if (queue === "preparados") return allPrep || o.status === "lista" || o.status === "entregada";
+      // pendientes de cocina
+      return anyPend || o.status === "cocina" || o.status === "abierta" || o.status === "pendiente";
+    });
+  }, [orders, queue]);
+
+  async function setItemStatus(orderId, productId, status) {
     setLoading(true);
-    const { error } = await supabase.from("orders").update({ status: "lista" }).eq("id", id);
+    const { data, error } = await supabase.rpc("set_order_item_status", {
+      p_order: orderId,
+      p_product: productId,
+      p_status: status,
+    });
+    setLoading(false);
+    if (error) {
+      toast.error(error.message + (error.message?.includes("set_order_item_status") ? " — ¿SQL 023?" : ""));
+      return;
+    }
+    toast.success(
+      status === "preparado" ? "Producto preparado" : status === "cancelado" ? "Producto cancelado" : "Regresado a pendiente",
+    );
+    await refresh();
+    if (detail?.id === orderId) {
+      const { data: o } = await supabase
+        .from("orders")
+        .select(
+          "id,status,source,order_type,customer_phone,delivery_address,opened_at,public_code,order_items(product_id,qty,unit_price,notes,status),dining_tables(number,channel_type)",
+        )
+        .eq("id", orderId)
+        .maybeSingle();
+      if (o) setDetail(o);
+    }
+    return data;
+  }
+
+  async function markAllPreparado(orderId) {
+    setLoading(true);
+    const { error } = await supabase.rpc("mark_order_items_preparado", { p_order: orderId });
     setLoading(false);
     if (error) return toast.error(error.message);
-    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: "lista" } : o)));
-    if (detail?.id === id) setDetail((d) => ({ ...d, status: "lista" }));
-    toast.success("Orden lista");
+    toast.success("Comanda marcada preparada");
+    await refresh();
+    setDetail(null);
   }
 
   async function confirmWeb(id) {
@@ -70,25 +115,18 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
     const { error } = await supabase.rpc("confirm_web_order", { p_order: id });
     setLoading(false);
     if (error) return toast.error(error.message);
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === id ? { ...o, status: "cocina", needs_confirmation: false } : o,
-      ),
-    );
-    if (detail?.id === id) {
-      setDetail((d) => ({ ...d, status: "cocina", needs_confirmation: false }));
-    }
     toast.success("Encargo confirmado → cocina");
+    await refresh();
   }
 
-  async function markServed(id) {
+  async function markDelivered(id) {
     setLoading(true);
     const { error } = await supabase.from("orders").update({ status: "entregada" }).eq("id", id);
     setLoading(false);
     if (error) return toast.error(error.message);
-    setOrders((prev) => prev.filter((o) => o.id !== id));
-    setDetail(null);
     toast.success("Marcada entregada");
+    await refresh();
+    setDetail(null);
   }
 
   function elapsed(openedAt) {
@@ -97,191 +135,206 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
     return `${mins} min`;
   }
 
-  if (orders.length === 0) {
-    return (
-      <div className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-8 text-center">
-        <p className="text-2xl font-normal">Cocina libre</p>
-        <p className="mt-2 text-[var(--color-espresso)]">
-          Las comandas aparecen al enviarse desde POS, mesero, tablet, kiosko o web confirmado.
-        </p>
-        <button
-          type="button"
-          onClick={refresh}
-          className="mt-4 h-11 rounded-[3px] bg-[var(--color-parchment)] px-5 text-xs font-semibold uppercase"
-        >
-          Actualizar
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="relative">
       <LoadingOverlay visible={loading} message="Actualizando cocina…" />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-[var(--color-espresso)]">
-          {live ? "En vivo (Realtime)" : "Sincronizando…"} · respaldo cada 10 s · {orders.length} comanda(s)
+          {live ? "En vivo" : "Sincronizando…"} · status por producto (lógica Front)
         </p>
-        <button
-          type="button"
-          onClick={refresh}
-          className="h-10 rounded-[3px] bg-[var(--color-parchment)] px-4 text-xs font-semibold uppercase"
-        >
-          Actualizar ahora
-        </button>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {orders.map((order) => {
-          const meta = statusMeta(order.status);
-          return (
-            <article
-              key={order.id}
-              className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4"
+        <div className="flex flex-wrap gap-1">
+          {[
+            { id: "pendientes", label: "Por preparar" },
+            { id: "preparados", label: "Preparados" },
+            { id: "todos", label: "Todos" },
+          ].map((q) => (
+            <button
+              key={q.id}
+              type="button"
+              onClick={() => setQueue(q.id)}
+              className={`h-9 rounded-[3px] px-3 text-xs font-semibold uppercase ${
+                queue === q.id
+                  ? "bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]"
+                  : "bg-[var(--color-paper)]"
+              }`}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h3 className="text-2xl font-normal">
-                    {order.order_type === "domicilio"
-                      ? "Domicilio"
-                      : `Mesa ${order.dining_tables?.number ?? "?"}`}
-                  </h3>
-                  <p className="text-xs text-[var(--color-walnut)]">
-                    {(order.source || "pos").toUpperCase()}
-                    {order.opened_at ? ` · ${elapsed(order.opened_at)}` : ""}
-                    {order.public_code ? ` · ${order.public_code}` : ""}
-                  </p>
-                </div>
-                <span className={`rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase text-white ${meta.color}`}>
-                  {meta.label}
-                </span>
-              </div>
-
-              <ul className="my-3 space-y-1">
-                {(order.order_items || []).slice(0, 4).map((i) => (
-                  <li key={`${order.id}-${i.product_id}`} className="text-base">
-                    <span className="font-semibold">{i.qty}×</span> {nameOf(i.product_id)}
-                    {i.notes ? (
-                      <span className="block text-xs text-[var(--color-saffron-glow)]">{i.notes}</span>
-                    ) : null}
-                  </li>
-                ))}
-                {(order.order_items || []).length > 4 ? (
-                  <li className="text-xs text-[var(--color-walnut)]">
-                    +{(order.order_items || []).length - 4} más…
-                  </li>
-                ) : null}
-              </ul>
-
-              <div className="grid gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDetail(order)}
-                  className="h-10 rounded-[3px] border border-[var(--color-warm-stone)] text-xs font-semibold uppercase"
-                >
-                  Ver detalle
-                </button>
-                {order.status === "pendiente" ? (
-                  <button
-                    type="button"
-                    onClick={() => confirmWeb(order.id)}
-                    className="h-11 rounded-[3px] bg-[var(--color-saffron-glow)] text-xs font-semibold uppercase text-[var(--color-midnight-roast)]"
-                  >
-                    Confirmar → cocina
-                  </button>
-                ) : order.status === "cocina" ? (
-                  <button
-                    type="button"
-                    onClick={() => markReady(order.id)}
-                    className="h-11 rounded-[3px] bg-[var(--color-sage)] text-xs font-semibold uppercase text-white"
-                  >
-                    Marcar lista
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => markServed(order.id)}
-                    className="h-11 rounded-[3px] bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]"
-                  >
-                    Marcar entregada
-                  </button>
-                )}
-              </div>
-            </article>
-          );
-        })}
+              {q.label}
+            </button>
+          ))}
+          <button type="button" onClick={refresh} className="h-9 rounded-[3px] bg-[var(--color-parchment)] px-3 text-xs font-semibold uppercase">
+            Actualizar
+          </button>
+        </div>
       </div>
 
-      {/* Modal detalle — paridad modalCocina */}
+      {!filtered.length ? (
+        <div className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-8 text-center">
+          <p className="text-2xl font-normal">Sin comandas en esta cola</p>
+        </div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((order) => {
+            const meta = statusMeta(order.status);
+            const isCaja = order.dining_tables?.channel_type === "caja";
+            return (
+              <article key={order.id} className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-2xl font-normal">
+                      {order.order_type === "domicilio"
+                        ? "Domicilio"
+                        : isCaja
+                          ? "Caja"
+                          : `Mesa ${order.dining_tables?.number ?? "?"}`}
+                    </h3>
+                    <p className="text-xs text-[var(--color-walnut)]">
+                      {(order.source || "pos").toUpperCase()}
+                      {order.opened_at ? ` · ${elapsed(order.opened_at)}` : ""}
+                    </p>
+                  </div>
+                  <span className={`rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase text-white ${meta.color}`}>
+                    {meta.label}
+                  </span>
+                </div>
+
+                <ul className="my-3 space-y-2">
+                  {(order.order_items || []).map((i) => {
+                    const im = itemStatusMeta(i.status || "pendiente");
+                    return (
+                      <li key={`${order.id}-${i.product_id}`} className="text-sm">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className={im.color}>
+                            <span className="font-semibold">{i.qty}×</span> {nameOf(i.product_id)}
+                          </span>
+                          <span className="text-[10px] font-bold uppercase text-[var(--color-walnut)]">
+                            {im.label}
+                          </span>
+                        </div>
+                        {i.notes ? <p className="text-xs text-[var(--color-saffron-glow)]">{i.notes}</p> : null}
+                        {order.status !== "pendiente" && (i.status || "pendiente") !== "cancelado" ? (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {(i.status || "pendiente") === "pendiente" ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="text-[10px] font-semibold uppercase text-[var(--color-sage)]"
+                                  onClick={() => setItemStatus(order.id, i.product_id, "preparado")}
+                                >
+                                  Preparado
+                                </button>
+                                <button
+                                  type="button"
+                                  className="text-[10px] font-semibold uppercase text-[var(--color-wine)]"
+                                  onClick={() => setItemStatus(order.id, i.product_id, "cancelado")}
+                                >
+                                  Cancelar
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                className="text-[10px] font-semibold uppercase"
+                                onClick={() => setItemStatus(order.id, i.product_id, "pendiente")}
+                              >
+                                Regresar
+                              </button>
+                            )}
+                          </div>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <div className="grid gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDetail(order)}
+                    className="h-10 rounded-[3px] border border-[var(--color-warm-stone)] text-xs font-semibold uppercase"
+                  >
+                    Ver detalle
+                  </button>
+                  {order.status === "pendiente" ? (
+                    <button
+                      type="button"
+                      onClick={() => confirmWeb(order.id)}
+                      className="h-11 rounded-[3px] bg-[var(--color-saffron-glow)] text-xs font-semibold uppercase"
+                    >
+                      Confirmar → cocina
+                    </button>
+                  ) : order.status === "lista" || order.status === "entregada" ? (
+                    <button
+                      type="button"
+                      onClick={() => markDelivered(order.id)}
+                      className="h-11 rounded-[3px] bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]"
+                    >
+                      {order.status === "entregada" ? "Entregada ✓" : "Marcar entregada"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => markAllPreparado(order.id)}
+                      className="h-11 rounded-[3px] bg-[var(--color-sage)] text-xs font-semibold uppercase text-white"
+                    >
+                      {isCaja ? "Todo preparado (caja)" : "Todo preparado"}
+                    </button>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+
       {detail ? (
         <div className="fixed inset-0 z-[1600] flex items-center justify-center bg-black/45 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto border border-[var(--color-warm-stone)] bg-[var(--color-paper)] shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto border border-[var(--color-warm-stone)] bg-[var(--color-paper)]">
             <div className="sticky top-0 flex items-center justify-between border-b border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-4 py-3">
               <div>
                 <h2 className="text-2xl font-normal">
                   {detail.order_type === "domicilio"
-                    ? "Pedido a domicilio"
-                    : `Mesa ${detail.dining_tables?.number ?? "?"}`}
+                    ? "Domicilio"
+                    : detail.dining_tables?.channel_type === "caja"
+                      ? "Caja"
+                      : `Mesa ${detail.dining_tables?.number ?? "?"}`}
                 </h2>
-                <p className="text-xs text-[var(--color-walnut)]">
-                  {(detail.source || "").toUpperCase()} · {statusMeta(detail.status).label}
-                  {detail.public_code ? ` · ${detail.public_code}` : ""}
-                </p>
+                <p className="text-xs text-[var(--color-walnut)]">{statusMeta(detail.status).label}</p>
               </div>
               <button type="button" onClick={() => setDetail(null)} className="text-xs font-semibold uppercase">
                 Cerrar
               </button>
             </div>
-            <div className="p-4">
+            <div className="space-y-3 p-4">
               {detail.order_type === "domicilio" ? (
-                <div className="mb-4 border border-[var(--color-saffron-glow)] bg-[var(--color-parchment)] p-3 text-sm">
-                  <p className="font-semibold">Entrega</p>
-                  <p>{detail.delivery_address || "Sin dirección"}</p>
-                  {detail.customer_phone ? <p>Tel: {detail.customer_phone}</p> : null}
+                <div className="border border-[var(--color-saffron-glow)] bg-[var(--color-parchment)] p-3 text-sm">
+                  <p>{detail.delivery_address}</p>
+                  <p>{detail.customer_phone}</p>
                 </div>
               ) : null}
-              <ul className="space-y-3">
-                {(detail.order_items || []).map((i) => (
-                  <li key={`${detail.id}-${i.product_id}`} className="border-b border-[var(--color-warm-stone)] pb-2">
-                    <p className="text-lg">
-                      <span className="font-semibold">{i.qty}×</span> {nameOf(i.product_id)}
+              {(detail.order_items || []).map((i) => {
+                const im = itemStatusMeta(i.status || "pendiente");
+                return (
+                  <div key={`${detail.id}-${i.product_id}`} className="border-b border-[var(--color-warm-stone)] pb-2">
+                    <p className={`text-lg ${im.color}`}>
+                      {i.qty}× {nameOf(i.product_id)} · {im.label}
                     </p>
-                    {i.notes ? (
-                      <p className="text-sm text-[var(--color-saffron-glow)]">Nota: {i.notes}</p>
+                    {i.notes ? <p className="text-sm text-[var(--color-saffron-glow)]">{i.notes}</p> : null}
+                    {detail.status !== "pendiente" && (i.status || "pendiente") !== "cancelado" ? (
+                      <div className="mt-1 flex gap-2">
+                        {(i.status || "pendiente") === "pendiente" ? (
+                          <>
+                            <button type="button" className="text-xs font-semibold uppercase text-[var(--color-sage)]" onClick={() => setItemStatus(detail.id, i.product_id, "preparado")}>Preparado</button>
+                            <button type="button" className="text-xs font-semibold uppercase text-[var(--color-wine)]" onClick={() => setItemStatus(detail.id, i.product_id, "cancelado")}>Cancelar</button>
+                          </>
+                        ) : (
+                          <button type="button" className="text-xs font-semibold uppercase" onClick={() => setItemStatus(detail.id, i.product_id, "pendiente")}>Regresar</button>
+                        )}
+                      </div>
                     ) : null}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-4 grid gap-2">
-                {detail.status === "pendiente" ? (
-                  <button
-                    type="button"
-                    onClick={() => confirmWeb(detail.id)}
-                    className="h-12 rounded-[3px] bg-[var(--color-saffron-glow)] text-xs font-semibold uppercase"
-                  >
-                    Confirmar → cocina
-                  </button>
-                ) : null}
-                {detail.status === "cocina" ? (
-                  <button
-                    type="button"
-                    onClick={() => markReady(detail.id)}
-                    className="h-12 rounded-[3px] bg-[var(--color-sage)] text-xs font-semibold uppercase text-white"
-                  >
-                    Marcar lista
-                  </button>
-                ) : null}
-                {detail.status === "lista" ? (
-                  <button
-                    type="button"
-                    onClick={() => markServed(detail.id)}
-                    className="h-12 rounded-[3px] bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]"
-                  >
-                    Marcar entregada
-                  </button>
-                ) : null}
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

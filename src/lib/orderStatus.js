@@ -1,39 +1,47 @@
+/** Estados de ORDEN (New alineado a semántica Front) */
 export const ORDER_STATUS = {
   pendiente: {
     label: "Por confirmar",
-    detail: "El restaurante debe confirmar tu pedido",
+    detail: "Encargo web/domicilio pendiente de confirmar",
     color: "bg-[var(--color-walnut)]",
   },
   abierta: {
     label: "En mesa",
-    detail: "Cuenta abierta en piso",
+    detail: "Cuenta abierta (aún no enviada o en piso)",
     color: "bg-[var(--color-espresso)]",
   },
   cocina: {
-    label: "Preparando",
-    detail: "Tu pedido se está preparando",
+    label: "En cocina",
+    detail: "Hay productos pendientes de preparar",
     color: "bg-[var(--color-saffron-glow)]",
   },
   lista: {
-    label: "Lista",
-    detail: "¡Listo! Ya puedes pasar o te lo llevan",
+    label: "Preparado",
+    detail: "Todos los productos activos están preparados (Front: comanda completed)",
     color: "bg-[var(--color-sage)]",
   },
   entregada: {
     label: "Entregada",
-    detail: "Pedido entregado en mesa",
+    detail: "Entregada en mesa / lista para cobro",
     color: "bg-[var(--color-sage)]",
   },
   pagada: {
-    label: "Pagada",
-    detail: "Cuenta cerrada",
+    label: "Finalizado",
+    detail: "Cobrada / cerrada (Front: Finalizado)",
     color: "bg-[var(--color-onyx-warm)]",
   },
   cancelada: {
-    label: "Cancelada",
-    detail: "Este pedido fue cancelado",
+    label: "Cancelado",
+    detail: "Orden cancelada",
     color: "bg-[var(--color-wine)]",
   },
+};
+
+/** Estados de ÍTEM (paridad Front updateProductStatus) */
+export const ITEM_STATUS = {
+  pendiente: { label: "Pendiente", color: "text-[var(--color-espresso)]" },
+  preparado: { label: "Preparado", color: "text-[var(--color-sage)]" },
+  cancelado: { label: "Cancelado", color: "text-[var(--color-wine)] line-through" },
 };
 
 export function statusMeta(status) {
@@ -44,4 +52,8 @@ export function statusMeta(status) {
       color: "bg-[var(--color-walnut)]",
     }
   );
+}
+
+export function itemStatusMeta(status) {
+  return ITEM_STATUS[status] || ITEM_STATUS.pendiente;
 }

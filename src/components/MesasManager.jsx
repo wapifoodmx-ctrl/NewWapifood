@@ -80,6 +80,18 @@ export function MesasManager({ restaurantId, initialTables }) {
     setTables((xs) => xs.map((x) => (x.id === t.id ? data : x)));
   }
 
+  
+  async function setState(t, state) {
+    const supabase = createClient();
+    const { error } = await supabase.rpc("set_table_state", { p_table: t.id, p_state: state });
+    if (error) {
+      // fallback direct update
+      const { error: e2 } = await supabase.from("dining_tables").update({ state }).eq("id", t.id);
+      if (e2) return toast?.error ? toast.error(error.message) : alert(error.message);
+    }
+    setItems((xs) => xs.map((x) => (x.id === t.id ? { ...x, state } : x)));
+  }
+
   async function toggle(t) {
     const supabase = createClient();
     const { data, error } = await supabase
@@ -149,6 +161,9 @@ export function MesasManager({ restaurantId, initialTables }) {
               <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" onClick={() => toggle(t)} className="text-xs font-semibold">
                   {t.active ? "Desactivar" : "Activar"}
+                </button>
+                <button type="button" onClick={() => setState(t, t.state === "no_disponible" ? "libre" : "no_disponible")} className="text-xs font-semibold">
+                  {t.state === "no_disponible" ? "Habilitar" : "No disponible"}
                 </button>
                 <button
                   type="button"

@@ -34,8 +34,9 @@ export function PosBoard({ restaurantId, tables, products, categories, initialOr
   const tableMap = useMemo(() => new Map(tables.map((t) => [t.id, t])), [tables]);
   const productMap = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
 
-  const floorTables = tables.filter((t) => t.channel_type !== "kiosko" && t.active !== false);
-  const sortedTables = [...floorTables].sort((a, b) => {
+  const floorTables = tables.filter((t) => t.channel_type !== "kiosko" && t.active !== false && t.state !== "no_disponible");
+  const allFloor = tables.filter((t) => t.channel_type !== "kiosko" && t.active !== false);
+  const sortedTables = [...allFloor].sort((a, b) => {
     const rank = (t) => (t.channel_type === "caja" ? 0 : 1);
     return rank(a) - rank(b) || Number(a.number) - Number(b.number);
   });
@@ -162,9 +163,13 @@ export function PosBoard({ restaurantId, tables, products, categories, initialOr
       return;
     }
     setLoading(true);
-    const { error } = await supabase.from("orders").update({ status: "cocina" }).eq("id", order.id);
+    const { error } = await supabase.rpc("send_order_to_kitchen", { p_order: order.id });
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      // fallback si aún no corre SQL 023
+      const { error: e2 } = await supabase.from("orders").update({ status: "cocina" }).eq("id", order.id);
+      if (e2) return toast.error(error.message);
+    }
     await refresh();
     setCartOpen(false);
     toast.success("Enviado a cocina");
@@ -266,7 +271,7 @@ export function PosBoard({ restaurantId, tables, products, categories, initialOr
               <button
                 key={t.id}
                 type="button"
-                onClick={() => openTable(t.id)}
+                onClick={() => t.state === "no_disponible" ? toast.warning("Mesa no disponible") : openTable(t.id)}
                 className={`min-h-[72px] border px-2 py-2 text-left ${
                   active
                     ? "border-[var(--color-onyx-warm)] bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]"
@@ -277,7 +282,7 @@ export function PosBoard({ restaurantId, tables, products, categories, initialOr
                   {t.channel_type === "caja" ? "Caja" : `Mesa ${t.number}`}
                 </span>
                 <span className="text-[11px] opacity-80">
-                  {live ? `Ocupada · ${live.status}` : "Libre"}
+                  {t.state === "no_disponible" ? "No disponible" : live ? `Ocupada · ${live.status}` : "Libre"}
                 </span>
               </button>
             );
