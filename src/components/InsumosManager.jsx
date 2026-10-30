@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import { confirmAsync } from "@/components/ui/confirm";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
+import { baseUnit, fromBase, toBase, unitLabel, UNIT_OPTIONS } from "@/lib/units";
 import { AppModal } from "@/components/ui/AppModal";
 import { StockMovesList } from "@/components/StockMovesList";
 import {
@@ -80,11 +81,13 @@ export function InsumosManager({
 
   function startEdit(i) {
     setEditingId(i.id);
+    const stockDisp = fromBase(i.stock ?? 0, i.unit || "pza");
+    const minDisp = fromBase(i.min_stock ?? 0, i.unit || "pza");
     setForm({
       name: i.name,
-      unit: i.unit || "pza",
-      stock: String(i.stock ?? 0),
-      min_stock: String(i.min_stock ?? 0),
+      unit: stockDisp.unit,
+      stock: String(stockDisp.qty),
+      min_stock: String(minDisp.qty),
       kind: i.kind || "no_perecedero",
       expires_on: i.expires_on || "",
       notes: i.notes || "",
@@ -94,19 +97,23 @@ export function InsumosManager({
   async function onSave(e) {
     e.preventDefault();
     if (!form.name.trim()) return toast.error("Nombre obligatorio");
-    const stock = Number(form.stock);
-    const min_stock = Number(form.min_stock);
-    if (Number.isNaN(stock) || stock < 0) return toast.error("Stock inválido");
-    if (Number.isNaN(min_stock) || min_stock < 0) return toast.error("Mínimo inválido");
+    const stockIn = Number(form.stock);
+    const minIn = Number(form.min_stock);
+    if (Number.isNaN(stockIn) || stockIn < 0) return toast.error("Stock inválido");
+    if (Number.isNaN(minIn) || minIn < 0) return toast.error("Mínimo inválido");
+
+    // Paridad Front: kilos→gramos, litros→ml al guardar
+    const stockBase = toBase(stockIn, form.unit);
+    const minBase = toBase(minIn, form.unit);
 
     setLoading(true);
     const supabase = createClient();
     const payload = {
       restaurant_id: restaurantId,
       name: form.name.trim(),
-      unit: form.unit || "pza",
-      stock,
-      min_stock,
+      unit: stockBase.unit,
+      stock: stockBase.qty,
+      min_stock: minBase.qty,
       kind: form.kind || "no_perecedero",
       expires_on: form.kind === "perecedero" && form.expires_on ? form.expires_on : null,
       notes: form.notes?.trim() || null,
@@ -281,7 +288,7 @@ export function InsumosManager({
                               {ing.kind === "perecedero" ? "Perecedero" : "No perecedero"}
                             </p>
                             <p className="text-sm text-[var(--color-espresso)]">
-                              mín. {ing.min_stock} {ing.unit}
+                              mín. {fromBase(ing.min_stock, ing.unit).qty} {unitLabel(fromBase(ing.min_stock, ing.unit).unit)}
                             </p>
                             {ing.expires_on ? (
                               <p className={`text-xs ${expired ? "text-[var(--color-wine)]" : expiring ? "text-[var(--color-saffron-glow)]" : "text-[var(--color-walnut)]"}`}>
@@ -291,8 +298,13 @@ export function InsumosManager({
                             ) : null}
                           </div>
                           <p className={`text-2xl font-semibold ${low ? "text-[var(--color-wine)]" : ""}`}>
-                            {ing.stock}
-                            <span className="ml-1 text-sm font-normal">{ing.unit}</span>
+                            {fromBase(ing.stock, ing.unit).qty}
+                            <span className="ml-1 text-sm font-normal">{unitLabel(fromBase(ing.stock, ing.unit).unit)}</span>
+                            {fromBase(ing.stock, ing.unit).unit !== baseUnit(ing.unit) ? (
+                              <span className="mt-0.5 block text-[10px] font-normal text-[var(--color-walnut)]">
+                                ({fromBase(ing.stock, ing.unit, { forceSmall: true }).qty} {unitLabel(baseUnit(ing.unit))})
+                              </span>
+                            ) : null}
                           </p>
                         </div>
                         {low ? <p className="mt-2 text-xs font-semibold text-[var(--color-wine)]">Stock bajo</p> : null}
@@ -324,11 +336,9 @@ export function InsumosManager({
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <label className="block text-xs font-semibold uppercase">Unidad
                     <select className="mt-1 h-11 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-2 font-normal normal-case" value={form.unit} onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}>
-                      <option value="pza">pza</option>
-                      <option value="kg">kg</option>
-                      <option value="g">g</option>
-                      <option value="l">l</option>
-                      <option value="ml">ml</option>
+                      {UNIT_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
                     </select>
                   </label>
                   <label className="block text-xs font-semibold uppercase">Stock
