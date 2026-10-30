@@ -126,25 +126,6 @@ export default function LandingPage() {
 
       <PricingSection />
 
-      <section className="border-t border-[var(--color-line)] bg-[var(--color-ink)] py-14 text-[var(--color-cream)]">
-        <div className="mx-auto max-w-6xl px-4 text-center">
-          <SplitText
-            {...TITLE}
-            tag="h2"
-            text="Listo para tu restaurante"
-            className="text-3xl"
-            textAlign="center"
-          />
-          <p className="mx-auto mt-3 max-w-xl text-[var(--color-cream)]/75">
-            Crea tu cuenta en minutos. Nosotros preparamos tu espacio de trabajo
-            automáticamente.
-          </p>
-          <Link href="/login" className="mt-6 inline-flex h-12 items-center rounded-full bg-[var(--color-ember)] px-6 font-semibold text-white">
-            Crear mi cuenta
-          </Link>
-        </div>
-      </section>
-
       <footer className="mx-auto max-w-6xl px-4 py-8 text-sm text-[var(--color-muted)]">
         Wapifood · software de operación para restaurantes ·{" "}
         <Link href="/terminos" className="underline">
