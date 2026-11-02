@@ -77,7 +77,7 @@ export default async function InsumosPage() {
       setupOnly={setupOnly}
     >
       <p className="mb-4 max-w-2xl text-[var(--color-muted)]">
-        Inventario unificado (paridad con `/inventarios` del Front): insumos, kardex, mermas, entradas y PIN.
+        Registra lo que tienes en cocina o almacén (harina, carne, refrescos…). Si un producto tiene receta, al cobrar se descuenta solo. El PIN evita que cualquiera edite el inventario.
       </p>
       {loadError ? (
         <p className="mb-4 border border-[var(--color-wine)] bg-[var(--color-paper)] p-3 text-sm text-[var(--color-wine)]">

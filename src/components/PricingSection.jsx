@@ -167,7 +167,7 @@ export function PricingSection() {
                 </ul>
                 <Link
                   href="/login"
-                  className={`mt-6 inline-flex h-12 items-center justify-center rounded-full text-sm font-semibold ${
+                  className={`mt-auto inline-flex h-12 w-full shrink-0 items-center justify-center rounded-full px-4 text-center text-sm font-semibold ${
                     plan.popular
                       ? "bg-[var(--color-ember)] text-white"
                       : "bg-[var(--color-ink)] text-[var(--color-cream)]"
@@ -186,10 +186,10 @@ export function PricingSection() {
                 fade={0.65}
                 spotlight={0.45}
                 glow={0.35}
-                className="flex flex-col"
-                style={{ width: "100%", height: "auto", minHeight: "420px", display: "block", padding: "1.5rem" }}
+                className="flex h-full flex-col"
+                style={{ width: "100%", height: "100%", minHeight: "480px", display: "flex", flexDirection: "column", padding: "1.5rem" }}
               >
-                {body}
+                <div className="flex h-full flex-col gap-1">{body}</div>
               </PixelCard>
             );
           })}

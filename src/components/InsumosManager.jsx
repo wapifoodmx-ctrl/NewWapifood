@@ -360,6 +360,9 @@ export function InsumosManager({
 
               <form onSubmit={onSave} className="h-fit border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
                 <h2 className="text-xl font-normal">{editingId ? "Editar insumo" : "Nuevo insumo"}</h2>
+        <p className="mt-1 text-xs text-[var(--color-espresso)]">
+          Un insumo es un material que consumes al preparar platillos (ej. 5 kg de tortilla). La unidad se guarda en gramos/ml si eliges kilos o litros.
+        </p>
                 <label className="mt-3 block text-xs font-semibold uppercase">Nombre
                   <input className="mt-1 h-11 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-3 font-normal normal-case" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
                 </label>

@@ -180,7 +180,17 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
       const supabase = createClient();
       const url = await uploadPublicImage(supabase, restaurantId, file, "products");
       setForm((f) => ({ ...f, image_url: url }));
-      toast.success("Foto lista. Guarda el producto.");
+      if (editingId) {
+        const { error } = await supabase
+          .from("products")
+          .update({ image_url: url })
+          .eq("id", editingId);
+        if (error) throw error;
+        setProducts((ps) => ps.map((x) => (x.id === editingId ? { ...x, image_url: url } : x)));
+        toast.success("Foto del producto guardada.");
+      } else {
+        toast.success("Foto lista. Guarda el producto para publicarla.");
+      }
     } catch (e2) {
       toast.error(e2.message || "No se pudo subir la imagen");
     } finally {
