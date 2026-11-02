@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import { confirmAsync } from "@/components/ui/confirm";
@@ -14,9 +14,42 @@ const CHANNELS = [
 
 export function MesasManager({ restaurantId, initialTables }) {
   const [tables, setTables] = useState(initialTables);
+  const [live, setLive] = useState(false);
   const [number, setNumber] = useState("");
   const [seats, setSeats] = useState("2");
   const [channel, setChannel] = useState("piso");
+
+  useEffect(() => {
+    setTables(initialTables || []);
+  }, [initialTables]);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+    const supabase = createClient();
+
+    async function pull() {
+      const { data } = await supabase
+        .from("dining_tables")
+        .select("id,number,seats,channel_type,state,active,access_pin")
+        .eq("restaurant_id", restaurantId)
+        .order("number");
+      if (data) setTables(data);
+    }
+
+    const ch = supabase
+      .channel(`mesas-live-${restaurantId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dining_tables", filter: `restaurant_id=eq.${restaurantId}` },
+        () => pull(),
+      )
+      .subscribe((status) => setLive(status === "SUBSCRIBED"));
+
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [restaurantId]);
+
   const [pin, setPin] = useState("");
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
@@ -179,7 +212,8 @@ export function MesasManager({ restaurantId, initialTables }) {
       </div>
 
       <form onSubmit={addTable} className="h-fit rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-4">
-        <h2 className="text-xl font-semibold">Nueva mesa / canal</h2>
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-sage)]">{live ? "En vivo · estados de mesa" : "Conectando…"}</p>
+      <h2 className="text-xl font-semibold">Nueva mesa / canal</h2>
         <label className="mt-3 block text-sm font-semibold">
           Número
           <input

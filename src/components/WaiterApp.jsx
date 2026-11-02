@@ -91,7 +91,35 @@ export function WaiterApp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, tab]);
 
-  async function login(e) {
+  
+  useEffect(() => {
+    if (!session || !restaurantId) return;
+    loadOrders();
+    const channel = supabase
+      .channel(`waiter-live-${restaurantId}-${session.waiter_id || "x"}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders", filter: `restaurant_id=eq.${restaurantId}` },
+        () => loadOrders(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "order_items" },
+        () => loadOrders(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dining_tables", filter: `restaurant_id=eq.${restaurantId}` },
+        () => loadOrders(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, restaurantId]);
+
+async function login(e) {
     e.preventDefault();
     setError("");
     if (!canOperate) {

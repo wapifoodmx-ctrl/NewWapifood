@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
 import { itemStatusMeta, statusMeta } from "@/lib/orderStatus";
@@ -11,8 +11,10 @@ import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 /**
  * POS — paridad gradual con Puntodeventa (CarritoModal + ModalsPago).
  */
-export function PosBoard({ restaurantId, tables, products, categories, initialOrders }) {
+export function PosBoard({ restaurantId, tables: initialTables, products, categories, initialOrders }) {
+  const [tables, setTables] = useState(initialTables || []);
   const [orders, setOrders] = useState(initialOrders);
+  const [live, setLive] = useState(false);
   const [activeTableId, setActiveTableId] = useState(null);
   const [catFilter, setCatFilter] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,6 +29,62 @@ export function PosBoard({ restaurantId, tables, products, categories, initialOr
   const [orderDiscount, setOrderDiscount] = useState({ type: "", value: "" });
 
   const supabase = useMemo(() => createClient(), []);
+
+  // Realtime: órdenes + estados de mesa
+  useEffect(() => {
+    setTables(initialTables || []);
+  }, [initialTables]);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+
+    async function pullOrders() {
+      const { data } = await supabase
+        .from("orders")
+        .select(
+          "id,status,source,table_id,opened_at,public_code,order_items(product_id,qty,unit_price,notes,status,discount_type,discount_value),dining_tables(number,channel_type,state)",
+        )
+        .eq("restaurant_id", restaurantId)
+        .neq("status", "pagada")
+        .neq("status", "cancelada")
+        .order("opened_at", { ascending: false })
+        .limit(80);
+      if (data) setOrders(data);
+    }
+
+    async function pullTables() {
+      const { data } = await supabase
+        .from("dining_tables")
+        .select("id,number,seats,channel_type,state,active,access_pin")
+        .eq("restaurant_id", restaurantId)
+        .order("number");
+      if (data) setTables(data);
+    }
+
+    const channel = supabase
+      .channel(`pos-live-${restaurantId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders", filter: `restaurant_id=eq.${restaurantId}` },
+        () => pullOrders(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "order_items" },
+        () => pullOrders(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dining_tables", filter: `restaurant_id=eq.${restaurantId}` },
+        () => pullTables(),
+      )
+      .subscribe((status) => setLive(status === "SUBSCRIBED"));
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [restaurantId, supabase]);
+
 
   const order = orders.find(
     (o) => o.table_id === activeTableId && o.status !== "pagada" && o.status !== "cancelada",
@@ -287,6 +345,11 @@ export function PosBoard({ restaurantId, tables, products, categories, initialOr
 
   return (
     <div className="relative grid gap-4 lg:grid-cols-[240px_1fr]">
+      {live ? (
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-sage)]">En vivo · mesas y órdenes</p>
+      ) : (
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-walnut)]">Conectando tiempo real…</p>
+      )}
       <LoadingOverlay visible={loading} message="Procesando POS…" />
 
       {/* Mesas */}
