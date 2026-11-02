@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { DigitalMenu } from "@/components/DigitalMenu";
 import { loadPublicMenu } from "@/lib/publicMenu";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function KioskPage({ params }) {
   const { restaurantId } = await params;
@@ -20,13 +21,16 @@ export default async function KioskPage({ params }) {
     );
   }
 
-  const kioskTable =
-    data.tables.find((t) => t.channel_type === "kiosko") ||
-    data.tables[0] ||
-    null;
-
-  // loadPublicMenu may not return channel_type - fetch tables with type via products path
-  // tables from publicMenu might lack channel_type if select limited - update publicMenu
+  const supabase = await createClient();
+  let kioskTable = data.tables.find((t) => t.channel_type === "kiosko") || null;
+  if (!kioskTable) {
+    const { data: kid } = await supabase.rpc("ensure_kiosk_table", {
+      p_restaurant: restaurantId,
+    });
+    if (kid) {
+      kioskTable = { id: kid, number: 99, channel_type: "kiosko" };
+    }
+  }
 
   return (
     <DigitalMenu
