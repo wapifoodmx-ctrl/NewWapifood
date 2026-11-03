@@ -15,6 +15,9 @@ export const MODULES = [
   { id: "kiosko", title: "Kiosko", href: "/kiosko", group: "ops" },
   { id: "pagos", title: "Pagos / plan", href: "/pagos", group: "setup" },
   { id: "equipo", title: "Equipo", href: "/equipo", group: "setup" },
+  { id: "listas", title: "Listas", href: "/listas", group: "setup" },
+  { id: "importar", title: "Importar", href: "/importar", group: "setup" },
+  { id: "masa", title: "Masa", href: "/masa", group: "ops" },
 ];
 
 export function modulesForMode() {

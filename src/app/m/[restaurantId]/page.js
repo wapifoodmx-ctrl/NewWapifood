@@ -43,6 +43,7 @@ export default async function PublicMenuPage({ params }) {
       requireConfirmCode={data.profile?.require_confirm_code !== false}
       deliveryEnabled={!!data.profile?.delivery_enabled}
       orderSource="web_menu"
+      productExtras={data.extras || []}
     />
   );
 }

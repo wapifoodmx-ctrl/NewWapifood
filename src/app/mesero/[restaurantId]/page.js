@@ -17,6 +17,7 @@ export default async function MeseroRestaurantPage({ params }) {
       categories={data.categories}
       tables={data.tables}
       canOperate={data.canOperate}
+      productExtras={data.extras || []}
     />
   );
 }

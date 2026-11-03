@@ -16,13 +16,15 @@ import {
  * Recetas — qty siempre se guarda en unidad BASE del insumo (g/ml/pza),
  * como WapifoodFront (kilos↔gramos, litros↔ml en UI).
  */
-export function RecetasManager({ products, ingredients, categories = [], initialLines, focusProductId = null }) {
+export function RecetasManager({ products, ingredients, categories = [], initialLines, initialExtras = [], focusProductId = null }) {
   const [lines, setLines] = useState(initialLines);
+  const [extras, setExtras] = useState(initialExtras);
   const [productId, setProductId] = useState(focusProductId || products[0]?.id || "");
   const [ingredientId, setIngredientId] = useState(ingredients[0]?.id || "");
   const [qty, setQty] = useState("50");
   const [useLarge, setUseLarge] = useState(false); // true = capturar en kg o L
   const [err, setErr] = useState("");
+  const [extraPrice, setExtraPrice] = useState("0");
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("");
 
@@ -135,6 +137,57 @@ export function RecetasManager({ products, ingredients, categories = [], initial
     toast.success("Línea eliminada");
   }
 
+  const extraIngredients = ingredients.filter((i) => i.is_extra);
+
+  async function addExtra(e) {
+    e.preventDefault();
+    if (!productId || !ingredientId) {
+      toast.error("Elige producto e insumo adicional");
+      return;
+    }
+    if (!extraIngredients.some((i) => i.id === ingredientId)) {
+      toast.error("Ese insumo no está marcado como adicional");
+      return;
+    }
+    const price = Number(extraPrice);
+    if (Number.isNaN(price) || price < 0) {
+      toast.error("Precio inválido");
+      return;
+    }
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("product_extras")
+      .upsert(
+        { product_id: productId, ingredient_id: ingredientId, qty: 1, extra_price: price },
+        { onConflict: "product_id,ingredient_id" },
+      )
+      .select("*")
+      .single();
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setExtras((list) => {
+      const rest = list.filter((row) => !(row.product_id === productId && row.ingredient_id === ingredientId));
+      return [...rest, data];
+    });
+    toast.success("Adicional guardado");
+  }
+
+  async function removeExtra(product_id, ingredient_id) {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("product_extras")
+      .delete()
+      .eq("product_id", product_id)
+      .eq("ingredient_id", ingredient_id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setExtras((list) => list.filter((row) => !(row.product_id === product_id && row.ingredient_id === ingredient_id)));
+  }
+
   function formatLineQty(line) {
     const ing = ingMap.get(line.ingredient_id);
     const b = ing ? baseUnit(ing.unit) : "pza";
@@ -203,6 +256,26 @@ export function RecetasManager({ products, ingredients, categories = [], initial
             ) : (
               <p className="mt-2 text-sm text-[var(--color-walnut)]">Sin receta (no descuenta stock al cobrar).</p>
             )}
+            {extras.filter((row) => row.product_id === p.id).length ? (
+              <ul className="mt-3 space-y-1 border-t border-[var(--color-warm-stone)] pt-2 text-sm">
+                {extras
+                  .filter((row) => row.product_id === p.id)
+                  .map((row) => (
+                    <li key={`${row.product_id}-${row.ingredient_id}`} className="flex justify-between gap-2">
+                      <span>
+                        Adicional · {ingMap.get(row.ingredient_id)?.name || "Insumo"} · ${Number(row.extra_price) || 0}
+                      </span>
+                      <button
+                        type="button"
+                        className="text-xs font-semibold text-[var(--color-wine)]"
+                        onClick={() => removeExtra(row.product_id, row.ingredient_id)}
+                      >
+                        Quitar
+                      </button>
+                    </li>
+                  ))}
+              </ul>
+            ) : null}
           </article>
         ))}
       </div>
@@ -283,6 +356,29 @@ export function RecetasManager({ products, ingredients, categories = [], initial
         >
           Guardar línea
         </button>
+        <button
+          type="button"
+          onClick={addExtra}
+          className="mt-2 h-11 w-full rounded-[3px] border border-[var(--color-warm-stone)] text-xs font-semibold uppercase"
+        >
+          Guardar como adicional
+        </button>
+        <label className="mt-2 block text-xs font-semibold uppercase">
+          Precio del adicional
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={extraPrice}
+            onChange={(e) => setExtraPrice(e.target.value)}
+            className="mt-1 h-11 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-3 font-normal normal-case"
+          />
+        </label>
+        {!extraIngredients.length ? (
+          <p className="mt-2 text-xs text-[var(--color-walnut)]">
+            Marca insumos como adicional en Insumos para ofrecerlos en el menú y en caja.
+          </p>
+        ) : null}
       </form>
     </div>
   );

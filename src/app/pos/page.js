@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { AppShell } from "@/components/AppShell";
 import { requireTenantOperational } from "@/lib/auth";
 import { PosBoard } from "@/components/PosBoard";
+import { normalizeExtraRow } from "@/lib/extras";
 
 export default async function PosPage() {
   const { supabase, membership, operational, setupOnly } = await requireTenantOperational();
@@ -14,7 +15,7 @@ export default async function PosPage() {
     );
   }
   const rid = membership.restaurant_id;
-  const [{ data: tables }, { data: products }, { data: categories }, { data: orders }] =
+  const [{ data: tables }, { data: products }, { data: categories }, { data: orders }, extrasResult] =
     await Promise.all([
       supabase.from("dining_tables").select("*").eq("restaurant_id", rid).eq("active", true).order("number"),
       supabase.from("products").select("*").eq("restaurant_id", rid).eq("active", true).order("name"),
@@ -25,6 +26,9 @@ export default async function PosPage() {
         .eq("restaurant_id", rid)
         .neq("status", "pagada")
         .neq("status", "cancelada"),
+      supabase
+        .from("product_extras")
+        .select("product_id,ingredient_id,qty,extra_price,ingredients(name,unit)"),
     ]);
 
   return (
@@ -35,6 +39,13 @@ export default async function PosPage() {
         products={products || []}
         categories={categories || []}
         initialOrders={orders || []}
+        productExtras={
+          extrasResult.error
+            ? []
+            : (extrasResult.data || [])
+                .map(normalizeExtraRow)
+                .filter((row) => row && (products || []).some((p) => p.id === row.product_id))
+        }
       />
     </AppShell>
   );

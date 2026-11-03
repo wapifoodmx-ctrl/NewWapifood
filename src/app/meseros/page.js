@@ -2,10 +2,11 @@ export const dynamic = "force-dynamic";
 
 import { AppShell } from "@/components/AppShell";
 import { WaitersPanel } from "@/components/WaitersPanel";
-import { requireTenantWithPlan, requireTenantSetup, requireTenant } from "@/lib/auth";
+import { requireTenantSetup } from "@/lib/auth";
+import { planMeta } from "@/lib/plans";
 
 export default async function MeserosPage() {
-  const { supabase, membership, operational, setupOnly } = await requireTenantSetup();
+  const { supabase, membership, operational, setupOnly, plan } = await requireTenantSetup();
   if (!membership?.restaurant_id) {
     return <AppShell title="Meseros" operational={operational} setupOnly={setupOnly}><p>Sin restaurante.</p></AppShell>;
   }
@@ -22,6 +23,23 @@ export default async function MeserosPage() {
     assignments = data || [];
   }
 
+  const stats = {};
+  const paid = await supabase
+    .from("orders")
+    .select("waiter_id, order_items(qty, unit_price)")
+    .eq("restaurant_id", rid)
+    .eq("status", "pagada");
+  if (!paid.error) {
+    for (const order of paid.data || []) {
+      if (!order.waiter_id) continue;
+      const sales = (order.order_items || []).reduce((s, i) => s + Number(i.unit_price) * Number(i.qty), 0);
+      const row = stats[order.waiter_id] || { tickets: 0, sales: 0 };
+      row.tickets += 1;
+      row.sales += sales;
+      stats[order.waiter_id] = row;
+    }
+  }
+
   return (
     <AppShell title="Meseros" restaurantName={membership.restaurants?.name} role={membership.role} operational={operational} setupOnly={setupOnly}>
       <p className="mb-4 text-[var(--color-muted)]">
@@ -32,6 +50,8 @@ export default async function MeserosPage() {
         initialWaiters={waiters || []}
         tables={tables || []}
         initialAssignments={assignments}
+        waiterLimit={planMeta(plan?.plan).meseros}
+        stats={stats}
       />
     </AppShell>
   );

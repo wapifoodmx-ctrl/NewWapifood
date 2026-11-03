@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
+import { money } from "@/lib/format";
 
-export function WaitersPanel({ restaurantId, initialWaiters, tables, initialAssignments }) {
+export function WaitersPanel({ restaurantId, initialWaiters, tables, initialAssignments, waiterLimit = 99, stats = {} }) {
   const [waiters, setWaiters] = useState(initialWaiters);
   const [assignments, setAssignments] = useState(initialAssignments || []);
   const [name, setName] = useState("");
@@ -17,6 +18,11 @@ export function WaitersPanel({ restaurantId, initialWaiters, tables, initialAssi
     setError("");
     if (!/^\d{4,8}$/.test(code)) {
       setError("El código debe ser de 4 a 8 dígitos.");
+      return;
+    }
+    if (waiters.filter((w) => w.active !== false).length >= waiterLimit) {
+      setError(`Tu plan permite ${waiterLimit} meseros activos.`);
+      toast.warning(`Tope del plan: ${waiterLimit} meseros`);
       return;
     }
     const supabase = createClient();
@@ -97,6 +103,7 @@ export function WaitersPanel({ restaurantId, initialWaiters, tables, initialAssi
                   <p className="font-semibold">{w.name}</p>
                   <p className="text-sm text-[var(--color-muted)]">
                     código {w.access_code} · {w.active === false ? "inactivo" : "activo"} · {assignedFor(w.id).length} mesas
+                    {stats[w.id] ? ` · ${stats[w.id].tickets} tickets · ${money(stats[w.id].sales)}` : ""}
                   </p>
                 </button>
                 <div className="flex flex-col gap-1 text-right text-sm font-semibold">

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { mpFetch, parseExternalReference, planAmount } from "@/lib/mercadopago";
+import { mpFetch, parseExternalReference, planAmount, verifyMercadoPagoWebhook } from "@/lib/mercadopago";
 
 /**
  * Webhook Mercado Pago (como ApiWapifood /payments/webhook):
@@ -35,6 +35,21 @@ async function activateFromPayment(paymentId) {
   ends.setDate(ends.getDate() + days);
 
   const admin = createAdminClient();
+
+  const rpc = await admin.rpc("activate_plan", {
+    p_restaurant: restaurantId,
+    p_plan: planId,
+    p_billing: billing,
+    p_provider: "mercadopago",
+    p_provider_ref: String(paymentId),
+  });
+  if (!rpc.error) {
+    return { ok: true, reason: "activado" };
+  }
+  const rpcMsg = rpc.error.message || "";
+  if (!/no autenticado|permission denied|42501|webhook/i.test(rpcMsg)) {
+    return { ok: false, reason: rpcMsg };
+  }
 
   // Idempotencia: ya activado con este payment id
   const { data: existing } = await admin
@@ -99,7 +114,12 @@ async function handle(request) {
     // Normaliza action payment.created → payment
     if (topic && String(topic).includes("payment")) topic = "payment";
 
+    const signatureId = url.searchParams.get("data.id") || paymentId;
     if (topic === "payment" && paymentId) {
+      const signature = verifyMercadoPagoWebhook(request, signatureId);
+      if (!signature.ok) {
+        return NextResponse.json({ status: "unauthorized", reason: signature.reason }, { status: 401 });
+      }
       const result = await activateFromPayment(paymentId);
       return NextResponse.json({ status: "success", ...result });
     }

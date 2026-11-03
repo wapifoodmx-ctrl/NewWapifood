@@ -6,6 +6,8 @@ import { money } from "@/lib/format";
 import { itemStatusMeta, statusMeta } from "@/lib/orderStatus";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
+import { OrderComments } from "@/components/OrderComments";
+import { downloadTicketPdf } from "@/lib/ticketPdf";
 
 export function TicketCard({ order, productNames = {}, onChanged }) {
   const meta = statusMeta(order.status);
@@ -59,6 +61,23 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
 <script>window.onload=function(){window.print();}</script>
 </body></html>`);
     w.document.close();
+  }
+
+  function pdfTicket() {
+    const code = order.public_code || order.id?.slice(0, 8);
+    const lines = [
+      "Wapifood",
+      `Mesa ${order.dining_tables?.number ?? "-"}  ${order.source || "pos"}`,
+      `${meta.label}  ${order.method || ""}`,
+      `Codigo ${code}`,
+      "",
+      ...(order.order_items || []).map(
+        (i) => `${i.qty} x ${productName(i.product_id)}  ${money(Number(i.unit_price) * Number(i.qty))}`,
+      ),
+      "",
+      `Total ${money(total)}`,
+    ];
+    downloadTicketPdf({ filename: `ticket-${code}.pdf`, lines });
   }
 
   async function cancel() {
@@ -121,6 +140,9 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
         <button type="button" onClick={printTicket} className="wf-btn h-10 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-4">
           Imprimir
         </button>
+        <button type="button" onClick={pdfTicket} className="wf-btn h-10 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-4">
+          PDF
+        </button>
         <Link href={beeperHref} className="wf-btn flex h-10 items-center border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-4">
           Ver beeper
         </Link>
@@ -130,6 +152,7 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
           </button>
         ) : null}
       </div>
+      <OrderComments orderId={order.id} />
     </article>
   );
 }

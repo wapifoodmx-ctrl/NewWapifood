@@ -10,15 +10,18 @@ export function useInventoryUnlock(restaurantId, hasPin) {
   const [unlocked, setUnlocked] = useState(!hasPin);
 
   useEffect(() => {
-    if (!hasPin) {
-      setUnlocked(true);
-      return;
-    }
-    try {
-      setUnlocked(sessionStorage.getItem(KEY) === restaurantId);
-    } catch {
-      setUnlocked(false);
-    }
+    const kick = setTimeout(() => {
+      if (!hasPin) {
+        setUnlocked(true);
+        return;
+      }
+      try {
+        setUnlocked(sessionStorage.getItem(KEY) === restaurantId);
+      } catch {
+        setUnlocked(false);
+      }
+    }, 0);
+    return () => clearTimeout(kick);
   }, [restaurantId, hasPin]);
 
   function lock() {

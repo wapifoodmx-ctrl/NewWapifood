@@ -44,6 +44,7 @@ export default async function KioskPage({ params }) {
       deliveryEnabled={!!data.profile?.delivery_enabled}
       orderSource="kiosko"
       fixedTableId={kioskTable?.id || null}
+      productExtras={data.extras || []}
     />
   );
 }

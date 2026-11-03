@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getSiteUrl, mpFetch, planAmount } from "@/lib/mercadopago";
+import { getSiteUrl, mpCurrency, mpFetch, planAmount } from "@/lib/mercadopago";
 
 export async function POST(request) {
   try {
@@ -58,7 +58,7 @@ export async function POST(request) {
             title: `Wapifood · ${titles[planId]} (${billing})`,
             quantity: 1,
             unit_price: Number(amount),
-            currency_id: "MXN",
+            currency_id: mpCurrency(),
           },
         ],
         payer: { email: auth.user.email },

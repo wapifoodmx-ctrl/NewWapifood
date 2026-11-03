@@ -1,0 +1,73 @@
+name: Supabase
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Rechaza seed y wipe dentro de migrations
+        run: |
+          set -euo pipefail
+          if find supabase/migrations -type f \( -iname '*wipe*' -o -iname '*seed*' \) | grep -q .; then
+            echo "Hay un seed o wipe en supabase/migrations. Esos SQL viven en supabase/legacy y no se autoejecutan."
+            exit 1
+          fi
+          shopt -s nullglob
+          files=(supabase/migrations/*.sql)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No hay migraciones."
+            exit 1
+          fi
+          for f in "${files[@]}"; do
+            base=$(basename "$f")
+            if ! [[ "$base" =~ ^[0-9]{14}_.+\.sql$ ]]; then
+              echo "Nombre inválido (se espera YYYYMMDDHHMMSS_nombre.sql): $base"
+              exit 1
+            fi
+          done
+      - name: Aplica y lintea las migraciones en Postgres local
+        run: |
+          supabase db start
+          supabase migration up --include-all
+          supabase db lint --level warning --fail-on error
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Link y db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_ACCESS_TOKEN}" ] || [ -z "${SUPABASE_DB_PASSWORD}" ] || [ -z "${SUPABASE_PROJECT_ID}" ]; then
+            echo "Faltan secrets SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD o SUPABASE_PROJECT_ID."
+            echo "Hugo debe crearlos en GitHub. Ver docs/DEPLOY.md."
+            exit 1
+          fi
+          supabase link --project-ref "$SUPABASE_PROJECT_ID" --yes
+          plan=$(supabase db push --dry-run --remote "$SUPABASE_PROJECT_ID" -p "$SUPABASE_DB_PASSWORD" --yes)
+          echo "$plan"
+          if echo "$plan" | grep -q "20261103230000"; then
+            echo "La baseline se aplicaría sobre la base viva."
+            echo "Hugo debe marcarla antes del primer push a main:"
+            echo "  supabase link --project-ref \"\$SUPABASE_PROJECT_ID\" --yes"
+            echo "  supabase migration repair --status applied 20261103230000 --remote -p \"\$SUPABASE_DB_PASSWORD\""
+            exit 1
+          fi
+          supabase db push --remote "$SUPABASE_PROJECT_ID" -p "$SUPABASE_DB_PASSWORD" --yes

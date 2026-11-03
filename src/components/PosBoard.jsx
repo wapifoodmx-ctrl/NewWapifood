@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
+import { extrasCharge, extrasForProduct, lineAmount } from "@/lib/extras";
 import { itemStatusMeta, statusMeta } from "@/lib/orderStatus";
+import { ExtrasLines, ExtrasPicker } from "@/components/ExtrasPicker";
+import { isMissingRelation } from "@/lib/schema";
 import { toast } from "@/components/ui/Toast";
 import { confirmAsync } from "@/components/ui/confirm";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
@@ -11,7 +14,7 @@ import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 /**
  * POS — paridad gradual con Puntodeventa (CarritoModal + ModalsPago).
  */
-export function PosBoard({ restaurantId, tables: initialTables, products, categories, initialOrders }) {
+export function PosBoard({ restaurantId, tables: initialTables, products, categories, initialOrders, productExtras = [] }) {
   const [tables, setTables] = useState(initialTables || []);
   const [orders, setOrders] = useState(initialOrders);
   const [live, setLive] = useState(false);
@@ -26,15 +29,13 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   const [payMethod, setPayMethod] = useState("efectivo");
   const [cashGiven, setCashGiven] = useState("");
   const [noteEdit, setNoteEdit] = useState(null); // { productId, notes }
+  const [extraPick, setExtraPick] = useState(null);
+  const [splitIds, setSplitIds] = useState([]);
   const [orderDiscount, setOrderDiscount] = useState({ type: "", value: "" });
 
   const supabase = useMemo(() => createClient(), []);
 
   // Realtime: órdenes + estados de mesa
-  useEffect(() => {
-    setTables(initialTables || []);
-  }, [initialTables]);
-
   useEffect(() => {
     if (!restaurantId) return;
 
@@ -102,13 +103,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   });
 
   const subtotal = useMemo(() => {
-    return (order?.order_items || []).reduce((s, i) => {
-      if ((i.status || "pendiente") === "cancelado") return s;
-      let line = Number(i.unit_price) * Number(i.qty);
-      if (i.discount_type === "porcentaje") line -= line * (Number(i.discount_value) || 0) / 100;
-      if (i.discount_type === "monto") line -= Number(i.discount_value) || 0;
-      return s + Math.max(0, line);
-    }, 0);
+    return (order?.order_items || []).reduce((s, i) => s + lineAmount(i), 0);
   }, [order]);
 
   const total = useMemo(() => {
@@ -163,7 +158,33 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     toast.success("Mesa abierta");
   }
 
-  async function addItem(product) {
+  function chooseProduct(product) {
+    const extras = extrasForProduct(productExtras, product.id);
+    if (extras.length) {
+      setExtraPick({ product, selected: [] });
+      return;
+    }
+    addItem(product, []);
+  }
+
+  async function saveLineExtras(orderId, productId, selected) {
+    if (!selected?.length) return;
+    const rows = selected.map((extra) => ({
+      order_id: orderId,
+      product_id: productId,
+      ingredient_id: extra.ingredient_id,
+      qty: Number(extra.qty) || 1,
+      extra_price: Number(extra.extra_price) || 0,
+    }));
+    const { error } = await supabase.from("order_item_extras").upsert(rows, {
+      onConflict: "order_id,product_id,ingredient_id",
+    });
+    if (error && !isMissingRelation(error)) {
+      toast.error(error.message);
+    }
+  }
+
+  async function addItem(product, selected = []) {
     if (!order) {
       toast.warning("Elige una mesa primero");
       return;
@@ -177,14 +198,20 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         .eq("order_id", order.id)
         .eq("product_id", product.id);
     } else {
-      await supabase.from("order_items").insert({
+      const { error } = await supabase.from("order_items").insert({
         order_id: order.id,
         product_id: product.id,
         qty: 1,
         unit_price: product.price,
         notes: null,
       });
+      if (error) {
+        setLoading(false);
+        toast.error(error.message);
+        return;
+      }
     }
+    await saveLineExtras(order.id, product.id, selected);
     await refresh();
     setLoading(false);
     toast.info(`${product.name} agregado`);
@@ -290,41 +317,109 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     toast.success("Descuento aplicado");
   }
 
-  function openPay() {
+  const chargeItems = splitIds.length
+    ? (order?.order_items || []).filter((i) => splitIds.includes(i.product_id))
+    : null;
+  const chargeTotal = chargeItems ? chargeItems.reduce((s, i) => s + lineAmount(i), 0) : total;
+
+  function openPay(onlyMarked = false) {
     if (!order) return;
-    if (!(order.order_items || []).length) {
+    if (onlyMarked) {
+      if (!splitIds.length) {
+        toast.warning("Marca los productos que se cobran aparte");
+        return;
+      }
+    } else if (!(order.order_items || []).length) {
       toast.warning("No hay productos que cobrar");
       return;
     }
+    if (!onlyMarked) setSplitIds([]);
     setPayMethod("efectivo");
     setCashGiven("");
     setPayOpen(true);
+  }
+
+  async function moveMarkedLines() {
+    const lines = (order.order_items || []).filter((i) => splitIds.includes(i.product_id));
+    const { data: created, error } = await supabase
+      .from("orders")
+      .insert({
+        restaurant_id: restaurantId,
+        table_id: order.table_id,
+        status: "entregada",
+        source: "pos",
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    for (const line of lines) {
+      const { error: insErr } = await supabase.from("order_items").insert({
+        order_id: created.id,
+        product_id: line.product_id,
+        qty: line.qty,
+        unit_price: line.unit_price,
+        notes: line.notes || null,
+        status: line.status || "pendiente",
+      });
+      if (insErr) throw insErr;
+      const extras = await supabase
+        .from("order_item_extras")
+        .select("ingredient_id,qty,extra_price")
+        .eq("order_id", order.id)
+        .eq("product_id", line.product_id);
+      if (!extras.error && extras.data?.length) {
+        await supabase.from("order_item_extras").insert(
+          extras.data.map((x) => ({
+            order_id: created.id,
+            product_id: line.product_id,
+            ingredient_id: x.ingredient_id,
+            qty: x.qty,
+            extra_price: x.extra_price,
+          })),
+        );
+      }
+      await supabase.from("order_items").delete().eq("order_id", order.id).eq("product_id", line.product_id);
+    }
+    return { id: created.id, emptied: lines.length === (order.order_items || []).length };
   }
 
   async function confirmPay() {
     if (!order) return;
     if (payMethod === "efectivo") {
       const given = Number(cashGiven);
-      if (!Number.isNaN(given) && given > 0 && given < total) {
+      if (!Number.isNaN(given) && given > 0 && given < chargeTotal) {
         toast.error("El efectivo recibido es menor al total");
         return;
       }
     }
     setLoading(true);
+    let targetId = order.id;
+    let emptied = false;
+    try {
+      if (splitIds.length) {
+        const moved = await moveMarkedLines();
+        targetId = moved.id;
+        emptied = moved.emptied;
+      }
+    } catch (e) {
+      setLoading(false);
+      toast.error(e.message || "No se pudo separar la cuenta");
+      return;
+    }
     const snapshot = {
-      items: (order.order_items || []).map((i) => ({
+      items: (splitIds.length ? chargeItems : order.order_items || []).map((i) => ({
         name: productMap.get(i.product_id)?.name || "Producto",
         qty: i.qty,
-        line: Number(i.unit_price) * Number(i.qty),
+        line: lineAmount(i),
         notes: i.notes,
       })),
-      total,
+      total: chargeTotal,
       method: payMethod,
       table: tableMap.get(order.table_id)?.number,
       cashGiven: payMethod === "efectivo" ? Number(cashGiven) || null : null,
     };
     const { error } = await supabase.rpc("close_order", {
-      p_order: order.id,
+      p_order: targetId,
       p_method: payMethod,
     });
     setLoading(false);
@@ -332,16 +427,22 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       toast.error(error.message);
       return;
     }
+    if (emptied) {
+      await supabase.rpc("cancel_order", { p_order: order.id, p_reason: "Cuenta separada y cobrada" });
+    }
     setLastTicket(snapshot);
     setPayOpen(false);
-    setCartOpen(false);
-    setActiveTableId(null);
+    setSplitIds([]);
+    if (!splitIds.length || emptied) {
+      setCartOpen(false);
+      setActiveTableId(null);
+    }
     await refresh();
-    toast.success(`Cobrado con ${payMethod}`);
+    toast.success(splitIds.length ? `Parte cobrada con ${payMethod}` : `Cobrado con ${payMethod}`);
   }
 
   const change =
-    payMethod === "efectivo" && Number(cashGiven) > 0 ? Number(cashGiven) - total : null;
+    payMethod === "efectivo" && Number(cashGiven) > 0 ? Number(cashGiven) - chargeTotal : null;
 
   return (
     <div className="relative grid gap-4 lg:grid-cols-[240px_1fr]">
@@ -443,11 +544,14 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => addItem(p)}
+                  onClick={() => chooseProduct(p)}
                   className="min-h-16 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-3 py-2 text-left"
                 >
                   <span className="block font-semibold">{p.name}</span>
                   <span className="text-sm text-[var(--color-espresso)]">{money(p.price)}</span>
+                  {extrasForProduct(productExtras, p.id).length ? (
+                    <span className="mt-1 block text-[10px] font-semibold uppercase text-[var(--color-saffron-glow)]">Adicionales</span>
+                  ) : null}
                 </button>
               ))}
             </div>
@@ -525,11 +629,24 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                         {i.notes ? (
                           <p className="text-xs text-[var(--color-saffron-glow)]">{i.notes}</p>
                         ) : null}
+                        <ExtrasLines extras={i.order_item_extras} />
                       </div>
-                      <span className="font-semibold">{money(Number(i.unit_price) * Number(i.qty))}</span>
+                      <span className="font-semibold">{money(lineAmount(i))}</span>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <button type="button" onClick={() => changeQty(i.product_id, -1)} className="h-9 w-9 border border-[var(--color-warm-stone)] font-bold">
+                      <label className="flex items-center gap-1 text-[11px] font-semibold uppercase">
+                        <input
+                          type="checkbox"
+                          checked={splitIds.includes(i.product_id)}
+                          onChange={() =>
+                            setSplitIds((ids) =>
+                              ids.includes(i.product_id) ? ids.filter((id) => id !== i.product_id) : [...ids, i.product_id],
+                            )
+                          }
+                        />
+                        Separar
+                      </label>
+                      <button type="button" onClick={() => changeQty(i.product_id, -1)} className="h-9 w-9 border border-[var(--color-warm-stone)] font-bold" aria-label="Quitar uno">
                         −
                       </button>
                       <span className="w-8 text-center font-semibold">{i.qty}</span>
@@ -585,8 +702,11 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 <button type="button" onClick={sendKitchen} className="h-12 rounded-[3px] bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]">
                   Enviar a cocina
                 </button>
-                <button type="button" onClick={openPay} className="h-12 rounded-[3px] border border-[var(--color-warm-stone)] text-xs font-semibold uppercase">
+                <button type="button" onClick={() => openPay(false)} className="h-12 rounded-[3px] border border-[var(--color-warm-stone)] text-xs font-semibold uppercase">
                   Cobrar
+                </button>
+                <button type="button" onClick={() => openPay(true)} className="h-12 rounded-[3px] text-xs font-semibold uppercase text-[var(--color-saffron-glow)] sm:col-span-2">
+                  Cobrar solo lo marcado
                 </button>
               </div>
             </div>
@@ -618,12 +738,56 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         </div>
       ) : null}
 
+      {extraPick ? (
+        <div className="fixed inset-0 z-[1700] flex items-end justify-center bg-black/50 p-4 sm:items-center" role="presentation">
+          <div role="dialog" aria-modal="true" aria-labelledby="pos-extras-title" className="max-h-[90vh] w-full max-w-md overflow-y-auto border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-5">
+            <h2 id="pos-extras-title" className="text-2xl font-normal">{extraPick.product.name}</h2>
+            <p className="text-sm text-[var(--color-espresso)]">
+              {money(Number(extraPick.product.price) + extrasCharge(extraPick.selected))}
+            </p>
+            <ExtrasPicker
+              extras={extrasForProduct(productExtras, extraPick.product.id)}
+              selected={extraPick.selected}
+              onToggle={(extra) =>
+                setExtraPick((pick) => {
+                  if (!pick) return pick;
+                  const has = pick.selected.some((item) => item.ingredient_id === extra.ingredient_id);
+                  return {
+                    ...pick,
+                    selected: has
+                      ? pick.selected.filter((item) => item.ingredient_id !== extra.ingredient_id)
+                      : [...pick.selected, extra],
+                  };
+                })
+              }
+            />
+            <div className="mt-5 flex gap-2">
+              <button type="button" onClick={() => setExtraPick(null)} className="h-12 flex-1 border border-[var(--color-warm-stone)] text-xs font-semibold uppercase">
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const pick = extraPick;
+                  setExtraPick(null);
+                  addItem(pick.product, pick.selected);
+                }}
+                className="h-12 flex-1 bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]"
+              >
+                Agregar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Modal pago — paridad ModalsPago */}
       {payOpen ? (
         <div className="fixed inset-0 z-[1700] flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-6">
             <h2 className="text-2xl font-normal">Cobrar cuenta</h2>
-            <p className="mt-1 text-3xl font-semibold">{money(total)}</p>
+            <p className="mt-1 text-3xl font-semibold">{money(chargeTotal)}</p>
+            {splitIds.length ? <p className="text-xs text-[var(--color-espresso)]">Solo los productos marcados.</p> : null}
             <div className="mt-4 grid grid-cols-3 gap-2">
               {["efectivo", "tarjeta", "transferencia"].map((m) => (
                 <button
