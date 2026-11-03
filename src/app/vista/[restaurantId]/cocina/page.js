@@ -19,7 +19,7 @@ export default async function VistaCocinaPage({ params }) {
     .from("orders")
     .select("*, order_items(*), dining_tables(number)")
     .eq("restaurant_id", restaurantId)
-    .in("status", ["cocina", "lista"])
+    .in("status", ["cocina", "lista", "pendiente", "abierta", "entregada"])
     .order("opened_at", { ascending: true });
   const { data: products } = await supabase
     .from("products")
