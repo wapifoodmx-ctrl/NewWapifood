@@ -77,12 +77,14 @@ export default function LoginPage() {
         onSubmit={onSubmit}
         className="w-full max-w-md rounded-3xl border border-[var(--color-line)] bg-[var(--color-paper)] p-6 shadow-sm"
       >
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-ember)]">Wapifood</p>
+        <p className="text-sm font-semibold text-[var(--color-onyx-warm)]">Wapifood</p>
         <h1 className="mt-2 text-3xl">
-          {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
+          {mode === "login" ? "Entra a tu cuenta" : "Crea tu cuenta"}
         </h1>
-        <p className="mt-2 text-sm text-[var(--color-muted)]">
-          SaaS para restaurantes: crea tu cuenta, confirma tu correo y empieza a operar.
+        <p className="mt-2 text-base text-[var(--color-muted)]">
+          {mode === "login"
+            ? "Usa el correo con el que te registraste."
+            : "Después te llega un correo para confirmar. Luego ya puedes armar tu carta."}
         </p>
 
         {mode === "signup" ? (
@@ -124,8 +126,8 @@ export default function LoginPage() {
 
         {mode === "login" ? (
           <div className="mt-2 text-right">
-            <Link href="/recuperar" className="text-sm font-semibold text-[var(--color-ember)]">
-              ¿Olvidaste tu contraseña?
+            <Link href="/recuperar" className="text-sm font-semibold text-[var(--color-onyx-warm)] underline">
+              Olvidé mi contraseña
             </Link>
           </div>
         ) : null}
@@ -140,7 +142,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-5 h-12 w-full rounded-full bg-[var(--color-ink)] font-semibold text-[var(--color-cream)] disabled:opacity-60"
+          className="mt-5 min-h-12 w-full rounded-full bg-[var(--color-ink)] font-semibold text-[var(--color-cream)] disabled:opacity-60"
         >
           {loading ? "Espera…" : mode === "login" ? "Entrar" : "Crear cuenta"}
         </button>

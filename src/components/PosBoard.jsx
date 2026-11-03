@@ -490,7 +490,10 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       {/* Catálogo + resumen */}
       <section className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
         {!activeTableId ? (
-          <p className="text-[var(--color-espresso)]">Selecciona una mesa o la caja para comenzar.</p>
+          <div className="p-6 text-center">
+            <p className="text-2xl font-normal">Elige una mesa para empezar</p>
+            <p className="mt-2 text-base text-[var(--color-muted)]">Toca la caja o una mesa libre. Después solo toca los platillos.</p>
+          </div>
         ) : (
           <>
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -560,7 +563,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
               <button
                 type="button"
                 onClick={sendKitchen}
-                className="h-12 rounded-[3px] bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]"
+                className="min-h-14 rounded-[3px] bg-[var(--color-onyx-warm)] px-3 text-sm font-semibold text-[var(--color-parchment)]"
               >
                 Enviar a cocina
               </button>
@@ -699,7 +702,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 <span>{money(total)}</span>
               </p>
               <div className="grid gap-2 sm:grid-cols-2">
-                <button type="button" onClick={sendKitchen} className="h-12 rounded-[3px] bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]">
+                <button type="button" onClick={sendKitchen} className="min-h-14 rounded-[3px] bg-[var(--color-onyx-warm)] px-3 text-sm font-semibold text-[var(--color-parchment)]">
                   Enviar a cocina
                 </button>
                 <button type="button" onClick={() => openPay(false)} className="h-12 rounded-[3px] border border-[var(--color-warm-stone)] text-xs font-semibold uppercase">

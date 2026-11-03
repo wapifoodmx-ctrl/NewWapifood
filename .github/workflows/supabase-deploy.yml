@@ -61,13 +61,14 @@ jobs:
             exit 1
           fi
           supabase link --project-ref "$SUPABASE_PROJECT_ID" --yes
-          plan=$(supabase db push --dry-run --remote "$SUPABASE_PROJECT_ID" -p "$SUPABASE_DB_PASSWORD" --yes)
+          # CLI 3: db push a secas es local. --remote sin ref usa el proyecto de supabase link.
+          plan=$(supabase db push --dry-run --remote -p "$SUPABASE_DB_PASSWORD" --yes)
           echo "$plan"
           if echo "$plan" | grep -q "20261103230000"; then
             echo "La baseline se aplicaría sobre la base viva."
-            echo "Hugo debe marcarla antes del primer push a main:"
+            echo "Hugo debe marcarla antes:"
             echo "  supabase link --project-ref \"\$SUPABASE_PROJECT_ID\" --yes"
             echo "  supabase migration repair --status applied 20261103230000 --remote -p \"\$SUPABASE_DB_PASSWORD\""
             exit 1
           fi
-          supabase db push --remote "$SUPABASE_PROJECT_ID" -p "$SUPABASE_DB_PASSWORD" --yes
+          supabase db push --remote -p "$SUPABASE_DB_PASSWORD" --yes

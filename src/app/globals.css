@@ -6,8 +6,8 @@
   --color-parchment: #d8cbb8;
   --color-linen: #bfb4a3;
   --color-warm-stone: #b6ab9c;
-  --color-walnut: #978e81;
-  --color-espresso: #615b53;
+  --color-walnut: #4a433b;
+  --color-espresso: #3a342c;
   --color-onyx-warm: #2c2c2c;
   --color-midnight-roast: #292622;
   --color-saffron-glow: #d49653;
@@ -15,7 +15,7 @@
   /* Alias legacy (componentes existentes) */
   --color-ink: var(--color-onyx-warm);
   --color-cream: var(--color-parchment);
-  --color-paper: #f3ebe0;
+  --color-paper: #f7f1e8;
   --color-line: var(--color-warm-stone);
   --color-muted: var(--color-espresso);
   --color-ember: var(--color-saffron-glow);
@@ -27,7 +27,7 @@
 
   --radius-control: 3px;
   --radius-card: 0px;
-  --touch: 44px;
+  --touch: 48px;
 }
 
 @theme {
@@ -139,8 +139,8 @@ button:not(:disabled),
   --color-parchment: #17150f;
   --color-linen: #201d16;
   --color-warm-stone: #3a352b;
-  --color-walnut: #8a8274;
-  --color-espresso: #c4b9a7;
+  --color-walnut: #d5cbbd;
+  --color-espresso: #efe6da;
   --color-onyx-warm: #f1eade;
   --color-saffron-glow: #dfa467;
   --color-paper: #211e18;

@@ -183,9 +183,9 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
 
       {!filtered.length ? (
         <div className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-8 text-center">
-          <p className="text-2xl font-normal">Sin comandas en esta cola</p>
-          <p className="mt-2 text-sm text-[var(--color-espresso)]">
-            {(orders || []).length} órdenes activas en total.
+          <p className="text-2xl font-normal">No hay pedidos en esta lista</p>
+          <p className="mt-2 text-base text-[var(--color-muted)]">
+            Cuando la caja o el mesero envíen algo, aparece aquí.
           </p>
         </div>
       ) : (

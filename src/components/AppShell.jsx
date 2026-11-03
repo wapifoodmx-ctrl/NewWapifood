@@ -1,11 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { MODULES } from "@/lib/modules";
+import { MODULES, NAV_GROUPS, primaryModules } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/client";
 import ThemeToggle from "@/components/ThemeToggle";
 import { HelpChat } from "@/components/HelpChat";
+
+const ROLE_LABEL = {
+  owner: "dueño",
+  admin: "administrador",
+  piso: "piso",
+  cocina: "cocina",
+};
 
 export function AppShell({
   children,
@@ -17,6 +25,8 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [more, setMore] = useState(false);
+  const primary = primaryModules(role);
 
   async function signOut() {
     const supabase = createClient();
@@ -25,64 +35,92 @@ export function AppShell({
     router.refresh();
   }
 
+  function itemClass(href, compact = false) {
+    const on = pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
+    return `flex min-h-12 items-center justify-center rounded-[3px] px-3 text-sm font-semibold ${
+      compact ? "min-w-[4.5rem] flex-1" : ""
+    } ${on ? "bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]" : "bg-[var(--color-paper)] text-[var(--color-onyx-warm)]"}`;
+  }
+
   return (
-    <div className="min-h-screen bg-[var(--color-parchment)] text-[var(--color-onyx-warm)]">
+    <div className="min-h-screen bg-[var(--color-paper)] text-[var(--color-onyx-warm)]">
       {setupOnly ? (
-        <div className="border-b border-[var(--color-saffron-glow)] bg-[var(--color-saffron-glow)] px-4 py-2 text-center text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-midnight-roast)]">
-          Modo configuración —{" "}
-          <Link href="/pagos" className="underline">
-            activa tu plan
-          </Link>{" "}
-          para vender
+        <div className="bg-[var(--color-onyx-warm)] px-4 py-3 text-center text-sm text-[var(--color-parchment)]">
+          Todavía no puedes vender.{" "}
+          <Link href="/pagos" className="font-semibold underline">
+            Elige un plan
+          </Link>
+          {" o "}
+          <Link href="/empezar" className="font-semibold underline">
+            termina la configuración
+          </Link>
+          .
         </div>
       ) : null}
 
-      <header className="sticky top-0 z-20 border-b border-[var(--color-warm-stone)] bg-[var(--color-paper)]/95 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-[var(--color-warm-stone)] bg-[var(--color-paper)]">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
-            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-espresso)]">
+            <p className="truncate text-sm text-[var(--color-muted)]">
               {restaurantName || "Wapifood"}
-              {role ? ` · ${role}` : ""}
-              {operational ? " · activo" : ""}
+              {role ? ` · ${ROLE_LABEL[role] || role}` : ""}
             </p>
-            <h1 className="truncate text-[28px] font-normal leading-none sm:text-[32px]">{title}</h1>
+            <h1 className="truncate text-[1.75rem] font-normal leading-tight sm:text-[2rem]">{title}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <ThemeToggle />
-            <button
-              type="button"
-              onClick={signOut}
-              className="wf-btn h-11 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-4"
-            >
+            <button type="button" onClick={signOut} className="wf-btn border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-4">
               Salir
             </button>
           </div>
         </div>
 
-        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-3 pb-3">
-          {MODULES.map((m) => {
-            const on = pathname === m.href || (m.href !== "/" && pathname.startsWith(`${m.href}/`));
-            const needsPlan = m.group === "ops" && setupOnly;
-            return (
-              <Link
-                key={m.id}
-                href={m.href}
-                title={needsPlan ? "Requiere plan activo" : m.title}
-                className={`flex h-10 shrink-0 items-center rounded-[3px] px-3 text-[12px] font-semibold uppercase tracking-[0.04em] ${
-                  on
-                    ? "bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]"
-                    : "bg-[var(--color-parchment)] text-[var(--color-onyx-warm)]"
-                }`}
-              >
-                {m.title}
-                {needsPlan ? " · plan" : ""}
-              </Link>
-            );
-          })}
+        <nav className="mx-auto hidden max-w-6xl gap-6 px-4 pb-4 lg:flex" aria-label="Secciones">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.id} className="min-w-0">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">{group.label}</p>
+              <div className="flex flex-wrap gap-1">
+                {MODULES.filter((m) => m.nav === group.id).map((m) => (
+                  <Link key={m.id} href={m.href} className={itemClass(m.href)}>
+                    {m.title}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
         </nav>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-6 pb-20">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-6 pb-28 lg:pb-10">{children}</main>
+
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-2 lg:hidden" aria-label="Accesos rápidos">
+        <div className="mx-auto flex max-w-6xl gap-1">
+          {primary.map((m) => (
+            <Link key={m.id} href={m.href} className={itemClass(m.href, true)}>
+              {m.title}
+            </Link>
+          ))}
+          <button type="button" className={itemClass("/mas", true)} onClick={() => setMore((v) => !v)} aria-expanded={more}>
+            Más
+          </button>
+        </div>
+        {more ? (
+          <div className="mx-auto mt-2 max-h-[50vh] max-w-6xl space-y-3 overflow-y-auto border-t border-[var(--color-warm-stone)] pt-2">
+            {NAV_GROUPS.map((group) => (
+              <div key={group.id}>
+                <p className="px-1 text-xs font-semibold uppercase text-[var(--color-muted)]">{group.label}</p>
+                <div className="mt-1 grid grid-cols-2 gap-1">
+                  {MODULES.filter((m) => m.nav === group.id).map((m) => (
+                    <Link key={m.id} href={m.href} onClick={() => setMore(false)} className={itemClass(m.href)}>
+                      {m.title}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </nav>
       <HelpChat />
     </div>
   );

@@ -14,9 +14,9 @@ En el repo, Settings → Secrets and variables → Actions. Nombres exactos, sin
 
 No están en Vercel. El workflow `.github/workflows/supabase-deploy.yml` los usa solo en GitHub Actions.
 
-## 2. Marcar la baseline ANTES del primer push a main
+## 2. Historial
 
-La base viva no tiene historial (`supabase_migrations` no existe). La migración `20261103230000_baseline_live_schema.sql` describe ese esquema. Si `supabase db push` la ejecuta, va a chocar con tablas que ya existen.
+`20261103230000` y `20261103231000` ya están aplicadas en producción. El workflow, después de `supabase link`, corre `supabase db push --remote` sin repetir el id del proyecto: en CLI 3 `--remote` sin valor usa el proyecto enlazado. `db push` sin esa opción es solo local.
 
 En una máquina con el CLI, el repo de este PR y los tres secrets:
 
