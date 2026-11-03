@@ -1,11 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
+import { serviceRoleConfig } from "@/lib/supabase/env";
 
-/** Cliente service role — solo servidor (webhook). */
+/** Cliente service role — solo servidor (webhook). Nunca importar desde componentes cliente. */
 export function createAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error("Falta NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY");
+  const { url, key, configured } = serviceRoleConfig();
+  if (!configured) {
+    throw new Error("Falta SUPABASE_SERVICE_ROLE_KEY o SUPABASE_URL en el servidor");
   }
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },

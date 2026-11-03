@@ -18,15 +18,16 @@ export default async function RecetasPage({ searchParams }) {
   const focusProductId = params?.product || null;
   const rid = membership.restaurant_id;
 
-  const [{ data: products }, { data: ingredients }, { data: lines }, { data: categories }] =
+  const [{ data: products }, { data: ingredients }, { data: lines }, extrasResult, { data: categories }] =
     await Promise.all([
       supabase
         .from("products")
         .select("id,name,category_id,inventory_mode")
         .eq("restaurant_id", rid)
         .order("name"),
-      supabase.from("ingredients").select("id,name,unit").eq("restaurant_id", rid).order("name"),
+      supabase.from("ingredients").select("id,name,unit,is_extra").eq("restaurant_id", rid).order("name"),
       supabase.from("recipe_lines").select("*"),
+      supabase.from("product_extras").select("product_id,ingredient_id,qty,extra_price"),
       supabase.from("categories").select("id,name").eq("restaurant_id", rid).order("name"),
     ]);
 
@@ -54,6 +55,7 @@ export default async function RecetasPage({ searchParams }) {
           ingredients={ingredients || []}
           categories={categories || []}
           initialLines={scoped}
+          initialExtras={(extrasResult.error ? [] : extrasResult.data || []).filter((row) => productIds.has(row.product_id))}
           focusProductId={focusProductId}
         />
       )}

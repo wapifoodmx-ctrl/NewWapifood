@@ -35,7 +35,9 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
   }
 
   useEffect(() => {
-    refresh();
+    const kick = setTimeout(() => {
+      refresh();
+    }, 0);
     const channel = supabase
       .channel(`kitchen-${restaurantId}`)
       .on(
@@ -51,6 +53,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
       .subscribe((status) => setLive(status === "SUBSCRIBED"));
     const t = setInterval(refresh, 10000);
     return () => {
+      clearTimeout(kick);
       clearInterval(t);
       supabase.removeChannel(channel);
     };
@@ -137,8 +140,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
 
   function elapsed(openedAt) {
     if (!openedAt) return "";
-    const mins = Math.max(0, Math.round((Date.now() - new Date(openedAt).getTime()) / 60000));
-    return `${mins} min`;
+    return new Date(openedAt).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
   }
 
   return (

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { MODULES } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/client";
 import ThemeToggle from "@/components/ThemeToggle";
+import { HelpChat } from "@/components/HelpChat";
 
 export function AppShell({
   children,
@@ -82,6 +83,7 @@ export function AppShell({
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6 pb-20">{children}</main>
+      <HelpChat />
     </div>
   );
 }

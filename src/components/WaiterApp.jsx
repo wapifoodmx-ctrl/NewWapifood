@@ -6,6 +6,8 @@ import { money } from "@/lib/format";
 import { toast } from "@/components/ui/Toast";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { statusMeta, itemStatusMeta } from "@/lib/orderStatus";
+import { extraPayload, extrasCharge, extrasForProduct } from "@/lib/extras";
+import { ExtrasPicker } from "@/components/ExtrasPicker";
 
 const SESSION_KEY = "wapifood_waiter_session";
 
@@ -20,6 +22,7 @@ export function WaiterApp({
   categories,
   tables,
   canOperate,
+  productExtras = [],
 }) {
   const [session, setSession] = useState(null);
   const [code, setCode] = useState("");
@@ -31,18 +34,22 @@ export function WaiterApp({
   const [tab, setTab] = useState("pedir"); // pedir | activas | historial
   const [activeOrders, setActiveOrders] = useState([]);
   const [history, setHistory] = useState([]);
+  const [extraPick, setExtraPick] = useState(null);
 
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SESSION_KEY);
-      if (!raw) return;
-      const s = JSON.parse(raw);
-      if (s?.restaurant_id === restaurantId) setSession(s);
-    } catch {
-      /* ignore */
-    }
+    const kick = setTimeout(() => {
+      try {
+        const raw = localStorage.getItem(SESSION_KEY);
+        if (!raw) return;
+        const s = JSON.parse(raw);
+        if (s?.restaurant_id === restaurantId) setSession(s);
+      } catch {
+        /* ignore */
+      }
+    }, 0);
+    return () => clearTimeout(kick);
   }, [restaurantId]);
 
   const allowedTables = useMemo(() => {
@@ -53,7 +60,7 @@ export function WaiterApp({
   }, [session, tables]);
 
   const list = products.filter((p) => p.active !== false && (!cat || p.category_id === cat));
-  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const total = cart.reduce((s, i) => s + (Number(i.price) + extrasCharge(i.extras)) * i.qty, 0);
   const productName = (id) => products.find((p) => p.id === id)?.name || "Producto";
 
   async function loadOrders() {
@@ -87,14 +94,19 @@ export function WaiterApp({
   }
 
   useEffect(() => {
-    if (session) loadOrders();
+    if (!session) return undefined;
+    const kick = setTimeout(() => {
+      loadOrders();
+    }, 0);
+    return () => clearTimeout(kick);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, tab]);
 
-  
   useEffect(() => {
-    if (!session || !restaurantId) return;
-    loadOrders();
+    if (!session || !restaurantId) return undefined;
+    const kick = setTimeout(() => {
+      loadOrders();
+    }, 0);
     const channel = supabase
       .channel(`waiter-live-${restaurantId}-${session.waiter_id || "x"}`)
       .on(
@@ -114,6 +126,7 @@ export function WaiterApp({
       )
       .subscribe();
     return () => {
+      clearTimeout(kick);
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -158,12 +171,24 @@ async function login(e) {
     setTableId("");
   }
 
-  function add(p) {
+  function add(p, selected = []) {
     setCart((c) => {
       const f = c.find((x) => x.product_id === p.id);
-      if (f) return c.map((x) => (x.product_id === p.id ? { ...x, qty: x.qty + 1 } : x));
-      return [...c, { product_id: p.id, name: p.name, price: Number(p.price), qty: 1 }];
+      if (f) {
+        return c.map((x) =>
+          x.product_id === p.id ? { ...x, qty: x.qty + 1, extras: selected.length ? selected : x.extras || [] } : x,
+        );
+      }
+      return [...c, { product_id: p.id, name: p.name, price: Number(p.price), qty: 1, extras: selected }];
     });
+  }
+
+  function choose(p) {
+    if (extrasForProduct(productExtras, p.id).length) {
+      setExtraPick({ product: p, selected: [] });
+      return;
+    }
+    add(p, []);
   }
 
   function dec(id) {
@@ -180,7 +205,11 @@ async function login(e) {
       const { data: orderId, error } = await supabase.rpc("place_public_order", {
         p_restaurant: restaurantId,
         p_table: tableId,
-        p_items: cart.map((i) => ({ product_id: i.product_id, qty: i.qty })),
+        p_items: cart.map((i) => ({
+          product_id: i.product_id,
+          qty: i.qty,
+          extras: extraPayload(i.extras),
+        })),
         p_customer_name: session?.name || "Mesero",
         p_notes: null,
         p_confirm_code: null,
@@ -342,7 +371,7 @@ async function login(e) {
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => add(p)}
+                  onClick={() => choose(p)}
                   className="min-h-16 border border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-3 py-2 text-left"
                 >
                   <span className="block font-semibold">{p.name}</span>
@@ -434,6 +463,44 @@ async function login(e) {
           </div>
         ) : null}
       </main>
+      {extraPick ? (
+        <div className="fixed inset-0 z-[1700] flex items-end justify-center bg-black/50 p-4 sm:items-center">
+          <div role="dialog" aria-modal="true" aria-labelledby="waiter-extra-title" className="max-h-[90vh] w-full max-w-md overflow-y-auto border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-5">
+            <h2 id="waiter-extra-title" className="text-2xl font-normal">{extraPick.product.name}</h2>
+            <ExtrasPicker
+              extras={extrasForProduct(productExtras, extraPick.product.id)}
+              selected={extraPick.selected}
+              onToggle={(extra) =>
+                setExtraPick((pick) => {
+                  if (!pick) return pick;
+                  const has = pick.selected.some((item) => item.ingredient_id === extra.ingredient_id);
+                  return {
+                    ...pick,
+                    selected: has
+                      ? pick.selected.filter((item) => item.ingredient_id !== extra.ingredient_id)
+                      : [...pick.selected, extra],
+                  };
+                })
+              }
+            />
+            <div className="mt-4 flex gap-2">
+              <button type="button" className="h-11 flex-1 border border-[var(--color-warm-stone)] text-xs font-semibold uppercase" onClick={() => setExtraPick(null)}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="h-11 flex-1 bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]"
+                onClick={() => {
+                  add(extraPick.product, extraPick.selected);
+                  setExtraPick(null);
+                }}
+              >
+                Agregar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

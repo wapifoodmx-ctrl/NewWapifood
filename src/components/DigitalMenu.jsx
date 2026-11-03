@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
+import { extraPayload, extrasCharge, extrasForProduct } from "@/lib/extras";
 import { toast } from "@/components/ui/Toast";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
+import { ExtrasLines, ExtrasPicker } from "@/components/ExtrasPicker";
 
 /**
  * Menú digital / kiosko — paridad Menucliente (ProductDetailModal, CartModal, etc.)
@@ -20,6 +22,7 @@ export function DigitalMenu({
   deliveryEnabled = false,
   orderSource = "web_menu",
   fixedTableId = null,
+  productExtras = [],
 }) {
   const primary = theme?.primary_color || "var(--color-saffron-glow)";
   const [cat, setCat] = useState("");
@@ -38,6 +41,7 @@ export function DigitalMenu({
   const [detail, setDetail] = useState(null); // product
   const [detailQty, setDetailQty] = useState(1);
   const [detailNote, setDetailNote] = useState("");
+  const [detailExtras, setDetailExtras] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
@@ -45,20 +49,30 @@ export function DigitalMenu({
     () => products.filter((p) => p.active !== false && (!cat || p.category_id === cat)),
     [products, cat],
   );
-  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const total = cart.reduce((s, i) => s + (i.price + extrasCharge(i.extras)) * i.qty, 0);
   const count = cart.reduce((s, i) => s + i.qty, 0);
 
   function openDetail(p) {
     setDetail(p);
     setDetailQty(1);
     setDetailNote("");
+    setDetailExtras([]);
+  }
+
+  function toggleDetailExtra(extra) {
+    setDetailExtras((list) =>
+      list.some((item) => item.ingredient_id === extra.ingredient_id)
+        ? list.filter((item) => item.ingredient_id !== extra.ingredient_id)
+        : [...list, extra],
+    );
   }
 
   function addFromDetail() {
     if (!detail) return;
     setCart((c) => {
       const key = detail.id;
-      const f = c.find((x) => x.product_id === key && (x.note || "") === (detailNote || ""));
+      const extraKey = extraPayload(detailExtras).map((e) => e.ingredient_id).sort().join(",");
+      const f = c.find((x) => x.product_id === key && (x.note || "") === (detailNote || "") && extraPayload(x.extras).map((e) => e.ingredient_id).sort().join(",") === extraKey);
       if (f) {
         return c.map((x) =>
           x === f ? { ...x, qty: x.qty + detailQty } : x,
@@ -72,6 +86,7 @@ export function DigitalMenu({
           price: Number(detail.price),
           qty: detailQty,
           note: detailNote.trim() || "",
+          extras: detailExtras,
         },
       ];
     });
@@ -80,6 +95,10 @@ export function DigitalMenu({
   }
 
   function addQuick(p) {
+    if (extrasForProduct(productExtras, p.id).length) {
+      openDetail(p);
+      return;
+    }
     setCart((c) => {
       const f = c.find((x) => x.product_id === p.id && !x.note);
       if (f) return c.map((x) => (x === f ? { ...x, qty: x.qty + 1 } : x));
@@ -142,7 +161,12 @@ export function DigitalMenu({
         p_restaurant: restaurant.id,
         p_table:
           orderType === "mesa" ? tableId || fixedTableId : tableId || fixedTableId || null,
-        p_items: cart.map((i) => ({ product_id: i.product_id, qty: i.qty })),
+        p_items: cart.map((i) => ({
+          product_id: i.product_id,
+          qty: i.qty,
+          notes: i.note || null,
+          extras: extraPayload(i.extras),
+        })),
         p_customer_name: name || null,
         p_notes: notesCombined || null,
         p_confirm_code:
@@ -249,6 +273,11 @@ export function DigitalMenu({
           ))}
         </div>
 
+        {!list.length ? (
+          <p className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4 text-sm" role="status">
+            Este menú todavía no tiene productos activos.
+          </p>
+        ) : null}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {list.map((p) => (
             <div
@@ -301,6 +330,14 @@ export function DigitalMenu({
                   <button type="button" className="h-10 w-10 border border-[var(--color-warm-stone)] font-bold" onClick={() => setDetailQty((q) => q + 1)}>+</button>
                 </div>
               </label>
+              <ExtrasPicker
+                extras={extrasForProduct(productExtras, detail.id)}
+                selected={detailExtras}
+                onToggle={toggleDetailExtra}
+              />
+              <p className="mt-3 text-sm font-semibold">
+                {money((Number(detail.price) + extrasCharge(detailExtras)) * detailQty)}
+              </p>
               <label className="mt-3 block text-xs font-semibold uppercase">
                 Nota (opcional)
                 <input
@@ -344,7 +381,8 @@ export function DigitalMenu({
                   <div>
                     <p className="font-semibold">{i.name}</p>
                     {i.note ? <p className="text-xs text-[var(--color-saffron-glow)]">{i.note}</p> : null}
-                    <p className="text-sm text-[var(--color-espresso)]">{money(i.price * i.qty)}</p>
+                    <ExtrasLines extras={i.extras} />
+                    <p className="text-sm text-[var(--color-espresso)]">{money((i.price + extrasCharge(i.extras)) * i.qty)}</p>
                   </div>
                   <div className="flex items-center gap-1">
                     <button type="button" onClick={() => dec(idx)} className="h-8 w-8 border border-[var(--color-warm-stone)]">−</button>

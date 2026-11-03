@@ -3,8 +3,6 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-
 function ExitoInner() {
   const params = useSearchParams();
   const [status, setStatus] = useState("procesando");
@@ -13,46 +11,11 @@ function ExitoInner() {
   useEffect(() => {
     async function run() {
       const paymentStatus = params.get("collection_status") || params.get("status");
-      const paymentId = params.get("payment_id") || params.get("collection_id");
-      const external = params.get("external_reference");
-
-      // El webhook es la fuente de verdad; aquí reforzamos si ya volvió approved
       if (paymentStatus && paymentStatus !== "approved" && paymentStatus !== "success") {
         setStatus("error");
         setError("El pago no fue aprobado en Mercado Pago.");
         return;
       }
-
-      let planId;
-      let billing = "mensual";
-      let restaurantId;
-      if (external) {
-        try {
-          const parsed = JSON.parse(decodeURIComponent(external));
-          planId = parsed.planId;
-          billing = parsed.billing || "mensual";
-          restaurantId = parsed.restaurantId;
-        } catch {
-          /* ignore */
-        }
-      }
-
-      if (restaurantId && planId) {
-        const supabase = createClient();
-        // Refuerzo: si el webhook aún no corrió, activa con el RPC del usuario
-        const { error: err } = await supabase.rpc("activate_plan", {
-          p_restaurant: restaurantId,
-          p_plan: planId,
-          p_billing: billing,
-          p_provider: "mercadopago",
-          p_provider_ref: paymentId || null,
-        });
-        if (err) {
-          // Puede fallar si el webhook ya insertó; no es crítico
-          console.warn("activate_plan backup", err.message);
-        }
-      }
-
       setStatus("ok");
     }
     run();

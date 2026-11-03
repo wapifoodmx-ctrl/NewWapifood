@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { normalizeExtraRow } from "@/lib/extras";
 
 export async function loadPublicMenu(restaurantId) {
   const supabase = await createClient();
@@ -13,7 +14,7 @@ export async function loadPublicMenu(restaurantId) {
     p_restaurant: restaurantId,
   });
 
-  const [{ data: products }, { data: categories }, { data: tables }, { data: theme }, { data: profile }] =
+  const [{ data: products }, { data: categories }, { data: tables }, { data: theme }, { data: profile }, extrasResult] =
     await Promise.all([
       supabase
         .from("products")
@@ -38,7 +39,15 @@ export async function loadPublicMenu(restaurantId) {
         .select("require_confirm_code,delivery_enabled,confirmation_code")
         .eq("restaurant_id", restaurantId)
         .maybeSingle(),
+      supabase
+        .from("product_extras")
+        .select("product_id,ingredient_id,qty,extra_price,ingredients(name,unit)")
+        .limit(500),
     ]);
+
+  const extras = extrasResult.error
+    ? []
+    : (extrasResult.data || []).map(normalizeExtraRow).filter((row) => row && products?.some((p) => p.id === row.product_id));
 
   return {
     restaurant,
@@ -47,6 +56,7 @@ export async function loadPublicMenu(restaurantId) {
     tables: tables || [],
     theme: theme || null,
     profile: profile || null,
+    extras,
     canOperate: !!canOps,
   };
 }

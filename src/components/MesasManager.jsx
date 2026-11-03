@@ -20,10 +20,6 @@ export function MesasManager({ restaurantId, initialTables }) {
   const [channel, setChannel] = useState("piso");
 
   useEffect(() => {
-    setTables(initialTables || []);
-  }, [initialTables]);
-
-  useEffect(() => {
     if (!restaurantId) return;
     const supabase = createClient();
 

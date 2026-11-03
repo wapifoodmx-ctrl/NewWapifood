@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
+import { extrasCharge, extrasForProduct, lineAmount } from "@/lib/extras";
 import { itemStatusMeta, statusMeta } from "@/lib/orderStatus";
+import { ExtrasLines, ExtrasPicker } from "@/components/ExtrasPicker";
 import { toast } from "@/components/ui/Toast";
 import { confirmAsync } from "@/components/ui/confirm";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
@@ -11,7 +13,7 @@ import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 /**
  * POS — paridad gradual con Puntodeventa (CarritoModal + ModalsPago).
  */
-export function PosBoard({ restaurantId, tables: initialTables, products, categories, initialOrders }) {
+export function PosBoard({ restaurantId, tables: initialTables, products, categories, initialOrders, productExtras = [] }) {
   const [tables, setTables] = useState(initialTables || []);
   const [orders, setOrders] = useState(initialOrders);
   const [live, setLive] = useState(false);
@@ -26,15 +28,12 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   const [payMethod, setPayMethod] = useState("efectivo");
   const [cashGiven, setCashGiven] = useState("");
   const [noteEdit, setNoteEdit] = useState(null); // { productId, notes }
+  const [extraPick, setExtraPick] = useState(null);
   const [orderDiscount, setOrderDiscount] = useState({ type: "", value: "" });
 
   const supabase = useMemo(() => createClient(), []);
 
   // Realtime: órdenes + estados de mesa
-  useEffect(() => {
-    setTables(initialTables || []);
-  }, [initialTables]);
-
   useEffect(() => {
     if (!restaurantId) return;
 
@@ -102,13 +101,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   });
 
   const subtotal = useMemo(() => {
-    return (order?.order_items || []).reduce((s, i) => {
-      if ((i.status || "pendiente") === "cancelado") return s;
-      let line = Number(i.unit_price) * Number(i.qty);
-      if (i.discount_type === "porcentaje") line -= line * (Number(i.discount_value) || 0) / 100;
-      if (i.discount_type === "monto") line -= Number(i.discount_value) || 0;
-      return s + Math.max(0, line);
-    }, 0);
+    return (order?.order_items || []).reduce((s, i) => s + lineAmount(i), 0);
   }, [order]);
 
   const total = useMemo(() => {
@@ -163,7 +156,33 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     toast.success("Mesa abierta");
   }
 
-  async function addItem(product) {
+  function chooseProduct(product) {
+    const extras = extrasForProduct(productExtras, product.id);
+    if (extras.length) {
+      setExtraPick({ product, selected: [] });
+      return;
+    }
+    addItem(product, []);
+  }
+
+  async function saveLineExtras(orderId, productId, selected) {
+    if (!selected?.length) return;
+    const rows = selected.map((extra) => ({
+      order_id: orderId,
+      product_id: productId,
+      ingredient_id: extra.ingredient_id,
+      qty: Number(extra.qty) || 1,
+      extra_price: Number(extra.extra_price) || 0,
+    }));
+    const { error } = await supabase.from("order_item_extras").upsert(rows, {
+      onConflict: "order_id,product_id,ingredient_id",
+    });
+    if (error && !/order_item_extras|schema cache|does not exist/i.test(error.message || "")) {
+      toast.error(error.message);
+    }
+  }
+
+  async function addItem(product, selected = []) {
     if (!order) {
       toast.warning("Elige una mesa primero");
       return;
@@ -177,14 +196,20 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         .eq("order_id", order.id)
         .eq("product_id", product.id);
     } else {
-      await supabase.from("order_items").insert({
+      const { error } = await supabase.from("order_items").insert({
         order_id: order.id,
         product_id: product.id,
         qty: 1,
         unit_price: product.price,
         notes: null,
       });
+      if (error) {
+        setLoading(false);
+        toast.error(error.message);
+        return;
+      }
     }
+    await saveLineExtras(order.id, product.id, selected);
     await refresh();
     setLoading(false);
     toast.info(`${product.name} agregado`);
@@ -443,11 +468,14 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => addItem(p)}
+                  onClick={() => chooseProduct(p)}
                   className="min-h-16 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-3 py-2 text-left"
                 >
                   <span className="block font-semibold">{p.name}</span>
                   <span className="text-sm text-[var(--color-espresso)]">{money(p.price)}</span>
+                  {extrasForProduct(productExtras, p.id).length ? (
+                    <span className="mt-1 block text-[10px] font-semibold uppercase text-[var(--color-saffron-glow)]">Adicionales</span>
+                  ) : null}
                 </button>
               ))}
             </div>
@@ -525,8 +553,9 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                         {i.notes ? (
                           <p className="text-xs text-[var(--color-saffron-glow)]">{i.notes}</p>
                         ) : null}
+                        <ExtrasLines extras={i.order_item_extras} />
                       </div>
-                      <span className="font-semibold">{money(Number(i.unit_price) * Number(i.qty))}</span>
+                      <span className="font-semibold">{money(lineAmount(i))}</span>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <button type="button" onClick={() => changeQty(i.product_id, -1)} className="h-9 w-9 border border-[var(--color-warm-stone)] font-bold">
@@ -612,6 +641,49 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
               </button>
               <button type="button" onClick={saveNote} className="h-11 bg-[var(--color-onyx-warm)] px-4 text-xs font-semibold uppercase text-[var(--color-parchment)]">
                 Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {extraPick ? (
+        <div className="fixed inset-0 z-[1700] flex items-end justify-center bg-black/50 p-4 sm:items-center" role="presentation">
+          <div role="dialog" aria-modal="true" aria-labelledby="pos-extras-title" className="max-h-[90vh] w-full max-w-md overflow-y-auto border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-5">
+            <h2 id="pos-extras-title" className="text-2xl font-normal">{extraPick.product.name}</h2>
+            <p className="text-sm text-[var(--color-espresso)]">
+              {money(Number(extraPick.product.price) + extrasCharge(extraPick.selected))}
+            </p>
+            <ExtrasPicker
+              extras={extrasForProduct(productExtras, extraPick.product.id)}
+              selected={extraPick.selected}
+              onToggle={(extra) =>
+                setExtraPick((pick) => {
+                  if (!pick) return pick;
+                  const has = pick.selected.some((item) => item.ingredient_id === extra.ingredient_id);
+                  return {
+                    ...pick,
+                    selected: has
+                      ? pick.selected.filter((item) => item.ingredient_id !== extra.ingredient_id)
+                      : [...pick.selected, extra],
+                  };
+                })
+              }
+            />
+            <div className="mt-5 flex gap-2">
+              <button type="button" onClick={() => setExtraPick(null)} className="h-12 flex-1 border border-[var(--color-warm-stone)] text-xs font-semibold uppercase">
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const pick = extraPick;
+                  setExtraPick(null);
+                  addItem(pick.product, pick.selected);
+                }}
+                className="h-12 flex-1 bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]"
+              >
+                Agregar
               </button>
             </div>
           </div>

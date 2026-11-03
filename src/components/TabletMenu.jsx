@@ -16,6 +16,7 @@ export function TabletMenu({
   table,
   profile,
   canOperate,
+  productExtras = [],
 }) {
   const [unlocked, setUnlocked] = useState(!table.access_pin);
   const [pin, setPin] = useState("");
@@ -23,12 +24,15 @@ export function TabletMenu({
 
   useEffect(() => {
     if (!table.access_pin) return;
-    try {
-      const raw = sessionStorage.getItem(UNLOCK_KEY);
-      if (raw === table.id) setUnlocked(true);
-    } catch {
-      /* ignore */
-    }
+    const kick = setTimeout(() => {
+      try {
+        const raw = sessionStorage.getItem(UNLOCK_KEY);
+        if (raw === table.id) setUnlocked(true);
+      } catch {
+        /* ignore */
+      }
+    }, 0);
+    return () => clearTimeout(kick);
   }, [table.id, table.access_pin]);
 
   function unlock(e) {
@@ -100,6 +104,7 @@ export function TabletMenu({
       deliveryEnabled={!!profile?.delivery_enabled}
       orderSource="tablet"
       fixedTableId={table.id}
+      productExtras={productExtras}
     />
   );
 }

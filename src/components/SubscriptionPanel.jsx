@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { PLANS, moneyMX, planMeta } from "@/lib/plans";
 import PixelCard from "@/components/PixelCard";
 
 export function SubscriptionPanel({ restaurantId, initialSubs }) {
-  const [subs, setSubs] = useState(initialSubs || []);
+  const [subs] = useState(initialSubs || []);
   const [billing, setBilling] = useState("mensual");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
@@ -28,16 +27,6 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
     (current.status === "active" || current.status === "trialing") &&
     (!current.ends_at || new Date(current.ends_at) > new Date());
 
-  async function refreshSubs() {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("subscriptions")
-      .select("*")
-      .eq("restaurant_id", restaurantId)
-      .order("created_at", { ascending: false });
-    setSubs(data || []);
-  }
-
   async function payWithMP(planId) {
     setErr("");
     setMsg("");
@@ -56,27 +45,6 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
       window.location.href = url;
     } catch (e) {
       setErr(e.message || "Error con Mercado Pago");
-      setLoading(false);
-    }
-  }
-
-  async function activateManual(planId) {
-    setErr("");
-    setMsg("");
-    setLoading(true);
-    const supabase = createClient();
-    try {
-      const { error } = await supabase.rpc("activate_plan", {
-        p_restaurant: restaurantId,
-        p_plan: planId,
-        p_billing: billing,
-      });
-      if (error) throw error;
-      await refreshSubs();
-      setMsg("Plan activado en modo prueba (sin Mercado Pago).");
-    } catch (e) {
-      setErr(e.message || "No se pudo activar");
-    } finally {
       setLoading(false);
     }
   }
@@ -126,9 +94,6 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
                 className="mt-4 h-11 w-full rounded-full bg-[var(--color-ember)] text-sm font-semibold text-white disabled:opacity-60"
               >
                 {loading ? "Redirigiendo…" : "Pagar con Mercado Pago"}
-              </button>
-              <button type="button" disabled={loading} onClick={() => activateManual(p.id)} className="mt-2 h-9 w-full text-xs font-semibold text-[var(--color-muted)] underline">
-                Activar sin pago (pruebas)
               </button>
             </>
           );

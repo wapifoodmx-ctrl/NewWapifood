@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
 import { TabletMenu } from "@/components/TabletMenu";
+import { normalizeExtraRow } from "@/lib/extras";
 
 export default async function TabletPage({ params }) {
   const { tableId } = await params;
@@ -22,7 +23,7 @@ export default async function TabletPage({ params }) {
   }
 
   const restaurantId = table.restaurant_id;
-  const [{ data: restaurant }, { data: canOps }, { data: products }, { data: categories }, { data: theme }, { data: profile }] =
+  const [{ data: restaurant }, { data: canOps }, { data: products }, { data: categories }, { data: theme }, { data: profile }, extrasResult] =
     await Promise.all([
       supabase.from("restaurants").select("id,name,logo_url").eq("id", restaurantId).maybeSingle(),
       supabase.rpc("can_operate", { p_restaurant: restaurantId }),
@@ -39,6 +40,9 @@ export default async function TabletPage({ params }) {
         .select("delivery_enabled,require_confirm_code")
         .eq("restaurant_id", restaurantId)
         .maybeSingle(),
+      supabase
+        .from("product_extras")
+        .select("product_id,ingredient_id,qty,extra_price,ingredients(name,unit)"),
     ]);
 
   if (!restaurant) {
@@ -54,6 +58,13 @@ export default async function TabletPage({ params }) {
       table={table}
       profile={profile}
       canOperate={!!canOps}
+      productExtras={
+        extrasResult.error
+          ? []
+          : (extrasResult.data || [])
+              .map(normalizeExtraRow)
+              .filter((row) => row && (products || []).some((p) => p.id === row.product_id))
+      }
     />
   );
 }
