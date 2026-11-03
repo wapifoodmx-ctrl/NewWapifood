@@ -11,7 +11,7 @@ export default async function CartaPage() {
   }
   const rid = membership.restaurant_id;
   const [{ data: products }, { data: categories }] = await Promise.all([
-    supabase.from("products").select("*").eq("restaurant_id", rid).order("name"),
+    supabase.from("products").select("*,inventory_mode").eq("restaurant_id", rid).order("name"),
     supabase.from("categories").select("*").eq("restaurant_id", rid).order("sort_order").order("name"),
   ]);
 

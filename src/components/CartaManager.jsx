@@ -17,6 +17,9 @@ const emptyProduct = {
   category_id: "",
   active: true,
   image_url: "",
+  inventory_mode: "unitario", // unitario | receta | none
+  unit_stock: "0",
+  unit_min_stock: "0",
 };
 
 /**
@@ -164,6 +167,9 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
       category_id: p.category_id || "",
       active: p.active !== false,
       image_url: p.image_url || "",
+      inventory_mode: p.inventory_mode || "unitario",
+      unit_stock: "0",
+      unit_min_stock: "0",
     });
   }
 
@@ -199,6 +205,26 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
     }
   }
 
+  async function applyInventoryMode(productId, mode) {
+    const supabase = createClient();
+    if (mode === "unitario") {
+      const { error } = await supabase.rpc("ensure_unit_product_inventory", {
+        p_product: productId,
+        p_stock: Number(form.unit_stock) || 0,
+        p_min_stock: Number(form.unit_min_stock) || 0,
+        p_unit: "pza",
+      });
+      if (error) throw error;
+    } else if (mode === "none") {
+      // Quitar receta para no descontar
+      await supabase.from("recipe_lines").delete().eq("product_id", productId);
+      await supabase.from("products").update({ inventory_mode: "none" }).eq("id", productId);
+    } else if (mode === "receta") {
+      await supabase.from("products").update({ inventory_mode: "receta" }).eq("id", productId);
+      // Las líneas se arman en /recetas
+    }
+  }
+
   async function onSave(e) {
     e.preventDefault();
     setErr("");
@@ -231,6 +257,7 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
       category_id: form.category_id || null,
       active: form.active,
       image_url: form.image_url || null,
+      inventory_mode: form.inventory_mode || "unitario",
     };
 
     try {
@@ -248,7 +275,14 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
         const { data, error } = await supabase.from("products").insert(payload).select("*").single();
         if (error) throw error;
         setProducts((ps) => [data, ...ps]);
-        toast.success("Producto creado");
+        await applyInventoryMode(data.id, form.inventory_mode || "unitario");
+        toast.success(
+          form.inventory_mode === "receta"
+            ? "Producto creado. Ahora arma la receta en Recetas."
+            : form.inventory_mode === "unitario"
+              ? "Producto e inventario unitario creados."
+              : "Producto creado (sin descuento de stock).",
+        );
       }
       resetForm();
     } catch (e3) {
@@ -398,7 +432,71 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
               placeholder="Ej. Tacos, Bebidas…"
               className="mt-3 h-11 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-3"
             />
-            <button type="submit" className="mt-3 h-11 w-full rounded-[3px] bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]">
+            
+            <fieldset className="mt-3 border border-[var(--color-warm-stone)] p-3">
+              <legend className="px-1 text-[11px] font-semibold uppercase tracking-wide">Inventario</legend>
+              <p className="mb-2 text-xs text-[var(--color-espresso)]">
+                Unitario = 1 pieza descuenta 1 del stock (ej. Coca). Receta = varios insumos (ej. taco). Sin control = no baja inventario.
+              </p>
+              <div className="flex flex-col gap-2 text-sm">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="inventory_mode"
+                    checked={form.inventory_mode === "unitario"}
+                    onChange={() => setForm((f) => ({ ...f, inventory_mode: "unitario" }))}
+                  />
+                  Producto unitario (1 insumo = 1 venta)
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="inventory_mode"
+                    checked={form.inventory_mode === "receta"}
+                    onChange={() => setForm((f) => ({ ...f, inventory_mode: "receta" }))}
+                  />
+                  Con receta (varios insumos)
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="inventory_mode"
+                    checked={form.inventory_mode === "none"}
+                    onChange={() => setForm((f) => ({ ...f, inventory_mode: "none" }))}
+                  />
+                  Sin control de stock
+                </label>
+              </div>
+              {form.inventory_mode === "unitario" ? (
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <label className="text-xs font-semibold uppercase">Stock inicial
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      className="mt-1 h-10 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-2 font-normal normal-case"
+                      value={form.unit_stock}
+                      onChange={(e) => setForm((f) => ({ ...f, unit_stock: e.target.value }))}
+                    />
+                  </label>
+                  <label className="text-xs font-semibold uppercase">Mínimo
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      className="mt-1 h-10 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-2 font-normal normal-case"
+                      value={form.unit_min_stock}
+                      onChange={(e) => setForm((f) => ({ ...f, unit_min_stock: e.target.value }))}
+                    />
+                  </label>
+                </div>
+              ) : form.inventory_mode === "receta" ? (
+                <p className="mt-2 text-xs text-[var(--color-saffron-glow)]">
+                  Después de guardar, ve a <strong>Recetas</strong> y define tortilla, gramos, etc.
+                </p>
+              ) : null}
+            </fieldset>
+<button type="submit" className="mt-3 h-11 w-full rounded-[3px] bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]">
               Crear categoría
             </button>
           </form>

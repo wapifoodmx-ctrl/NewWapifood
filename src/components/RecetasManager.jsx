@@ -180,7 +180,9 @@ export function RecetasManager({ products, ingredients, categories = [], initial
             }`}
           >
             <h3 className="text-xl font-normal">{p.name}</h3>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-walnut)]">{catName(p.category_id)}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-walnut)]">{catName(p.category_id)}
+              {p.inventory_mode === "unitario" ? " · Unitario" : p.inventory_mode === "none" ? " · Sin stock" : " · Receta"}
+            </p>
             {p.lines.length ? (
               <ul className="mt-2 space-y-1 text-sm">
                 {p.lines.map((l) => (

@@ -22,6 +22,7 @@ const empty = {
   kind: "no_perecedero",
   expires_on: "",
   notes: "",
+  is_extra: false,
 };
 
 const KINDS = [
@@ -67,17 +68,23 @@ export function InsumosManager({
   );
 
   const list = useMemo(() => {
-    if (filter === "todos") return items;
-    if (filter === "bajo") return items.filter((i) => Number(i.stock) <= Number(i.min_stock));
+    let base = items;
+    if (tab === "adicionales") {
+      base = items.filter((i) => i.is_extra);
+    } else if (tab === "insumos") {
+      base = items.filter((i) => !i.is_extra);
+    }
+    if (filter === "todos") return base;
+    if (filter === "bajo") return base.filter((i) => Number(i.stock) <= Number(i.min_stock));
     if (filter === "por_caducar") {
-      return items.filter((i) => {
+      return base.filter((i) => {
         if (i.kind !== "perecedero" || !i.expires_on) return false;
         const d = daysUntil(i.expires_on);
         return d != null && d <= 7;
       });
     }
-    return items.filter((i) => i.kind === filter);
-  }, [items, filter]);
+    return base.filter((i) => i.kind === filter);
+  }, [items, filter, tab]);
 
   function startEdit(i) {
     if (!requireUnlock()) return;
@@ -92,6 +99,7 @@ export function InsumosManager({
       kind: i.kind || "no_perecedero",
       expires_on: i.expires_on || "",
       notes: i.notes || "",
+      is_extra: !!i.is_extra,
     });
   }
 
@@ -119,6 +127,7 @@ export function InsumosManager({
       kind: form.kind || "no_perecedero",
       expires_on: form.kind === "perecedero" && form.expires_on ? form.expires_on : null,
       notes: form.notes?.trim() || null,
+      is_extra: !!form.is_extra,
     };
     try {
       if (editingId) {
@@ -232,6 +241,7 @@ export function InsumosManager({
   const tabs = [
     { id: "insumos", label: `Insumos (${items.length})` },
     { id: "kardex", label: "Kardex" },
+    { id: "adicionales", label: "Adicionales" },
     { id: "seguridad", label: "PIN / Seguridad" },
   ];
 
@@ -273,6 +283,12 @@ export function InsumosManager({
           unlocked={unlocked}
           unlockOk={unlockOk}
         >
+          {tab === "adicionales" ? (
+            <p className="mb-3 text-sm text-[var(--color-espresso)]">
+              Marca insumos como <strong>adicional</strong> para ofrecerlos en platillos (ej. queso +$15).
+              El stock también se controla aquí y en el kardex.
+            </p>
+          ) : null}
           {tab === "kardex" ? (
             <div>
               <div className="mb-3 flex items-center justify-between gap-2">
@@ -391,6 +407,14 @@ export function InsumosManager({
                     </label>
                   ) : null}
                 </div>
+                <label className="mt-2 flex items-center gap-2 text-xs font-semibold uppercase">
+                  <input
+                    type="checkbox"
+                    checked={!!form.is_extra}
+                    onChange={(e) => setForm((f) => ({ ...f, is_extra: e.target.checked }))}
+                  />
+                  Es adicional (queso, crema, etc. — se ofrece en menú)
+                </label>
                 <label className="mt-2 block text-xs font-semibold uppercase">Notas
                   <input className="mt-1 h-11 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-3 font-normal normal-case" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
                 </label>
