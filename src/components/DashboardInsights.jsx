@@ -7,24 +7,32 @@ import { money } from "@/lib/format";
  * Fase 8: rangos 7d / 30d / mes actual sobre órdenes ya cargadas.
  */
 export function DashboardInsights({ orders, productNames }) {
-  const [range, setRange] = useState("7d"); // 7d | 30d | month
+  const [range, setRange] = useState("semana");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
 
   const filtered = useMemo(() => {
     const now = new Date();
-    const start = new Date(now);
-    if (range === "7d") start.setDate(now.getDate() - 6);
-    else if (range === "30d") start.setDate(now.getDate() - 29);
-    else {
-      start.setDate(1);
+    let start = new Date(now);
+    let end = new Date(now);
+    if (range === "dia") {
       start.setHours(0, 0, 0, 0);
+    } else if (range === "semana") {
+      start.setDate(now.getDate() - 6);
+      start.setHours(0, 0, 0, 0);
+    } else if (range === "mes") {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (range === "anio") {
+      start = new Date(now.getFullYear(), 0, 1);
+    } else {
+      start = from ? new Date(`${from}T00:00:00`) : new Date(now.getFullYear(), now.getMonth(), 1);
+      end = to ? new Date(`${to}T23:59:59`) : now;
     }
-    start.setHours(0, 0, 0, 0);
-
     return (orders || []).filter((o) => {
       const d = new Date(o.closed_at || o.opened_at || 0);
-      return d >= start && d <= now;
+      return d >= start && d <= end;
     });
-  }, [orders, range]);
+  }, [orders, range, from, to]);
 
   const paid = filtered.filter((o) => o.status === "pagada");
   const sales = paid.reduce(
@@ -54,11 +62,17 @@ export function DashboardInsights({ orders, productNames }) {
     .sort((a, b) => b.qty - a.qty)
     .slice(0, 8);
 
-  // series last buckets
-  const days = range === "30d" ? 30 : range === "month" ? new Date().getDate() : 7;
-  const series = Array.from({ length: days }, (_, idx) => {
+  const nowChart = new Date();
+  const bucketCount = range === "anio" ? 12 : range === "dia" ? 1 : range === "semana" ? 7 : range === "mes" ? nowChart.getDate() : 14;
+  const series = Array.from({ length: bucketCount }, (_, idx) => {
+    if (range === "anio") {
+      return paid.filter((o) => {
+        const d = new Date(o.closed_at || o.opened_at || 0);
+        return d.getFullYear() === nowChart.getFullYear() && d.getMonth() === idx;
+      }).length;
+    }
     const day = new Date();
-    day.setDate(day.getDate() - (days - 1 - idx));
+    day.setDate(day.getDate() - (bucketCount - 1 - idx));
     const key = day.toISOString().slice(0, 10);
     return paid.filter((o) => (o.closed_at || o.opened_at || "").slice(0, 10) === key).length;
   });
@@ -73,9 +87,11 @@ export function DashboardInsights({ orders, productNames }) {
     <div className="mt-6 space-y-4">
       <div className="flex flex-wrap gap-1">
         {[
-          { id: "7d", label: "7 días" },
-          { id: "30d", label: "30 días" },
-          { id: "month", label: "Mes actual" },
+          { id: "dia", label: "Día" },
+          { id: "semana", label: "Semana" },
+          { id: "mes", label: "Mes" },
+          { id: "anio", label: "Año" },
+          { id: "rango", label: "Rango" },
         ].map((r) => (
           <button
             key={r.id}
@@ -90,6 +106,12 @@ export function DashboardInsights({ orders, productNames }) {
             {r.label}
           </button>
         ))}
+        {range === "rango" ? (
+          <div className="flex gap-2">
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 border border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-2 text-xs" aria-label="Desde" />
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 border border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-2 text-xs" aria-label="Hasta" />
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -108,7 +130,7 @@ export function DashboardInsights({ orders, productNames }) {
       </div>
 
       <section className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
-        <h2 className="text-xl font-normal">Tickets por día</h2>
+        <h2 className="text-xl font-normal">{range === "anio" ? "Tickets por mes" : "Tickets por día"}</h2>
         <div className="mt-4 flex h-28 items-end gap-1 overflow-x-auto">
           {series.map((v, i) => (
             <div key={i} className="flex min-w-[8px] flex-1 flex-col items-center gap-1">

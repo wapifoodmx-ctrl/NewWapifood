@@ -56,21 +56,21 @@ La migración `20261103231000` no se aplicó desde aquí. El preview sigue sobre
 
 ## Hecho en este trabajo
 
-- Adicionales en receta, caja, menú, mesero, tablet y kiosko (la tabla `order_item_extras` llega con la migración).
-- Importación CSV de insumos y productos (`/importar`), con kg→g y L→ml.
-- Ayuda en el panel con las preguntas del chatbot legado. La API `api.wapifood.com/api/chatbot` no se reexpone.
-- Pantalla `/masa` en el mismo estado que el original: sin lógica de lotes.
-- Tablas `product_lists` y `order_comments` en la migración, todavía sin pantalla.
+- Adicionales en receta, caja, menú, mesero, tablet y kiosko. Si `order_item_extras` no existe, la venta sigue y no se muestra error.
+- Listas custom en `/listas` (`product_lists`). Si la tabla no existe, la pantalla avisa y no rompe el panel.
+- Comentarios de orden en Tickets y en el detalle de cocina (`order_comments`), ocultos si la tabla no existe.
+- Varias fotos por producto en Carta (`product_images`, ya presente en producción).
+- PDF de ticket descargable, además de la impresión HTML.
+- Dashboard: día, semana, mes, año y rango de fechas.
+- Rendimiento del mesero (tickets y venta cobrada) y tope de meseros activos según el plan.
+- División de cuenta en el POS: se marcan líneas, se cobran aparte en una orden nueva y el resto queda en la mesa. El legado no tenía un flujo de división; solo lo mencionaba el chatbot.
+- Importación CSV, ayuda local y `/masa` como aviso, igual que el original.
 
-## Falta para la siguiente corrida
+## Fuera de alcance, a propósito
 
-1. Pantalla de listas custom (`/listas`) sobre `product_lists`.
-2. Comentarios de orden en Tickets y cocina sobre `order_comments`.
-3. Varias fotos por producto (`product_images` ya existe en la base).
-4. PDF de ticket (hoy es impresión HTML).
-5. Gráficas del dashboard por día, semana, mes, año y rango, como `getGrafica*`.
-6. Rendimiento por mesero y límite de meseros del plan.
-7. División de cuenta (el legado la preguntaba en el chatbot; no hay flujo claro en la API).
-8. Chatbot remoto: hace falta un proveedor nuevo. El endpoint viejo no está en este stack.
-9. Producción de masa real: el repo legado solo muestra “en desarrollo”.
-10. Aplicar la migración en Supabase (`migration repair` de la baseline y luego el push). El preview no debe usarse para crear datos ni cobrar.
+- Chatbot remoto (`api.wapifood.com/api/chatbot`): no hay proveedor en este stack. Quedó un asistente local con las mismas preguntas. Un proveedor nuevo se conectaría reemplazando `answerHelp` en `src/lib/helpAnswers.js`.
+- Producción de masa: el legado solo muestra “en desarrollo”. `/masa` documenta eso. Un módulo real descontaría harina por lote contra insumos.
+
+## Sigue pendiente de operación
+
+Aplicar la migración (`migration repair` de `20261103230000` y luego el push de `20261103231000`). Hasta entonces no existen `order_item_extras`, `product_lists` ni `order_comments`. El preview no debe usarse para crear datos ni cobrar.

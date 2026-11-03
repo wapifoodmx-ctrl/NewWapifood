@@ -6,6 +6,7 @@ import { money } from "@/lib/format";
 import { extrasCharge, extrasForProduct, lineAmount } from "@/lib/extras";
 import { itemStatusMeta, statusMeta } from "@/lib/orderStatus";
 import { ExtrasLines, ExtrasPicker } from "@/components/ExtrasPicker";
+import { isMissingRelation } from "@/lib/schema";
 import { toast } from "@/components/ui/Toast";
 import { confirmAsync } from "@/components/ui/confirm";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
@@ -29,6 +30,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   const [cashGiven, setCashGiven] = useState("");
   const [noteEdit, setNoteEdit] = useState(null); // { productId, notes }
   const [extraPick, setExtraPick] = useState(null);
+  const [splitIds, setSplitIds] = useState([]);
   const [orderDiscount, setOrderDiscount] = useState({ type: "", value: "" });
 
   const supabase = useMemo(() => createClient(), []);
@@ -177,7 +179,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     const { error } = await supabase.from("order_item_extras").upsert(rows, {
       onConflict: "order_id,product_id,ingredient_id",
     });
-    if (error && !/order_item_extras|schema cache|does not exist/i.test(error.message || "")) {
+    if (error && !isMissingRelation(error)) {
       toast.error(error.message);
     }
   }
@@ -315,41 +317,109 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     toast.success("Descuento aplicado");
   }
 
-  function openPay() {
+  const chargeItems = splitIds.length
+    ? (order?.order_items || []).filter((i) => splitIds.includes(i.product_id))
+    : null;
+  const chargeTotal = chargeItems ? chargeItems.reduce((s, i) => s + lineAmount(i), 0) : total;
+
+  function openPay(onlyMarked = false) {
     if (!order) return;
-    if (!(order.order_items || []).length) {
+    if (onlyMarked) {
+      if (!splitIds.length) {
+        toast.warning("Marca los productos que se cobran aparte");
+        return;
+      }
+    } else if (!(order.order_items || []).length) {
       toast.warning("No hay productos que cobrar");
       return;
     }
+    if (!onlyMarked) setSplitIds([]);
     setPayMethod("efectivo");
     setCashGiven("");
     setPayOpen(true);
+  }
+
+  async function moveMarkedLines() {
+    const lines = (order.order_items || []).filter((i) => splitIds.includes(i.product_id));
+    const { data: created, error } = await supabase
+      .from("orders")
+      .insert({
+        restaurant_id: restaurantId,
+        table_id: order.table_id,
+        status: "entregada",
+        source: "pos",
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    for (const line of lines) {
+      const { error: insErr } = await supabase.from("order_items").insert({
+        order_id: created.id,
+        product_id: line.product_id,
+        qty: line.qty,
+        unit_price: line.unit_price,
+        notes: line.notes || null,
+        status: line.status || "pendiente",
+      });
+      if (insErr) throw insErr;
+      const extras = await supabase
+        .from("order_item_extras")
+        .select("ingredient_id,qty,extra_price")
+        .eq("order_id", order.id)
+        .eq("product_id", line.product_id);
+      if (!extras.error && extras.data?.length) {
+        await supabase.from("order_item_extras").insert(
+          extras.data.map((x) => ({
+            order_id: created.id,
+            product_id: line.product_id,
+            ingredient_id: x.ingredient_id,
+            qty: x.qty,
+            extra_price: x.extra_price,
+          })),
+        );
+      }
+      await supabase.from("order_items").delete().eq("order_id", order.id).eq("product_id", line.product_id);
+    }
+    return { id: created.id, emptied: lines.length === (order.order_items || []).length };
   }
 
   async function confirmPay() {
     if (!order) return;
     if (payMethod === "efectivo") {
       const given = Number(cashGiven);
-      if (!Number.isNaN(given) && given > 0 && given < total) {
+      if (!Number.isNaN(given) && given > 0 && given < chargeTotal) {
         toast.error("El efectivo recibido es menor al total");
         return;
       }
     }
     setLoading(true);
+    let targetId = order.id;
+    let emptied = false;
+    try {
+      if (splitIds.length) {
+        const moved = await moveMarkedLines();
+        targetId = moved.id;
+        emptied = moved.emptied;
+      }
+    } catch (e) {
+      setLoading(false);
+      toast.error(e.message || "No se pudo separar la cuenta");
+      return;
+    }
     const snapshot = {
-      items: (order.order_items || []).map((i) => ({
+      items: (splitIds.length ? chargeItems : order.order_items || []).map((i) => ({
         name: productMap.get(i.product_id)?.name || "Producto",
         qty: i.qty,
-        line: Number(i.unit_price) * Number(i.qty),
+        line: lineAmount(i),
         notes: i.notes,
       })),
-      total,
+      total: chargeTotal,
       method: payMethod,
       table: tableMap.get(order.table_id)?.number,
       cashGiven: payMethod === "efectivo" ? Number(cashGiven) || null : null,
     };
     const { error } = await supabase.rpc("close_order", {
-      p_order: order.id,
+      p_order: targetId,
       p_method: payMethod,
     });
     setLoading(false);
@@ -357,16 +427,22 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       toast.error(error.message);
       return;
     }
+    if (emptied) {
+      await supabase.rpc("cancel_order", { p_order: order.id, p_reason: "Cuenta separada y cobrada" });
+    }
     setLastTicket(snapshot);
     setPayOpen(false);
-    setCartOpen(false);
-    setActiveTableId(null);
+    setSplitIds([]);
+    if (!splitIds.length || emptied) {
+      setCartOpen(false);
+      setActiveTableId(null);
+    }
     await refresh();
-    toast.success(`Cobrado con ${payMethod}`);
+    toast.success(splitIds.length ? `Parte cobrada con ${payMethod}` : `Cobrado con ${payMethod}`);
   }
 
   const change =
-    payMethod === "efectivo" && Number(cashGiven) > 0 ? Number(cashGiven) - total : null;
+    payMethod === "efectivo" && Number(cashGiven) > 0 ? Number(cashGiven) - chargeTotal : null;
 
   return (
     <div className="relative grid gap-4 lg:grid-cols-[240px_1fr]">
@@ -558,7 +634,19 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                       <span className="font-semibold">{money(lineAmount(i))}</span>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <button type="button" onClick={() => changeQty(i.product_id, -1)} className="h-9 w-9 border border-[var(--color-warm-stone)] font-bold">
+                      <label className="flex items-center gap-1 text-[11px] font-semibold uppercase">
+                        <input
+                          type="checkbox"
+                          checked={splitIds.includes(i.product_id)}
+                          onChange={() =>
+                            setSplitIds((ids) =>
+                              ids.includes(i.product_id) ? ids.filter((id) => id !== i.product_id) : [...ids, i.product_id],
+                            )
+                          }
+                        />
+                        Separar
+                      </label>
+                      <button type="button" onClick={() => changeQty(i.product_id, -1)} className="h-9 w-9 border border-[var(--color-warm-stone)] font-bold" aria-label="Quitar uno">
                         −
                       </button>
                       <span className="w-8 text-center font-semibold">{i.qty}</span>
@@ -614,8 +702,11 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 <button type="button" onClick={sendKitchen} className="h-12 rounded-[3px] bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]">
                   Enviar a cocina
                 </button>
-                <button type="button" onClick={openPay} className="h-12 rounded-[3px] border border-[var(--color-warm-stone)] text-xs font-semibold uppercase">
+                <button type="button" onClick={() => openPay(false)} className="h-12 rounded-[3px] border border-[var(--color-warm-stone)] text-xs font-semibold uppercase">
                   Cobrar
+                </button>
+                <button type="button" onClick={() => openPay(true)} className="h-12 rounded-[3px] text-xs font-semibold uppercase text-[var(--color-saffron-glow)] sm:col-span-2">
+                  Cobrar solo lo marcado
                 </button>
               </div>
             </div>
@@ -695,7 +786,8 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         <div className="fixed inset-0 z-[1700] flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-6">
             <h2 className="text-2xl font-normal">Cobrar cuenta</h2>
-            <p className="mt-1 text-3xl font-semibold">{money(total)}</p>
+            <p className="mt-1 text-3xl font-semibold">{money(chargeTotal)}</p>
+            {splitIds.length ? <p className="text-xs text-[var(--color-espresso)]">Solo los productos marcados.</p> : null}
             <div className="mt-4 grid grid-cols-3 gap-2">
               {["efectivo", "tarjeta", "transferencia"].map((m) => (
                 <button

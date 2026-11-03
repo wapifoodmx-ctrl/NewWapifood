@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { statusMeta, itemStatusMeta } from "@/lib/orderStatus";
+import { OrderComments } from "@/components/OrderComments";
 
 /**
  * Cocina — status por ítem + status de orden (paridad Front).
@@ -319,6 +320,9 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
                 </li>
               ))}
             </ul>
+            <div className="px-4 pb-4">
+              <OrderComments orderId={detail.id} />
+            </div>
           </div>
         </div>
       ) : null}

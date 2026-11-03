@@ -8,6 +8,7 @@ import { confirmAsync } from "@/components/ui/confirm";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { money } from "@/lib/format";
 import { uploadPublicImage } from "@/lib/storage";
+import { isMissingRelation } from "@/lib/schema";
 
 const emptyProduct = {
   name: "",
@@ -38,6 +39,7 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
   const [form, setForm] = useState(emptyProduct);
   const [editingId, setEditingId] = useState(null);
   const [newCat, setNewCat] = useState("");
+  const [gallery, setGallery] = useState([]);
   const [editCatId, setEditCatId] = useState(null);
   const [editCatName, setEditCatName] = useState("");
   const [err, setErr] = useState("");
@@ -156,9 +158,25 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
     );
   }
 
+  async function loadGallery(productId) {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("product_images")
+      .select("id,path")
+      .eq("product_id", productId)
+      .order("created_at");
+    if (error) {
+      if (!isMissingRelation(error)) toast.error(error.message);
+      setGallery([]);
+      return;
+    }
+    setGallery(data || []);
+  }
+
   function startEdit(p) {
     setTab("productos");
     setEditingId(p.id);
+    loadGallery(p.id);
     setForm({
       name: p.name || "",
       description: p.description || "",
@@ -176,6 +194,44 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
   function resetForm() {
     setEditingId(null);
     setForm(emptyProduct);
+    setGallery([]);
+  }
+
+  async function addGalleryPhoto(file) {
+    if (!editingId || !file) return;
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const url = await uploadPublicImage(supabase, restaurantId, file, "products");
+      const { data, error } = await supabase
+        .from("product_images")
+        .insert({ product_id: editingId, path: url })
+        .select("id,path")
+        .single();
+      if (error) {
+        if (isMissingRelation(error)) {
+          toast.warning("Las fotos extra requieren la tabla product_images.");
+          return;
+        }
+        throw error;
+      }
+      setGallery((g) => [...g, data]);
+      toast.success("Foto agregada");
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function removeGalleryPhoto(id) {
+    const supabase = createClient();
+    const { error } = await supabase.from("product_images").delete().eq("id", id);
+    if (error) {
+      if (!isMissingRelation(error)) toast.error(error.message);
+      return;
+    }
+    setGallery((g) => g.filter((img) => img.id !== id));
   }
 
   async function onImage(e) {
@@ -656,6 +712,25 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
             {form.image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={form.image_url} alt="" className="mt-2 h-20 w-20 object-cover" />
+            ) : null}
+            {editingId ? (
+              <div className="mt-3">
+                <label className="inline-flex h-10 cursor-pointer items-center rounded-[3px] border border-[var(--color-warm-stone)] px-4 text-xs font-semibold uppercase">
+                  Otra foto
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => addGalleryPhoto(e.target.files?.[0])} />
+                </label>
+                <ul className="mt-2 flex flex-wrap gap-2">
+                  {gallery.map((img) => (
+                    <li key={img.id} className="relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.path} alt="" className="h-16 w-16 object-cover" />
+                      <button type="button" className="mt-1 block text-[10px] font-semibold uppercase text-[var(--color-wine)]" onClick={() => removeGalleryPhoto(img.id)}>
+                        Quitar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ) : null}
             {err ? <p className="mt-2 text-sm text-[var(--color-wine)]">{err}</p> : null}
             <div className="mt-3 flex gap-2">
