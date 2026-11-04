@@ -35,6 +35,7 @@ export default async function CocinaPage() {
       role={membership.role}
       operational={operational}
       setupOnly={setupOnly}
+      focus
     >
       <KitchenBoard restaurantId={rid} initialOrders={orders || []} products={products || []} />
     </AppShell>

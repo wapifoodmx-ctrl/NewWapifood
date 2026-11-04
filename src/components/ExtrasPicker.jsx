@@ -9,7 +9,7 @@ export function ExtrasPicker({ extras, selected, onToggle }) {
 
   return (
     <fieldset className="mt-4">
-      <legend className="text-xs font-semibold uppercase tracking-wide text-[var(--color-espresso)]">
+      <legend className="text-base font-bold text-[var(--ink)]">
         Adicionales
       </legend>
       <ul className="mt-2 space-y-2">
@@ -17,7 +17,7 @@ export function ExtrasPicker({ extras, selected, onToggle }) {
           const on = picked.some((s) => s.ingredient_id === extra.ingredient_id);
           return (
             <li key={extra.ingredient_id}>
-              <label className="flex min-h-11 cursor-pointer items-center gap-3 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-3 py-2">
+              <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
                 <input
                   type="checkbox"
                   checked={on}

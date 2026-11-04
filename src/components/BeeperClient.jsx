@@ -58,9 +58,9 @@ export function BeeperClient({
         {publicCode ? ` · Código ${publicCode}` : ""}
       </p>
 
-      <div className={`mt-6 rounded-[3px] px-4 py-3 text-white ${meta.color}`}>
-        <p className="text-xs font-bold uppercase tracking-wide">Estado</p>
-        <p className="text-2xl font-normal">{meta.label}</p>
+      <div className={`mt-6 rounded-3xl px-4 py-4 ${meta.banner}`}>
+        <p className="text-base font-bold">Estado</p>
+        <p className="text-3xl">{meta.label}</p>
         <p className="text-sm opacity-90">{meta.detail}</p>
       </div>
 

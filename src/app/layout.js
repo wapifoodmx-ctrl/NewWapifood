@@ -1,35 +1,45 @@
-import { Cormorant_Garamond, DM_Sans } from "next/font/google";
+import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/ui/AppProviders";
 
-const display = Cormorant_Garamond({
+const display = Fraunces({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
+  weight: ["600", "700"],
   variable: "--font-display",
 });
 
-const sans = DM_Sans({
+const sans = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
   variable: "--font-sans",
 });
 
 export const metadata = {
   title: "Wapifood",
-  description: "SaaS de operación para restaurantes",
+  description: "Caja, cocina, mesas y menú para tu restaurante. Fácil para todo el equipo.",
 };
 
-// Aplica el tema guardado antes del primer pintado para evitar el destello claro.
-const themeScript = `try{if(localStorage.getItem('theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}`;
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#B93815",
+};
+
+const themeScript = `try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`;
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang="es-MX" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className={`${display.variable} ${sans.variable} antialiased`}>
-        <AppProviders>{children}</AppProviders>
+        <a className="skip-link" href="#contenido">
+          Saltar al contenido
+        </a>
+        <div id="contenido">
+          <AppProviders>{children}</AppProviders>
+        </div>
       </body>
     </html>
   );

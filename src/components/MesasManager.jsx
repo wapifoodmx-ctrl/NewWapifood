@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
+import { Icon } from "@/components/ui/Icon";
+import { EmptyState } from "@/components/ui/States";
+import { tableStateMeta } from "@/lib/brand";
 import { confirmAsync } from "@/components/ui/confirm";
 
 const CHANNELS = [
@@ -154,22 +157,27 @@ export function MesasManager({ restaurantId, initialTables }) {
           </button>
           {msg ? <span className="text-sm text-[var(--color-sage)]">{msg}</span> : null}
         </div>
+        {!tables.length ? (
+          <EmptyState icon="table" title="Todavía no hay mesas" text="Crea la caja, el kiosko o la primera mesa del salón." />
+        ) : null}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {tables.map((t) => (
+          {tables.map((t) => {
+            const meta = tableStateMeta(t.state, t.state === "ocupada");
+            return (
             <article
               key={t.id}
-              className={`rounded-2xl border p-4 ${
-                t.active
-                  ? "border-[var(--color-line)] bg-[var(--color-paper)]"
-                  : "border-dashed border-[var(--color-line)] bg-[var(--color-cream)] opacity-70"
-              }`}
+              className={`table-tile tone-${t.active ? meta.tone : "off"} !min-h-0 w-full ${t.active ? "" : "opacity-70"}`}
             >
-              <p className="text-2xl font-semibold">Mesa {t.number}</p>
-              <p className="text-sm text-[var(--color-muted)]">
-                {t.seats} lugares · {t.state}
+              <div className="flex w-full items-center justify-between gap-2">
+                <p className="text-2xl font-extrabold">Mesa {t.number}</p>
+                <Icon name={meta.icon} size={22} />
+              </div>
+              <p className="text-base font-bold">
+                {meta.label} · {t.seats} lugares
               </p>
-              <p className="mt-1 text-xs font-bold uppercase tracking-wide text-[var(--color-ember)]">
-                {t.channel_type || "piso"}
+              <p className="text-base text-[var(--ink-soft)]">
+                {t.channel_type === "caja" ? "Caja" : t.channel_type === "kiosko" ? "Kiosko" : t.channel_type === "tablet" ? "Tablet" : "Piso"}
+                {t.active ? "" : " · pausada"}
               </p>
               <select
                 className="mt-2 h-9 w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-cream)] px-2 text-xs"
@@ -183,27 +191,28 @@ export function MesasManager({ restaurantId, initialTables }) {
                 ))}
               </select>
               {(t.channel_type === "tablet" || t.channel_type === "piso") ? (
-                <p className="mt-2 break-all font-mono text-[10px] text-[var(--color-walnut)]">
-                  Tablet: /tablet/{t.id}
+                <p className="mt-2 break-all text-base text-[var(--ink-soft)]">
+                  Enlace de tablet: /tablet/{t.id}
                 </p>
               ) : null}
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" onClick={() => toggle(t)} className="text-xs font-semibold">
-                  {t.active ? "Desactivar" : "Activar"}
+              <div className="mt-3 flex w-full flex-wrap gap-2">
+                <button type="button" onClick={() => toggle(t)} className="btn-ghost px-3">
+                  {t.active ? "Pausar" : "Activar"}
                 </button>
-                <button type="button" onClick={() => setState(t, t.state === "no_disponible" ? "libre" : "no_disponible")} className="text-xs font-semibold">
+                <button type="button" onClick={() => setState(t, t.state === "no_disponible" ? "libre" : "no_disponible")} className="btn-ghost px-3">
                   {t.state === "no_disponible" ? "Habilitar" : "No disponible"}
                 </button>
                 <button
                   type="button"
                   onClick={() => remove(t.id)}
-                  className="text-xs font-semibold text-[var(--color-wine)]"
+                  className="btn-danger px-3"
                 >
                   Eliminar
                 </button>
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
       </div>
 

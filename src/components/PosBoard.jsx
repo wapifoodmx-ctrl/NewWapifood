@@ -10,6 +10,9 @@ import { isMissingRelation } from "@/lib/schema";
 import { toast } from "@/components/ui/Toast";
 import { confirmAsync } from "@/components/ui/confirm";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
+import { EmptyState } from "@/components/ui/States";
+import { Icon } from "@/components/ui/Icon";
+import { PAY_METHODS, cashSuggestions, categoryColor, haptic, tableStateMeta } from "@/lib/brand";
 
 /**
  * POS — paridad gradual con Puntodeventa (CarritoModal + ModalsPago).
@@ -32,6 +35,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   const [extraPick, setExtraPick] = useState(null);
   const [splitIds, setSplitIds] = useState([]);
   const [orderDiscount, setOrderDiscount] = useState({ type: "", value: "" });
+  const [flashId, setFlashId] = useState(null);
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -214,7 +218,43 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     await saveLineExtras(order.id, product.id, selected);
     await refresh();
     setLoading(false);
+    setFlashId(product.id);
+    haptic();
+    window.setTimeout(() => setFlashId((id) => (id === product.id ? null : id)), 280);
     toast.info(`${product.name} agregado`);
+  }
+
+  async function restoreLine(snapshot) {
+    const orderId = snapshot.order_id || order?.id;
+    if (!orderId) return;
+    setLoading(true);
+    const { error } = await supabase.from("order_items").insert({
+      order_id: orderId,
+      product_id: snapshot.product_id,
+      qty: snapshot.qty,
+      unit_price: snapshot.unit_price,
+      notes: snapshot.notes || null,
+      status: snapshot.status || "pendiente",
+    });
+    if (!error && snapshot.extras?.length) {
+      await supabase.from("order_item_extras").upsert(
+        snapshot.extras.map((extra) => ({
+          order_id: orderId,
+          product_id: snapshot.product_id,
+          ingredient_id: extra.ingredient_id,
+          qty: extra.qty,
+          extra_price: extra.extra_price,
+        })),
+        { onConflict: "order_id,product_id,ingredient_id" },
+      );
+    }
+    setLoading(false);
+    if (error) {
+      toast.error(error.message || "No se pudo deshacer. Agrégalo de nuevo.");
+      return;
+    }
+    await refresh();
+    toast.success("Regresamos el platillo");
   }
 
   async function changeQty(productId, delta) {
@@ -224,11 +264,24 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     const next = Number(line.qty) + delta;
     setLoading(true);
     if (next <= 0) {
+      const extras = await supabase
+        .from("order_item_extras")
+        .select("ingredient_id,qty,extra_price")
+        .eq("order_id", order.id)
+        .eq("product_id", productId);
       await supabase
         .from("order_items")
         .delete()
         .eq("order_id", order.id)
         .eq("product_id", productId);
+      const snapshot = { ...line, extras: extras.error ? [] : extras.data || [] };
+      const name = productMap.get(productId)?.name || "Platillo";
+      toast.warning(`Quitamos ${name}`, {
+        action: {
+          label: "Deshacer",
+          onClick: () => restoreLine(snapshot),
+        },
+      });
     } else {
       await supabase
         .from("order_items")
@@ -443,298 +496,300 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
 
   const change =
     payMethod === "efectivo" && Number(cashGiven) > 0 ? Number(cashGiven) - chargeTotal : null;
+  const suggestions = cashSuggestions(chargeTotal);
+  const activeTable = tableMap.get(activeTableId);
+  const catName = (id) => categories.find((c) => c.id === id)?.name || "Platillo";
+
+  const summary = (
+    <div className="card p-4">
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div>
+          <h2 className="text-2xl">Cuenta</h2>
+          <p className="text-base text-[var(--ink-soft)]">
+            {activeTable
+              ? activeTable.channel_type === "caja"
+                ? "Caja"
+                : `Mesa ${activeTable.number}`
+              : "Elige una mesa"}
+            {order ? ` · ${statusMeta(order.status).label}` : ""}
+          </p>
+        </div>
+        <button type="button" className="btn-ghost px-3 lg:hidden" onClick={() => setCartOpen(false)}>
+          Cerrar
+        </button>
+      </div>
+      <ul className="space-y-2">
+        {(order?.order_items || []).map((i) => {
+          const p = productMap.get(i.product_id);
+          return (
+            <li key={`${i.order_id}-${i.product_id}`} className="line">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className={`text-lg font-extrabold ${itemStatusMeta(i.status).color}`}>{p?.name || "Producto"}</p>
+                  <p className="text-sm font-bold text-[var(--ink-soft)]">{itemStatusMeta(i.status).label}</p>
+                  {i.notes ? <p className="text-base text-[var(--primary)]">{i.notes}</p> : null}
+                  <ExtrasLines extras={i.order_item_extras} />
+                </div>
+                <span className="text-lg font-extrabold">{money(lineAmount(i))}</span>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <label className="flex min-h-12 items-center gap-2 text-base font-bold">
+                  <input
+                    type="checkbox"
+                    checked={splitIds.includes(i.product_id)}
+                    onChange={() =>
+                      setSplitIds((ids) =>
+                        ids.includes(i.product_id) ? ids.filter((id) => id !== i.product_id) : [...ids, i.product_id],
+                      )
+                    }
+                  />
+                  Separar
+                </label>
+                <div className="qty">
+                  <button type="button" onClick={() => changeQty(i.product_id, -1)} aria-label={`Quitar uno de ${p?.name || "producto"}`}>
+                    −
+                  </button>
+                  <span>{i.qty}</span>
+                  <button type="button" onClick={() => changeQty(i.product_id, 1)} aria-label={`Agregar uno de ${p?.name || "producto"}`}>
+                    +
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className="btn-ghost px-3"
+                  onClick={() => setNoteEdit({ productId: i.product_id, notes: i.notes || "" })}
+                >
+                  Nota
+                </button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {!(order?.order_items || []).length ? (
+        <EmptyState icon="cart" title="La cuenta está vacía" text="Toca un platillo para agregarlo. Un toque suma uno." />
+      ) : null}
+      <div className="mt-4 grid grid-cols-[1.2fr_0.8fr_auto] gap-2">
+        <label className="sr-only" htmlFor="pos-discount-type">Tipo de descuento</label>
+        <select
+          id="pos-discount-type"
+          value={orderDiscount.type}
+          onChange={(e) => setOrderDiscount((d) => ({ ...d, type: e.target.value }))}
+        >
+          <option value="">Sin descuento</option>
+          <option value="porcentaje">Porcentaje</option>
+          <option value="monto">Pesos</option>
+        </select>
+        <label className="sr-only" htmlFor="pos-discount-value">Cantidad del descuento</label>
+        <input
+          id="pos-discount-value"
+          value={orderDiscount.value}
+          onChange={(e) => setOrderDiscount((d) => ({ ...d, value: e.target.value.replace(/[^\d.]/g, "") }))}
+          placeholder="0"
+          inputMode="decimal"
+        />
+        <button type="button" className="btn-ghost px-3" onClick={applyOrderDiscount}>
+          Aplicar
+        </button>
+      </div>
+      {subtotal !== total ? (
+        <p className="mt-3 flex justify-between text-base text-[var(--ink-soft)]">
+          <span>Subtotal</span><span>{money(subtotal)}</span>
+        </p>
+      ) : null}
+      <p className="mt-1 flex items-end justify-between">
+        <span className="text-lg font-bold">Total</span>
+        <span className="text-3xl font-extrabold">{money(total)}</span>
+      </p>
+      <div className="mt-3 grid gap-2">
+        <button type="button" className="btn-lg btn-accent" onClick={sendKitchen}>
+          Enviar a cocina
+        </button>
+        <button type="button" className="btn-lg btn-primary" onClick={() => openPay(false)}>
+          Cobrar {money(total)}
+        </button>
+        <button type="button" className="btn-ghost" onClick={() => openPay(true)}>
+          Cobrar solo lo marcado
+        </button>
+        <button type="button" className="btn-danger" onClick={cancelOrder}>
+          Cancelar cuenta
+        </button>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="relative grid gap-4 lg:grid-cols-[240px_1fr]">
-      {live ? (
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-sage)]">En vivo · mesas y órdenes</p>
-      ) : (
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-walnut)]">Conectando tiempo real…</p>
-      )}
-      <LoadingOverlay visible={loading} message="Procesando POS…" />
+    <div className="pos-shell relative">
+      <p className="mb-3 text-base font-bold text-[var(--ink-soft)]" role="status">
+        {live ? "En vivo. Las mesas se actualizan solas." : "Conectando… si tarda, revisa tu internet."}
+      </p>
+      <LoadingOverlay visible={loading} message="Guardando la cuenta…" />
 
-      {/* Mesas */}
-      <aside className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-3">
-        <h2 className="text-lg font-normal">Mesas</h2>
-        <p className="mb-2 text-[11px] text-[var(--color-walnut)]">Caja primero · sin kiosko</p>
-        <div className="grid grid-cols-2 gap-2">
-          {sortedTables.map((t) => {
-            const live = orders.find(
-              (o) =>
-                o.table_id === t.id && o.status !== "pagada" && o.status !== "cancelada",
-            );
-            const active = activeTableId === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => t.state === "no_disponible" ? toast.warning("Mesa no disponible") : openTable(t.id)}
-                className={`min-h-[72px] border px-2 py-2 text-left ${
-                  active
-                    ? "border-[var(--color-onyx-warm)] bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]"
-                    : "border-[var(--color-warm-stone)] bg-[var(--color-parchment)]"
-                }`}
-              >
-                <span className="block text-sm font-semibold">
-                  {t.channel_type === "caja" ? "Caja" : `Mesa ${t.number}`}
-                </span>
-                <span className="text-[11px] opacity-80">
-                  {t.state === "no_disponible" ? "No disponible" : live ? `Ocupada · ${live.status}` : "Libre"}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </aside>
-
-      {/* Catálogo + resumen */}
-      <section className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
-        {!activeTableId ? (
-          <div className="p-6 text-center">
-            <p className="text-2xl font-normal">Elige una mesa para empezar</p>
-            <p className="mt-2 text-base text-[var(--color-muted)]">Toca la caja o una mesa libre. Después solo toca los platillos.</p>
+      <div className="pos-layout">
+        <aside aria-label="Mesas">
+          <h2 className="mb-2 text-xl">Mesas</h2>
+          <div className="pos-tables-grid">
+            {sortedTables.map((t) => {
+              const liveOrder = orders.find(
+                (o) => o.table_id === t.id && o.status !== "pagada" && o.status !== "cancelada",
+              );
+              const meta = tableStateMeta(t.state, Boolean(liveOrder));
+              const active = activeTableId === t.id;
+              const name = t.channel_type === "caja" ? "Caja" : `Mesa ${t.number}`;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => (t.state === "no_disponible" ? toast.warning("Esa mesa está marcada como no disponible.") : openTable(t.id))}
+                  className={`table-tile tone-${meta.tone} ${active ? "is-on" : ""}`}
+                >
+                  <Icon name={meta.icon} size={22} />
+                  <span className="table-tile-name">{name}</span>
+                  <span className="table-tile-state">
+                    {meta.label}
+                    {liveOrder ? ` · ${statusMeta(liveOrder.status).label}` : ""}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        ) : (
-          <>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h2 className="text-2xl font-normal">
-                  {tableMap.get(activeTableId)?.channel_type === "caja"
-                    ? "Caja"
-                    : `Mesa ${tableMap.get(activeTableId)?.number}`}
-                </h2>
-                <p className="text-sm text-[var(--color-espresso)]">
-                  Estado: {order ? statusMeta(order.status).label : "—"} · {itemCount} ítem(s)
-                </p>
+          {!sortedTables.length ? (
+            <EmptyState icon="table" title="Aún no hay mesas" text="Crea la caja o una mesa. Sin eso no se puede vender." action={<a className="btn-primary mt-2 inline-flex items-center px-4 no-underline" href="/mesas">Crear mesa</a>} />
+          ) : null}
+        </aside>
+
+        <section aria-label="Platillos">
+          {!activeTableId ? (
+            <EmptyState
+              icon="table"
+              title="Elige una mesa para empezar"
+              text="Toca Caja o una mesa libre. Después, un toque en el platillo lo agrega."
+            />
+          ) : (
+            <>
+              <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <h2 className="text-3xl">
+                    {activeTable?.channel_type === "caja" ? "Caja" : `Mesa ${activeTable?.number}`}
+                  </h2>
+                  <p className="text-base text-[var(--ink-soft)]">
+                    {order ? statusMeta(order.status).label : "Sin cuenta"} · {itemCount} {itemCount === 1 ? "platillo" : "platillos"}
+                  </p>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setCartOpen(true)}
-                className="h-11 rounded-[3px] bg-[var(--color-saffron-glow)] px-4 text-xs font-semibold uppercase text-[var(--color-midnight-roast)]"
-              >
-                Ver carrito · {money(total)}
-              </button>
-            </div>
-
-            <div className="mt-3 flex gap-1 overflow-x-auto">
-              <button
-                type="button"
-                onClick={() => setCatFilter("")}
-                className={`shrink-0 rounded-[3px] px-3 py-2 text-xs font-semibold uppercase ${
-                  !catFilter ? "bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]" : "bg-[var(--color-parchment)]"
-                }`}
-              >
-                Todos
-              </button>
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setCatFilter(c.id)}
-                  className={`shrink-0 rounded-[3px] px-3 py-2 text-xs font-semibold uppercase ${
-                    catFilter === c.id
-                      ? "bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]"
-                      : "bg-[var(--color-parchment)]"
-                  }`}
-                >
-                  {c.name}
+              <div className="cat-row" role="tablist" aria-label="Categorías">
+                <button type="button" className={`cat-chip ${!catFilter ? "is-on" : ""}`} onClick={() => setCatFilter("")}>
+                  Todos
                 </button>
-              ))}
-            </div>
+                {categories.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`cat-chip ${catFilter === c.id ? "is-on" : ""}`}
+                    onClick={() => setCatFilter(c.id)}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+              <div className="pos-grid mt-3">
+                {productList.map((p) => {
+                  const color = categoryColor(p.category_id || p.name);
+                  const hasExtras = extrasForProduct(productExtras, p.id).length > 0;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => chooseProduct(p)}
+                      className={`pos-tile ${flashId === p.id ? "tap-flash" : ""}`}
+                    >
+                      <span className="pos-tile-media" style={{ background: color }}>
+                        {p.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.image_url} alt="" />
+                        ) : (
+                          <span>{(p.name || "?").slice(0, 1).toUpperCase()}</span>
+                        )}
+                      </span>
+                      <span className="pos-tile-body">
+                        <span className="pos-tile-cat" style={{ color }}>{catName(p.category_id)}</span>
+                        <span className="pos-tile-name">{p.name}</span>
+                        <span className="pos-tile-price">{money(p.price)}</span>
+                        {hasExtras ? <span className="pos-tile-extra">Con adicionales</span> : null}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {!productList.length ? (
+                <EmptyState icon="dish" title="No hay platillos en esta lista" text="Prueba otra categoría o agrega platillos en la carta." action={<a className="btn-primary mt-2 inline-flex items-center px-4 no-underline" href="/carta">Ir a platillos</a>} />
+              ) : null}
+            </>
+          )}
 
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {productList.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => chooseProduct(p)}
-                  className="min-h-16 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-3 py-2 text-left"
-                >
-                  <span className="block font-semibold">{p.name}</span>
-                  <span className="text-sm text-[var(--color-espresso)]">{money(p.price)}</span>
-                  {extrasForProduct(productExtras, p.id).length ? (
-                    <span className="mt-1 block text-[10px] font-semibold uppercase text-[var(--color-saffron-glow)]">Adicionales</span>
-                  ) : null}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
-              <button
-                type="button"
-                onClick={sendKitchen}
-                className="min-h-14 rounded-[3px] bg-[var(--color-onyx-warm)] px-3 text-sm font-semibold text-[var(--color-parchment)]"
-              >
-                Enviar a cocina
-              </button>
-              <button
-                type="button"
-                onClick={openPay}
-                className="h-12 rounded-[3px] border border-[var(--color-warm-stone)] text-xs font-semibold uppercase"
-              >
-                Cobrar
-              </button>
-              <button
-                type="button"
-                onClick={cancelOrder}
-                className="h-12 text-xs font-semibold uppercase text-[var(--color-wine)]"
-              >
-                Cancelar cuenta
-              </button>
-            </div>
-          </>
-        )}
-
-        {lastTicket ? (
-          <div className="mt-4 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] p-4">
-            <p className="text-xs font-semibold uppercase text-[var(--color-saffron-glow)]">Último ticket</p>
-            <p className="font-semibold">
-              Mesa {lastTicket.table} · {lastTicket.method}
-            </p>
-            <ul className="mt-2 space-y-1 text-sm">
-              {lastTicket.items.map((i, idx) => (
-                <li key={idx}>
-                  {i.qty} × {i.name}
-                  {i.notes ? ` (${i.notes})` : ""} — {money(i.line)}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 font-semibold">{money(lastTicket.total)}</p>
-            {lastTicket.cashGiven ? (
-              <p className="text-sm text-[var(--color-espresso)]">
-                Recibido {money(lastTicket.cashGiven)} · cambio{" "}
-                {money(Math.max(0, lastTicket.cashGiven - lastTicket.total))}
+          {lastTicket ? (
+            <div className="card mt-4 p-4" role="status">
+              <p className="text-base font-bold text-[var(--primary)]">Último ticket</p>
+              <p className="text-xl font-extrabold">
+                Mesa {lastTicket.table} · {PAY_METHODS.find((m) => m.id === lastTicket.method)?.label || lastTicket.method}
               </p>
-            ) : null}
-          </div>
-        ) : null}
-      </section>
-
-      {/* Modal carrito — paridad CarritoModal */}
-      {cartOpen && order ? (
-        <div className="fixed inset-0 z-[1600] flex items-end justify-center bg-black/45 p-4 sm:items-center">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto border border-[var(--color-warm-stone)] bg-[var(--color-paper)] shadow-2xl">
-            <div className="sticky top-0 flex items-center justify-between border-b border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-4 py-3">
-              <h2 className="text-xl font-normal">Carrito</h2>
-              <button type="button" onClick={() => setCartOpen(false)} className="text-xs font-semibold uppercase">
-                Cerrar
-              </button>
-            </div>
-            <ul className="space-y-3 p-4">
-              {(order.order_items || []).map((i) => {
-                const p = productMap.get(i.product_id);
-                return (
-                  <li key={`${i.order_id}-${i.product_id}`} className="border border-[var(--color-warm-stone)] p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className={`font-semibold ${itemStatusMeta(i.status).color}`}>{p?.name || "Producto"}</p>
-                        <p className="text-[10px] font-bold uppercase text-[var(--color-walnut)]">{itemStatusMeta(i.status).label}</p>
-                        {i.notes ? (
-                          <p className="text-xs text-[var(--color-saffron-glow)]">{i.notes}</p>
-                        ) : null}
-                        <ExtrasLines extras={i.order_item_extras} />
-                      </div>
-                      <span className="font-semibold">{money(lineAmount(i))}</span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <label className="flex items-center gap-1 text-[11px] font-semibold uppercase">
-                        <input
-                          type="checkbox"
-                          checked={splitIds.includes(i.product_id)}
-                          onChange={() =>
-                            setSplitIds((ids) =>
-                              ids.includes(i.product_id) ? ids.filter((id) => id !== i.product_id) : [...ids, i.product_id],
-                            )
-                          }
-                        />
-                        Separar
-                      </label>
-                      <button type="button" onClick={() => changeQty(i.product_id, -1)} className="h-9 w-9 border border-[var(--color-warm-stone)] font-bold" aria-label="Quitar uno">
-                        −
-                      </button>
-                      <span className="w-8 text-center font-semibold">{i.qty}</span>
-                      <button type="button" onClick={() => changeQty(i.product_id, 1)} className="h-9 w-9 border border-[var(--color-warm-stone)] font-bold">
-                        +
-                      </button>
-                      <button
-                        type="button"
-                        className="ml-auto text-xs font-semibold uppercase"
-                        onClick={() => setNoteEdit({ productId: i.product_id, notes: i.notes || "" })}
-                      >
-                        Comentario
-                      </button>
-                    </div>
+              <ul className="mt-2 space-y-1 text-base">
+                {lastTicket.items.map((i, idx) => (
+                  <li key={idx}>
+                    {i.qty} × {i.name}
+                    {i.notes ? ` (${i.notes})` : ""} — {money(i.line)}
                   </li>
-                );
-              })}
-              {!(order.order_items || []).length ? (
-                <p className="text-[var(--color-walnut)]">Carrito vacío</p>
-              ) : null}
-            </ul>
-            <div className="border-t border-[var(--color-warm-stone)] p-4">
-              <div className="mb-3 grid grid-cols-3 gap-2">
-                <select
-                  value={orderDiscount.type}
-                  onChange={(e) => setOrderDiscount((d) => ({ ...d, type: e.target.value }))}
-                  className="h-10 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-1 text-xs"
-                >
-                  <option value="">Sin desc.</option>
-                  <option value="porcentaje">% </option>
-                  <option value="monto">$</option>
-                </select>
-                <input
-                  value={orderDiscount.value}
-                  onChange={(e) => setOrderDiscount((d) => ({ ...d, value: e.target.value.replace(/[^\d.]/g, "") }))}
-                  placeholder="0"
-                  className="h-10 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-2 text-sm"
-                />
-                <button type="button" onClick={applyOrderDiscount} className="h-10 text-[10px] font-semibold uppercase">
-                  Aplicar
-                </button>
-              </div>
-              {subtotal !== total ? (
-                <p className="mb-1 flex justify-between text-sm text-[var(--color-espresso)]">
-                  <span>Subtotal</span><span>{money(subtotal)}</span>
+                ))}
+              </ul>
+              <p className="mt-2 text-2xl font-extrabold">{money(lastTicket.total)}</p>
+              {lastTicket.cashGiven ? (
+                <p className="text-base text-[var(--ink-soft)]">
+                  Recibiste {money(lastTicket.cashGiven)}. Cambio {money(Math.max(0, lastTicket.cashGiven - lastTicket.total))}.
                 </p>
               ) : null}
-              <p className="mb-3 flex justify-between text-lg font-semibold">
-                <span>Total</span>
-                <span>{money(total)}</span>
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <button type="button" onClick={sendKitchen} className="min-h-14 rounded-[3px] bg-[var(--color-onyx-warm)] px-3 text-sm font-semibold text-[var(--color-parchment)]">
-                  Enviar a cocina
-                </button>
-                <button type="button" onClick={() => openPay(false)} className="h-12 rounded-[3px] border border-[var(--color-warm-stone)] text-xs font-semibold uppercase">
-                  Cobrar
-                </button>
-                <button type="button" onClick={() => openPay(true)} className="h-12 rounded-[3px] text-xs font-semibold uppercase text-[var(--color-saffron-glow)] sm:col-span-2">
-                  Cobrar solo lo marcado
-                </button>
-              </div>
             </div>
-          </div>
+          ) : null}
+        </section>
+
+        <aside id="pos-cuenta" className={`pos-summary ${cartOpen ? "open" : ""}`} aria-label="Resumen de la cuenta">
+          {summary}
+        </aside>
+      </div>
+
+      {activeTableId && !cartOpen ? (
+        <div className="pos-dock">
+          <button type="button" className="btn-ghost flex-1" onClick={() => setCartOpen(true)}>
+            Cuenta · {itemCount}
+          </button>
+          <button type="button" className="btn-lg btn-primary flex-[1.4]" onClick={() => openPay(false)}>
+            Cobrar {money(total)}
+          </button>
         </div>
       ) : null}
 
-      {/* Modal comentario línea */}
+      {cartOpen ? (
+        <button type="button" className="sheet-back lg:hidden" aria-label="Cerrar cuenta" onClick={() => setCartOpen(false)} />
+      ) : null}
+
       {noteEdit ? (
-        <div className="fixed inset-0 z-[1700] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-6">
-            <h2 className="text-xl font-normal">Comentario del producto</h2>
-            <p className="text-sm text-[var(--color-espresso)]">Ej. sin cebolla, término medio…</p>
+        <div className="sheet-back" role="presentation">
+          <div role="dialog" aria-modal="true" aria-labelledby="pos-note-title" className="sheet">
+            <div className="sheet-handle" />
+            <h2 id="pos-note-title" className="text-2xl">Nota del platillo</h2>
+            <p className="text-base text-[var(--ink-soft)]">Por ejemplo: sin cebolla, término medio.</p>
             <textarea
               value={noteEdit.notes}
               onChange={(e) => setNoteEdit((n) => ({ ...n, notes: e.target.value }))}
               rows={3}
-              className="mt-3 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-3 py-2"
+              className="mt-3 w-full"
             />
-            <div className="mt-4 flex justify-end gap-2">
-              <button type="button" onClick={() => setNoteEdit(null)} className="h-11 px-4 text-xs font-semibold uppercase">
+            <div className="mt-4 flex gap-2">
+              <button type="button" onClick={() => setNoteEdit(null)} className="btn-ghost flex-1">
                 Cancelar
               </button>
-              <button type="button" onClick={saveNote} className="h-11 bg-[var(--color-onyx-warm)] px-4 text-xs font-semibold uppercase text-[var(--color-parchment)]">
-                Guardar
+              <button type="button" onClick={saveNote} className="btn-primary flex-1">
+                Guardar nota
               </button>
             </div>
           </div>
@@ -742,10 +797,11 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       ) : null}
 
       {extraPick ? (
-        <div className="fixed inset-0 z-[1700] flex items-end justify-center bg-black/50 p-4 sm:items-center" role="presentation">
-          <div role="dialog" aria-modal="true" aria-labelledby="pos-extras-title" className="max-h-[90vh] w-full max-w-md overflow-y-auto border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-5">
-            <h2 id="pos-extras-title" className="text-2xl font-normal">{extraPick.product.name}</h2>
-            <p className="text-sm text-[var(--color-espresso)]">
+        <div className="sheet-back" role="presentation">
+          <div role="dialog" aria-modal="true" aria-labelledby="pos-extras-title" className="sheet">
+            <div className="sheet-handle" />
+            <h2 id="pos-extras-title" className="text-2xl">{extraPick.product.name}</h2>
+            <p className="text-lg font-extrabold">
               {money(Number(extraPick.product.price) + extrasCharge(extraPick.selected))}
             </p>
             <ExtrasPicker
@@ -765,7 +821,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
               }
             />
             <div className="mt-5 flex gap-2">
-              <button type="button" onClick={() => setExtraPick(null)} className="h-12 flex-1 border border-[var(--color-warm-stone)] text-xs font-semibold uppercase">
+              <button type="button" onClick={() => setExtraPick(null)} className="btn-ghost flex-1">
                 Cancelar
               </button>
               <button
@@ -775,7 +831,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                   setExtraPick(null);
                   addItem(pick.product, pick.selected);
                 }}
-                className="h-12 flex-1 bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]"
+                className="btn-lg btn-primary flex-1"
               >
                 Agregar
               </button>
@@ -784,50 +840,62 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         </div>
       ) : null}
 
-      {/* Modal pago — paridad ModalsPago */}
       {payOpen ? (
-        <div className="fixed inset-0 z-[1700] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-6">
-            <h2 className="text-2xl font-normal">Cobrar cuenta</h2>
-            <p className="mt-1 text-3xl font-semibold">{money(chargeTotal)}</p>
-            {splitIds.length ? <p className="text-xs text-[var(--color-espresso)]">Solo los productos marcados.</p> : null}
+        <div className="sheet-back" role="presentation">
+          <div role="dialog" aria-modal="true" aria-labelledby="pos-pay-title" className="sheet">
+            <div className="sheet-handle" />
+            <h2 id="pos-pay-title" className="text-2xl">Cobrar</h2>
+            <p className="text-4xl font-extrabold">{money(chargeTotal)}</p>
+            {splitIds.length ? <p className="text-base text-[var(--ink-soft)]">Solo los platillos marcados para separar.</p> : null}
             <div className="mt-4 grid grid-cols-3 gap-2">
-              {["efectivo", "tarjeta", "transferencia"].map((m) => (
+              {PAY_METHODS.map((m) => (
                 <button
-                  key={m}
+                  key={m.id}
                   type="button"
-                  onClick={() => setPayMethod(m)}
-                  className={`h-11 rounded-[3px] text-xs font-semibold uppercase ${
-                    payMethod === m
-                      ? "bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]"
-                      : "border border-[var(--color-warm-stone)]"
-                  }`}
+                  onClick={() => setPayMethod(m.id)}
+                  className={`pay-choice ${payMethod === m.id ? "is-on" : ""}`}
+                  aria-pressed={payMethod === m.id}
                 >
-                  {m}
+                  <Icon name={m.id === "efectivo" ? "cash" : m.id === "tarjeta" ? "card" : "qr"} size={22} />
+                  <span className="mt-1 block font-extrabold">{m.label}</span>
+                  <small>{m.hint}</small>
                 </button>
               ))}
             </div>
             {payMethod === "efectivo" ? (
-              <label className="mt-4 block text-xs font-semibold uppercase">
-                Efectivo recibido
-                <input
-                  value={cashGiven}
-                  onChange={(e) => setCashGiven(e.target.value.replace(/[^\d.]/g, ""))}
-                  className="mt-1 h-11 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-3 font-normal normal-case"
-                  inputMode="decimal"
-                  placeholder="0.00"
-                />
+              <div className="mt-4">
+                <label className="block text-base font-bold" htmlFor="cash-given">
+                  Efectivo que te dan
+                  <input
+                    id="cash-given"
+                    value={cashGiven}
+                    onChange={(e) => setCashGiven(e.target.value.replace(/[^\d.]/g, ""))}
+                    className="mt-1 w-full text-2xl font-extrabold"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                  />
+                </label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {suggestions.map((n) => (
+                    <button key={n} type="button" className="btn-ghost px-3" onClick={() => setCashGiven(String(n))}>
+                      {money(n)}
+                    </button>
+                  ))}
+                </div>
                 {change != null && change >= 0 ? (
-                  <p className="mt-2 text-sm text-[var(--color-sage)]">Cambio: {money(change)}</p>
+                  <p className="mt-3 text-2xl font-extrabold text-[var(--sage)]" role="status">Cambio {money(change)}</p>
                 ) : null}
-              </label>
+                {change != null && change < 0 ? (
+                  <p className="mt-3 text-base font-bold text-[var(--wine)]" role="alert">Falta dinero. El efectivo no alcanza el total.</p>
+                ) : null}
+              </div>
             ) : null}
-            <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={() => setPayOpen(false)} className="h-11 px-4 text-xs font-semibold uppercase">
-                Volver
-              </button>
-              <button type="button" onClick={confirmPay} className="h-11 bg-[var(--color-onyx-warm)] px-4 text-xs font-semibold uppercase text-[var(--color-parchment)]">
+            <div className="mt-5 grid gap-2">
+              <button type="button" onClick={confirmPay} className="btn-lg btn-primary">
                 Confirmar cobro
+              </button>
+              <button type="button" onClick={() => setPayOpen(false)} className="btn-ghost">
+                Volver
               </button>
             </div>
           </div>

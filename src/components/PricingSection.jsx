@@ -1,9 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
-import SplitText from "@/components/SplitText";
-import PixelCard from "@/components/PixelCard";
+import { useState } from "react";
 
 const PLANS = [
   {
@@ -77,22 +75,12 @@ const money = (n) =>
 
 export function PricingSection() {
   const [billing, setBilling] = useState("mensual");
-  const appTheme = useSyncExternalStore(
-    (cb) => {
-      window.addEventListener("themechange", cb);
-      return () => window.removeEventListener("themechange", cb);
-    },
-    () => (document.documentElement.classList.contains("dark") ? "dark" : "light"),
-    () => "light"
-  );
   return (
     <section id="precios" className="border-t border-[var(--color-line)] bg-[var(--color-paper)] py-16">
       <div className="mx-auto max-w-6xl px-4">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-ember)]">
-            Precios claros
-          </p>
-          <SplitText tag="h2" text="Elige el plan de tu restaurante" className="mt-2 text-4xl" effect="blur" />
+          <p className="text-base font-bold text-[var(--primary)]">Precios claros</p>
+          <h2 className="mt-2 text-4xl">Elige el plan de tu restaurante</h2>
           <p className="mt-3 text-[var(--color-muted)]">
             Mismos paquetes que en Wapifood original. Sin sorpresas: mesas, meseros y
             módulos incluidos según el plan.
@@ -135,15 +123,7 @@ export function PricingSection() {
                     Más popular
                   </span>
                 ) : null}
-                <SplitText
-                  tag="h3"
-                  text={plan.title}
-                  className="text-2xl"
-                  effect="blur"
-                  duration={1}
-                  delay={25}
-                  textAlign="left"
-                />
+                <h3 className="text-2xl">{plan.title}</h3>
                 <p className="mt-1 text-sm text-[var(--color-muted)]">{plan.subtitle}</p>
                 <p className="mt-5">
                   <span className="text-4xl font-semibold tracking-tight">{money(price)}</span>
@@ -178,19 +158,9 @@ export function PricingSection() {
               </>
             );
             return (
-              <PixelCard
-                key={plan.id}
-                theme={appTheme}
-                radius={28}
-                opacity={0.28}
-                fade={0.65}
-                spotlight={0.45}
-                glow={0.35}
-                className="flex h-full flex-col"
-                style={{ width: "100%", height: "100%", minHeight: "480px", display: "flex", flexDirection: "column", padding: "1.5rem" }}
-              >
+              <article key={plan.id} className="card flex h-full min-h-[480px] flex-col p-6">
                 <div className="flex h-full flex-col gap-1">{body}</div>
-              </PixelCard>
+              </article>
             );
           })}
         </div>

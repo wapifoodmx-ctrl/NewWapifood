@@ -68,7 +68,6 @@ export function ConfigPanel({ restaurant, profile }) {
       set("logo_url", savedLogo.logo_url || url);
       setMsg("Logo actualizado y guardado.");
       toast.success("Logo actualizado y guardado.");
-      toast.success("Logo actualizado y guardado.");
       router.refresh();
     } catch (e2) {
       const m = e2.message || "No se pudo subir el logo";

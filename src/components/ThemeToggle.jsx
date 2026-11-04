@@ -44,7 +44,7 @@ export default function ThemeToggle({ className = "" }) {
       aria-pressed={dark}
       aria-label={dark ? "Activar tema claro" : "Activar tema oscuro"}
       title={dark ? "Tema claro" : "Tema oscuro"}
-      className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--color-line)] bg-[var(--color-paper)] transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-ember)] print:hidden ${className}`}
+      className={`icon-btn inline-flex shrink-0 items-center justify-center border border-[var(--color-line)] bg-[var(--color-paper)] print:hidden ${className}`}
     >
       <svg
         aria-hidden="true"

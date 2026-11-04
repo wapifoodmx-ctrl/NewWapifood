@@ -17,8 +17,8 @@ export default async function MesasPage() {
 
   return (
     <AppShell title="Mesas" restaurantName={membership.restaurants?.name} role={membership.role} operational={operational} setupOnly={setupOnly}>
-      <p className="mb-4 text-[var(--color-muted)]">
-        Administra el número de mesas y lugares. Se usan en el punto de venta.
+      <p className="mb-4 text-base text-[var(--ink-soft)]">
+        Verde y una palomita es libre. Ámbar y personas es ocupada. Gris y el círculo es no disponible. El color siempre va con la palabra.
       </p>
       <MesasManager restaurantId={membership.restaurant_id} initialTables={tables || []} />
     </AppShell>

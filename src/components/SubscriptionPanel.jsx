@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import { PLANS, moneyMX, planMeta } from "@/lib/plans";
-import PixelCard from "@/components/PixelCard";
 
 export function SubscriptionPanel({ restaurantId, initialSubs }) {
   const [subs] = useState(initialSubs || []);
@@ -10,15 +9,6 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
-  const appTheme = useSyncExternalStore(
-    (cb) => {
-      window.addEventListener("themechange", cb);
-      return () => window.removeEventListener("themechange", cb);
-    },
-    () => (document.documentElement.classList.contains("dark") ? "dark" : "light"),
-    () => "light"
-  );
-
   const current =
     subs.find((s) => s.status === "active" || s.status === "trialing") || subs[0];
   const meta = current ? planMeta(current.plan) : null;
@@ -97,27 +87,10 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
               </button>
             </>
           );
-          if (billing !== "mensual") {
-            return (
-              <article key={p.id} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5">
-                {body}
-              </article>
-            );
-          }
           return (
-            <PixelCard
-              key={p.id}
-              theme={appTheme}
-              radius={24}
-              opacity={0.28}
-              fade={0.65}
-              spotlight={0.45}
-              glow={0.35}
-              className="flex flex-col"
-              style={{ width: "100%", height: "auto", minHeight: "260px", display: "block", padding: "1.25rem" }}
-            >
+            <article key={p.id} className="card p-5">
               {body}
-            </PixelCard>
+            </article>
           );
         })}
       </div>

@@ -6,7 +6,7 @@ export function StatusBadge({ children, tone = "default" }) {
     wine: "bg-[var(--color-wine)] text-[var(--color-parchment)]",
   };
   return (
-    <span className={`rounded-full px-2 py-1 text-xs font-bold uppercase tracking-wide ${tones[tone] || tones.default}`}>
+    <span className={`chip ${tones[tone] || tones.default}`}>
       {children}
     </span>
   );

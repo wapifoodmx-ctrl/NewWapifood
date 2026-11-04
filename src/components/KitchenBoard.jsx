@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
-import { statusMeta, itemStatusMeta } from "@/lib/orderStatus";
+import { EmptyState, Skeleton } from "@/components/ui/States";
+import { Icon } from "@/components/ui/Icon";
+import { statusMeta, itemStatusMeta, waitMeta } from "@/lib/orderStatus";
 import { OrderComments } from "@/components/OrderComments";
 
 /**
@@ -16,6 +18,12 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
   const [loading, setLoading] = useState(false);
   const [live, setLive] = useState(false);
   const [queue, setQueue] = useState("pendientes");
+  const [soundOn, setSoundOn] = useState(false);
+  const soundRef = useRef(false);
+  const [now, setNow] = useState(() => Date.now());
+  const known = useRef(new Set());
+  const armed = useRef(false);
+  const audioRef = useRef(null);
   const supabase = useMemo(() => createClient(), []);
   const nameOf = (id) => products.find((p) => p.id === id)?.name || "Producto";
 
@@ -29,10 +37,56 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
       .in("status", ["cocina", "lista", "pendiente", "abierta", "entregada"])
       .order("opened_at", { ascending: true });
     if (error) {
-      toast.error(error.message);
+      toast.error(`${error.message} Revisa la conexión y toca Actualizar.`);
       return;
     }
-    setOrders(data || []);
+    const list = data || [];
+    const ids = new Set(list.map((order) => order.id));
+    if (armed.current && soundRef.current) {
+      let fresh = false;
+      ids.forEach((id) => {
+        if (!known.current.has(id)) fresh = true;
+      });
+      if (fresh) chime();
+    }
+    known.current = ids;
+    armed.current = true;
+    setOrders(list);
+  }
+
+  function chime() {
+    try {
+      const ctx = audioRef.current || new AudioContext();
+      audioRef.current = ctx;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = 880;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch {
+      /* sin audio */
+    }
+  }
+
+  function toggleSound() {
+    const next = !soundRef.current;
+    soundRef.current = next;
+    setSoundOn(next);
+    try {
+      localStorage.setItem("wapifood-kds-sound", next ? "1" : "0");
+    } catch {
+      /* storage bloqueado */
+    }
+    if (next) {
+      const ctx = audioRef.current || new AudioContext();
+      audioRef.current = ctx;
+      ctx.resume?.();
+      chime();
+    }
   }
 
   useEffect(() => {
@@ -139,20 +193,32 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
     await refresh();
   }
 
-  function elapsed(openedAt) {
-    if (!openedAt) return "";
-    return new Date(openedAt).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
-  }
+  useEffect(() => {
+    const kick = setTimeout(() => {
+      try {
+        const on = localStorage.getItem("wapifood-kds-sound") === "1";
+        soundRef.current = on;
+        setSoundOn(on);
+      } catch {
+        /* ignore */
+      }
+    }, 0);
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    return () => {
+      clearTimeout(kick);
+      clearInterval(timer);
+    };
+  }, []);
 
   return (
     <div className="relative">
       <LoadingOverlay visible={loading} message="Actualizando cocina…" />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-[var(--color-espresso)]">
-          {live ? "En vivo" : "Sincronizando…"} · estados de producto y orden
+        <p className="text-base text-[var(--ink-soft)]" role="status">
+          {live ? "En vivo. Un toque avanza la comanda." : "Sincronizando…"}
         </p>
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-2">
           {[
             { id: "pendientes", label: "Por preparar" },
             { id: "preparados", label: "Preparados" },
@@ -162,165 +228,141 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
               key={q.id}
               type="button"
               onClick={() => setQueue(q.id)}
-              className={`h-9 rounded-[3px] px-3 text-xs font-semibold uppercase ${
-                queue === q.id
-                  ? "bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]"
-                  : "bg-[var(--color-paper)]"
-              }`}
+              className={`cat-chip ${queue === q.id ? "is-on" : ""}`}
+              aria-pressed={queue === q.id}
             >
               {q.label}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={refresh}
-            className="h-9 rounded-[3px] bg-[var(--color-parchment)] px-3 text-xs font-semibold uppercase"
-          >
+          <button type="button" onClick={refresh} className="btn-ghost px-4">
             Actualizar
+          </button>
+          <button type="button" onClick={toggleSound} className={`px-4 ${soundOn ? "btn-primary" : "btn-ghost"}`} aria-pressed={soundOn}>
+            <span className="inline-flex items-center gap-2">
+              <Icon name="bell" size={20} />
+              {soundOn ? "Sonido activo" : "Activar sonido"}
+            </span>
           </button>
         </div>
       </div>
 
-      {!filtered.length ? (
-        <div className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-8 text-center">
-          <p className="text-2xl font-normal">No hay pedidos en esta lista</p>
-          <p className="mt-2 text-base text-[var(--color-muted)]">
-            Cuando la caja o el mesero envíen algo, aparece aquí.
-          </p>
+      {loading && !filtered.length ? (
+        <div className="kds-grid" aria-hidden="true">
+          <Skeleton className="h-56" />
+          <Skeleton className="h-56" />
+          <Skeleton className="h-56" />
         </div>
-      ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((order) => {
-            const meta = statusMeta(order.status);
-            const isCaja = order.dining_tables?.channel_type === "caja";
-            return (
-              <article key={order.id} className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="text-2xl font-normal">
-                      {order.order_type === "domicilio"
-                        ? "Domicilio"
-                        : isCaja
-                          ? "Caja"
-                          : `Mesa ${order.dining_tables?.number ?? "?"}`}
-                    </h3>
-                    <p className="text-xs text-[var(--color-walnut)]">
-                      {(order.source || "pos").toUpperCase()}
-                      {order.opened_at ? ` · ${elapsed(order.opened_at)}` : ""}
-                    </p>
-                  </div>
-                  <span className={`rounded-[3px] px-2 py-1 text-[10px] font-bold uppercase text-white ${meta.color}`}>
-                    {meta.label}
-                  </span>
-                </div>
+      ) : null}
 
-                <ul className="my-3 space-y-2">
-                  {(order.order_items || []).map((i) => {
-                    const st = i.status || "pendiente";
-                    const im = itemStatusMeta(st);
-                    return (
-                      <li key={`${order.id}-${i.product_id}`} className="text-sm">
-                        <div className="flex items-start justify-between gap-2">
-                          <span className={im.color}>
-                            <span className="font-semibold">{i.qty}×</span> {nameOf(i.product_id)}
-                          </span>
-                          <span className="text-[10px] font-bold uppercase text-[var(--color-walnut)]">
-                            {im.label}
-                          </span>
-                        </div>
-                        {i.notes ? <p className="text-xs text-[var(--color-saffron-glow)]">{i.notes}</p> : null}
-                        {order.status !== "pendiente" && st !== "cancelado" ? (
-                          <div className="mt-1 flex flex-wrap gap-2">
-                            {st === "pendiente" ? (
-                              <>
-                                <button
-                                  type="button"
-                                  className="text-[10px] font-semibold uppercase text-[var(--color-sage)]"
-                                  onClick={() => setItemStatus(order.id, i.product_id, "preparado")}
-                                >
-                                  Preparado
-                                </button>
-                                <button
-                                  type="button"
-                                  className="text-[10px] font-semibold uppercase text-[var(--color-wine)]"
-                                  onClick={() => setItemStatus(order.id, i.product_id, "cancelado")}
-                                >
-                                  Cancelar
-                                </button>
-                              </>
-                            ) : (
-                              <button
-                                type="button"
-                                className="text-[10px] font-semibold uppercase"
-                                onClick={() => setItemStatus(order.id, i.product_id, "pendiente")}
-                              >
-                                Regresar
+      {!loading && !filtered.length ? (
+        <EmptyState
+          icon="flame"
+          title="No hay pedidos en esta lista"
+          text="Cuando la caja o un mesero envíen algo, la comanda aparece aquí en grande."
+        />
+      ) : null}
+
+      <div className="kds-grid">
+        {filtered.map((order) => {
+          const meta = statusMeta(order.status);
+          const wait = waitMeta(order.opened_at, now);
+          const isCaja = order.dining_tables?.channel_type === "caja";
+          const title =
+            order.order_type === "domicilio"
+              ? "Domicilio"
+              : isCaja
+                ? "Caja"
+                : `Mesa ${order.dining_tables?.number ?? "?"}`;
+          return (
+            <article key={order.id} className={`kds-card age-${wait.tone === "ok" ? "ok" : wait.tone}`}>
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="text-4xl">{title}</h3>
+                <span className={`chip ${meta.color}`}>{meta.label}</span>
+              </div>
+              <p className={`chip ${wait.tone === "late" ? "chip-bad" : wait.tone === "mid" ? "chip-warn" : "chip-ok"} w-fit`}>
+                <Icon name="clock" size={18} />
+                {wait.label}
+              </p>
+              <p className="text-base text-[var(--ink-soft)]">
+                Llegó de {order.source || "caja"}
+                {order.opened_at
+                  ? ` · ${new Date(order.opened_at).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}`
+                  : ""}
+              </p>
+              <ul className="space-y-3">
+                {(order.order_items || []).map((i) => {
+                  const st = i.status || "pendiente";
+                  const im = itemStatusMeta(st);
+                  return (
+                    <li key={`${order.id}-${i.product_id}`}>
+                      <p className={`text-2xl font-extrabold leading-tight ${im.color}`}>
+                        {i.qty}× {nameOf(i.product_id)}
+                      </p>
+                      <p className="text-base font-bold text-[var(--ink-soft)]">{im.label}</p>
+                      {i.notes ? <p className="text-lg font-bold text-[var(--primary)]">Nota: {i.notes}</p> : null}
+                      {order.status !== "pendiente" && st !== "cancelado" ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {st === "pendiente" ? (
+                            <>
+                              <button type="button" className="btn-primary px-4" onClick={() => setItemStatus(order.id, i.product_id, "preparado")}>
+                                Listo
                               </button>
-                            )}
-                          </div>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-
-                <div className="grid gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setDetail(order)}
-                    className="h-10 rounded-[3px] border border-[var(--color-warm-stone)] text-xs font-semibold uppercase"
-                  >
-                    Ver detalle
+                              <button type="button" className="btn-danger px-3" onClick={() => setItemStatus(order.id, i.product_id, "cancelado")}>
+                                Cancelar platillo
+                              </button>
+                            </>
+                          ) : (
+                            <button type="button" className="btn-ghost px-4" onClick={() => setItemStatus(order.id, i.product_id, "pendiente")}>
+                              Regresar
+                            </button>
+                          )}
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="mt-auto grid gap-2">
+                <button type="button" onClick={() => setDetail(order)} className="btn-ghost">
+                  Ver detalle
+                </button>
+                {order.status === "pendiente" ? (
+                  <button type="button" onClick={() => confirmWeb(order.id)} className="btn-lg btn-primary">
+                    Confirmar y pasar a cocina
                   </button>
-                  {order.status === "pendiente" ? (
-                    <button
-                      type="button"
-                      onClick={() => confirmWeb(order.id)}
-                      className="h-11 rounded-[3px] bg-[var(--color-saffron-glow)] text-xs font-semibold uppercase"
-                    >
-                      Confirmar → cocina
-                    </button>
-                  ) : order.status === "lista" || order.status === "entregada" ? (
-                    <button
-                      type="button"
-                      onClick={() => markDelivered(order.id)}
-                      className="h-11 rounded-[3px] bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]"
-                    >
-                      {order.status === "entregada" ? "Entregada ✓" : "Marcar entregada"}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => markAllPreparado(order.id)}
-                      className="h-11 rounded-[3px] bg-[var(--color-sage)] text-xs font-semibold uppercase text-white"
-                    >
-                      Todo preparado
-                    </button>
-                  )}
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
+                ) : order.status === "lista" || order.status === "entregada" ? (
+                  <button type="button" onClick={() => markDelivered(order.id)} className="btn-lg btn-accent">
+                    {order.status === "entregada" ? "Entregada" : "Marcar entregada"}
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => markAllPreparado(order.id)} className="btn-lg" style={{ background: "var(--sage-solid)", color: "var(--on-tone)" }}>
+                    Todo listo
+                  </button>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </div>
 
       {detail ? (
-        <div className="fixed inset-0 z-[1600] flex items-center justify-center bg-black/45 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto border border-[var(--color-warm-stone)] bg-[var(--color-paper)]">
-            <div className="sticky top-0 flex items-center justify-between border-b border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-4 py-3">
-              <h2 className="text-2xl font-normal">{statusMeta(detail.status).label}</h2>
-              <button type="button" onClick={() => setDetail(null)} className="text-xs font-semibold uppercase">
+        <div className="sheet-back" role="presentation">
+          <div role="dialog" aria-modal="true" aria-labelledby="kds-detail-title" className="sheet">
+            <div className="sheet-handle" />
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 id="kds-detail-title" className="text-3xl">{statusMeta(detail.status).label}</h2>
+              <button type="button" onClick={() => setDetail(null)} className="btn-ghost px-3">
                 Cerrar
               </button>
             </div>
-            <ul className="space-y-2 p-4">
+            <ul className="space-y-2 text-xl">
               {(detail.order_items || []).map((i) => (
                 <li key={`${detail.id}-${i.product_id}`} className={itemStatusMeta(i.status || "pendiente").color}>
                   {i.qty}× {nameOf(i.product_id)} · {itemStatusMeta(i.status || "pendiente").label}
                 </li>
               ))}
             </ul>
-            <div className="px-4 pb-4">
+            <div className="mt-4">
               <OrderComments orderId={detail.id} />
             </div>
           </div>
