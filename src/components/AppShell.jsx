@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { MODULES, NAV_GROUPS, homePath, primaryModules, roleLabel } from "@/lib/modules";
+import { homePath, primaryModules, roleLabel, sectionForPath } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/client";
 import ThemeToggle from "@/components/ThemeToggle";
 import { HelpChat } from "@/components/HelpChat";
 import { Icon } from "@/components/ui/Icon";
+import { CommandPalette } from "@/components/CommandPalette";
+import { SideNav, useNavPrefs } from "@/components/SideNav";
 
 export function AppShell({
   children,
@@ -21,7 +23,25 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const [more, setMore] = useState(false);
+  const [palette, setPalette] = useState(false);
+  const { rail, open, toggleRail, toggleSection, ensureSection } = useNavPrefs();
   const primary = primaryModules(role);
+  const home = homePath(role);
+
+  useEffect(() => {
+    ensureSection(sectionForPath(role, pathname));
+  }, [pathname, role, ensureSection]);
+
+  useEffect(() => {
+    function onKey(event) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPalette((open) => !open);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
@@ -41,52 +61,27 @@ export function AppShell({
     return pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
   }
 
-  const home = homePath(role);
-
-  const nav = (
-    <nav aria-label="Secciones" className="grid gap-4">
-      {NAV_GROUPS.map((group) => (
-        <div key={group.id}>
-          <p className="mb-1 px-2 text-sm font-bold text-[var(--ink-soft)]">{group.label}</p>
-          <div className="grid gap-1">
-            {MODULES.filter((m) => m.nav === group.id).map((m) => (
-              <Link
-                key={m.id}
-                href={m.href}
-                aria-current={current(m.href) ? "page" : undefined}
-                className="nav-link"
-                onClick={() => setMore(false)}
-              >
-                <Icon name={m.icon} size={22} />
-                <span>{m.title}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      ))}
-    </nav>
-  );
+  function openSearch() {
+    setMore(false);
+    setPalette(true);
+  }
 
   return (
     <div className={`app-frame min-h-screen bg-[var(--bg)] text-[var(--ink)] ${focus ? "focus" : "lg:flex"}`}>
       {focus ? null : (
-        <aside className="app-side hidden lg:flex lg:min-h-screen lg:flex-col">
-          <div className="px-4 pb-2 pt-5">
-            <Link href={home} className="brand text-2xl text-[var(--ink)] no-underline">
-              Wapifood
-            </Link>
-            <p className="mt-1 truncate text-sm text-[var(--ink-soft)]">
-              {restaurantName || "Tu restaurante"}
-              {role ? ` · ${roleLabel(role)}` : ""}
-            </p>
-          </div>
-          <div className="flex-1 overflow-y-auto px-3 pb-4">{nav}</div>
-          <div className="flex items-center gap-2 border-t border-[var(--border)] p-3">
-            <ThemeToggle />
-            <button type="button" onClick={signOut} className="btn-ghost flex-1">
-              Salir
-            </button>
-          </div>
+        <aside className={`app-side hidden lg:flex lg:flex-col ${rail ? "is-rail" : ""}`} aria-label="Navegación">
+          <SideNav
+            role={role}
+            restaurantName={restaurantName}
+            pathname={pathname}
+            rail={rail}
+            openSections={open}
+            onToggleRail={toggleRail}
+            onToggleSection={toggleSection}
+            onSearch={openSearch}
+            onSignOut={signOut}
+            homeHref={home}
+          />
         </aside>
       )}
 
@@ -115,12 +110,15 @@ export function AppShell({
               <h1 className="truncate text-[1.7rem] leading-tight sm:text-[2rem]">{title}</h1>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              <button type="button" className="icon-btn" onClick={openSearch} aria-label="Buscar pantalla" aria-keyshortcuts="Control+K">
+                <Icon name="search" size={20} />
+              </button>
               {focus ? (
                 <Link href={home} className="btn-ghost inline-flex items-center px-3 no-underline">
                   Inicio
                 </Link>
               ) : null}
-              <ThemeToggle />
+              <ThemeToggle className={focus ? "" : "lg:hidden"} />
               <button type="button" onClick={signOut} className="btn-ghost px-4 lg:hidden">
                 Salir
               </button>
@@ -139,10 +137,10 @@ export function AppShell({
       {focus ? null : (
         <nav className="app-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-[var(--border)] bg-[var(--surface)] px-1 py-1 lg:hidden" aria-label="Accesos rápidos">
           <div className="mx-auto flex max-w-3xl gap-1">
-            {primary.map((m) => (
-              <Link key={m.id} href={m.href} aria-current={current(m.href) ? "page" : undefined} className="tab-link">
-                <Icon name={m.icon} size={22} />
-                {m.title}
+            {primary.map((item) => (
+              <Link key={item.id} href={item.href} aria-current={current(item.href) ? "page" : undefined} className="tab-link">
+                <Icon name={item.icon} size={22} />
+                {item.title}
               </Link>
             ))}
             <button type="button" className="tab-link" onClick={() => setMore(true)} aria-expanded={more} aria-haspopup="dialog">
@@ -160,7 +158,7 @@ export function AppShell({
             role="dialog"
             aria-modal="true"
             aria-label="Todas las secciones"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
           >
             <div className="sheet-handle" />
             <div className="mb-3 flex items-center justify-between">
@@ -169,11 +167,23 @@ export function AppShell({
                 Cerrar
               </button>
             </div>
-            {nav}
+            <SideNav
+              variant="sheet"
+              role={role}
+              restaurantName={restaurantName}
+              pathname={pathname}
+              openSections={open}
+              onToggleSection={toggleSection}
+              onSearch={openSearch}
+              onSignOut={signOut}
+              onNavigate={() => setMore(false)}
+              homeHref={home}
+            />
           </div>
         </div>
       ) : null}
 
+      <CommandPalette open={palette} onClose={() => setPalette(false)} />
       <HelpChat lift={focus ? "high" : ""} />
     </div>
   );

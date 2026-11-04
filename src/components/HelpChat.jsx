@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { HELP_SUGGESTIONS, answerHelp } from "@/lib/helpAnswers";
 
 export function HelpChat({ lift = "" }) {
@@ -9,6 +9,14 @@ export function HelpChat({ lift = "" }) {
   const [messages, setMessages] = useState([
     { role: "bot", text: "Pregunta sobre caja, cocina, carta o inventario." },
   ]);
+
+  useEffect(() => {
+    function openHelp() {
+      setOpen(true);
+    }
+    window.addEventListener("wapifood-open-help", openHelp);
+    return () => window.removeEventListener("wapifood-open-help", openHelp);
+  }, []);
 
   function ask(value) {
     const q = value.trim();

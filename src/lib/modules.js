@@ -31,6 +31,84 @@ export const NAV_GROUPS = [
   { id: "cuenta", label: "Tu negocio" },
 ];
 
+/** Secciones del menú de escritorio, por tarea. */
+export const NAV_SECTIONS = [
+  { id: "hoy", label: "Hoy", icon: "home", items: ["tickets", "empezar"] },
+  { id: "vender", label: "Vender", icon: "register", items: ["pos", "kiosko", "menu-cliente"] },
+  { id: "piso", label: "Cocina y piso", icon: "flame", items: ["kitchen", "mesas", "meseros", "pantallas"] },
+  { id: "carta", label: "Tu carta e inventario", icon: "dish", items: ["carta", "insumos", "recetas", "listas"] },
+  { id: "reportes", label: "Reportes", icon: "chart", items: ["dashboard"] },
+  { id: "negocio", label: "Tu negocio", icon: "store", items: ["equipo", "config", "pagos"] },
+];
+
+const PINS = {
+  owner: ["pos", "kitchen", "mesas", "tickets", "carta"],
+  admin: ["pos", "kitchen", "mesas", "tickets", "carta"],
+  piso: ["pos", "mesas", "kitchen", "tickets"],
+  cocina: ["kitchen", "tickets", "pantallas", "dashboard"],
+};
+
+/** Lo que el rol ve en las secciones. El resto sigue en Más y en la búsqueda. */
+const ROLE_MAIN = {
+  owner: null,
+  admin: null,
+  piso: ["dashboard", "pos", "kitchen", "tickets", "mesas", "meseros", "kiosko", "menu-cliente", "pantallas"],
+  cocina: ["dashboard", "kitchen", "tickets", "pantallas"],
+};
+
+const MORE = {
+  owner: ["importar", "masa"],
+  admin: ["importar", "masa"],
+};
+
+const REPORT_TITLE = { dashboard: "Ventas y alertas" };
+
+function moduleById(id) {
+  return MODULES.find((item) => item.id === id);
+}
+
+function roleKey(role) {
+  return PINS[role] ? role : "owner";
+}
+
+export function navModel(role) {
+  const key = roleKey(role);
+  const pins = PINS[key].map(moduleById).filter(Boolean);
+  const pinIds = new Set(pins.map((item) => item.id));
+  const mainIds = ROLE_MAIN[key] ? new Set(ROLE_MAIN[key]) : null;
+  const explicitMore = MORE[key];
+  const moreIds = new Set(
+    explicitMore ||
+      MODULES.map((item) => item.id).filter((id) => mainIds && !mainIds.has(id) && !pinIds.has(id)),
+  );
+  const sections = NAV_SECTIONS.map((section) => ({
+    id: section.id,
+    label: section.label,
+    icon: section.icon,
+    items: section.items
+      .map(moduleById)
+      .filter((item) => item && !pinIds.has(item.id) && !moreIds.has(item.id) && (!mainIds || mainIds.has(item.id)))
+      .map((item) =>
+        section.id === "reportes" && REPORT_TITLE[item.id]
+          ? { ...item, title: REPORT_TITLE[item.id] }
+          : item,
+      ),
+  })).filter((section) => section.items.length);
+  const more = MODULES.filter((item) => moreIds.has(item.id));
+  return { pins, sections, more };
+}
+
+export function sectionForPath(role, pathname) {
+  const model = navModel(role);
+  const groups = [
+    ...model.sections,
+    ...(model.more.length ? [{ id: "mas", items: model.more }] : []),
+  ];
+  return groups.find((section) =>
+    section.items.some((item) => pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`))),
+  )?.id;
+}
+
 const TILES = {
   owner: ["pos", "kitchen", "mesas", "tickets", "carta", "empezar"],
   admin: ["pos", "kitchen", "mesas", "tickets", "carta", "equipo"],
