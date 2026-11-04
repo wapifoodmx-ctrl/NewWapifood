@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getSiteUrl, mpCurrency, mpFetch, planAmount } from "@/lib/mercadopago";
 
 export async function POST(request) {
@@ -80,16 +81,21 @@ export async function POST(request) {
       },
     });
 
-    // Registro pendiente (opcional, para auditoría)
-    await supabase.from("subscriptions").insert({
-      restaurant_id: restaurantId,
-      plan: planId,
-      status: "pending",
-      amount,
-      billing,
-      provider: "mercadopago",
-      provider_ref: preference.id,
-    });
+    // Pendiente solo con service role. El cliente ya no puede escribir subscriptions.
+    try {
+      const admin = createAdminClient();
+      await admin.from("subscriptions").insert({
+        restaurant_id: restaurantId,
+        plan: planId,
+        status: "pending",
+        amount,
+        billing,
+        provider: "mercadopago",
+        provider_ref: preference.id,
+      });
+    } catch (err) {
+      console.error("pending sub", err);
+    }
 
     return NextResponse.json({
       id: preference.id,

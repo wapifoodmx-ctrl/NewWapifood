@@ -4,9 +4,9 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { money } from "@/lib/format";
 import { requireTenantSetup } from "@/lib/auth";
-import { MODULES } from "@/lib/modules";
 import { planMeta } from "@/lib/plans";
 import { DashboardInsights } from "@/components/DashboardInsights";
+import { RoleHome } from "@/components/RoleHome";
 
 export default async function DashboardPage() {
   const { supabase, membership, operational, setupOnly } = await requireTenantSetup();
@@ -130,19 +130,21 @@ export default async function DashboardPage() {
 
   return (
     <AppShell
-      title="Panel"
+      title="Inicio"
       restaurantName={restaurantName}
       role={membership?.role}
       operational={operational}
       setupOnly={setupOnly}
     >
+      <RoleHome role={membership?.role} restaurantName={restaurantName} />
+
       {setupOnly ? (
-        <p className="mb-4 border border-[var(--color-saffron-glow)] bg-[var(--color-paper)] p-3 text-sm">
-          Estás en configuración (trial). Activa el plan en{" "}
-          <Link href="/pagos" className="font-semibold underline">
-            Pagos
-          </Link>{" "}
-          para vender.
+        <p className="mb-4 rounded-2xl bg-[var(--chip-warn-bg)] p-4 text-base text-[var(--chip-warn-fg)]">
+          Estás preparando el local. Para cobrar, activa un plan en{" "}
+          <Link href="/pagos" className="font-bold underline">
+            Plan
+          </Link>
+          .
         </p>
       ) : null}
 
@@ -153,17 +155,15 @@ export default async function DashboardPage() {
           { label: "Órdenes abiertas", value: String(openOrders) },
           { label: "Mesas ocupadas", value: String(openTables) },
         ].map((c) => (
-          <div key={c.label} className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-espresso)]">
-              {c.label}
-            </p>
-            <p className="mt-1 text-2xl font-semibold">{c.value}</p>
+          <div key={c.label} className="card p-4">
+            <p className="text-base font-bold text-[var(--ink-soft)]">{c.label}</p>
+            <p className="mt-1 text-3xl font-extrabold">{c.value}</p>
           </div>
         ))}
       </div>
 
       {pendingWeb > 0 ? (
-        <p className="mt-4 border border-[var(--color-saffron-glow)] bg-[var(--color-paper)] p-3 text-sm">
+        <p className="mt-4 rounded-2xl bg-[var(--chip-warn-bg)] p-4 text-base text-[var(--chip-warn-fg)]">
           Tienes <strong>{pendingWeb}</strong> pedido(s) web pendientes de confirmar.{" "}
           <Link href="/cocina" className="font-semibold underline">
             Ir a cocina
@@ -172,7 +172,7 @@ export default async function DashboardPage() {
       ) : null}
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <section className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
+        <section className="card p-4">
           <h2 className="text-xl font-normal">Tickets (7 días)</h2>
           <div className="mt-4 flex h-32 items-end gap-2">
             {series.map((v, i) => (
@@ -187,7 +187,7 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <section className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
+        <section className="card p-4">
           <h2 className="text-xl font-normal">Ventas $ (7 días)</h2>
           <div className="mt-4 flex h-32 items-end gap-2">
             {salesSeries.map((v, i) => (
@@ -202,7 +202,7 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <section className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
+        <section className="card p-4">
           <h2 className="text-xl font-normal">Más vendidos</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {topProducts.length ? (
@@ -213,12 +213,12 @@ export default async function DashboardPage() {
                 </li>
               ))
             ) : (
-              <li className="text-[var(--color-walnut)]">Aún no hay ventas cobradas.</li>
+              <li className="text-base text-[var(--ink-soft)]">Aún no hay ventas cobradas. La primera aparece cuando cobres en la caja.</li>
             )}
           </ul>
         </section>
 
-        <section className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
+        <section className="card p-4">
           <h2 className="text-xl font-normal">Ventas por canal</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {channelEntries.length ? (
@@ -236,7 +236,7 @@ export default async function DashboardPage() {
       </div>
 
       {(lowStock.length > 0 || expiring.length > 0) && (
-        <section className="mt-4 border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
+        <section className="mt-4 card p-4">
           <h2 className="text-xl font-normal">Alertas de inventario</h2>
           {lowStock.length ? (
             <p className="mt-2 text-sm text-[var(--color-wine)]">
@@ -262,20 +262,6 @@ export default async function DashboardPage() {
 
       <DashboardInsights orders={list} productNames={productNames} />
 
-      <section className="mt-6">
-        <h2 className="mb-3 text-xl font-normal">Módulos</h2>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {MODULES.map((m) => (
-            <Link
-              key={m.id}
-              href={m.href}
-              className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-4 py-3 text-sm font-semibold hover:border-[var(--color-saffron-glow)]"
-            >
-              {m.title}
-            </Link>
-          ))}
-        </div>
-      </section>
     </AppShell>
   );
 }

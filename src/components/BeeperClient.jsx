@@ -21,51 +21,28 @@ export function BeeperClient({
   const [status, setStatus] = useState(initialStatus);
   const [items, setItems] = useState(initialItems || []);
   const meta = statusMeta(status);
+  const shownTotal = (items || []).reduce((sum, item) => {
+    if ((item.status || "pendiente") === "cancelado") return sum;
+    const extras = (item.extras || []).reduce((s, extra) => s + Number(extra.extra_price || 0), 0);
+    return sum + (Number(item.unit_price) + extras) * Number(item.qty);
+  }, 0);
 
   async function refresh() {
     const supabase = createClient();
-    const { data: ord } = await supabase
-      .from("orders")
-      .select("status,cancel_reason,order_items(product_id,qty,unit_price,status,notes)")
-      .eq("id", orderId)
-      .maybeSingle();
-    if (ord?.status) setStatus(ord.status);
-    if (ord?.order_items) {
-      setItems(
-        ord.order_items.map((i) => ({
-          product_id: i.product_id,
-          name: (initialItems || []).find((x) => x.product_id === i.product_id)?.name || "Producto",
-          qty: i.qty,
-          unit_price: i.unit_price,
-          status: i.status || "pendiente",
-          notes: i.notes,
-        })),
-      );
-    }
+    const { data, error } = await supabase.rpc("get_public_ticket", { p_order: orderId });
+    if (error || !data) return;
+    if (data.status) setStatus(data.status);
+    if (data.items) setItems(data.items);
   }
 
   useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`beeper-${orderId}`)
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "orders", filter: `id=eq.${orderId}` },
-        (payload) => {
-          if (payload.new?.status) setStatus(payload.new.status);
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "order_items", filter: `order_id=eq.${orderId}` },
-        () => refresh(),
-      )
-      .subscribe();
-
+    const kick = setTimeout(() => {
+      refresh();
+    }, 0);
     const t = setInterval(refresh, 8000);
     return () => {
+      clearTimeout(kick);
       clearInterval(t);
-      supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
@@ -81,9 +58,9 @@ export function BeeperClient({
         {publicCode ? ` · Código ${publicCode}` : ""}
       </p>
 
-      <div className={`mt-6 rounded-[3px] px-4 py-3 text-white ${meta.color}`}>
-        <p className="text-xs font-bold uppercase tracking-wide">Estado</p>
-        <p className="text-2xl font-normal">{meta.label}</p>
+      <div className={`mt-6 rounded-3xl px-4 py-4 ${meta.banner}`}>
+        <p className="text-base font-bold">Estado</p>
+        <p className="text-3xl">{meta.label}</p>
         <p className="text-sm opacity-90">{meta.detail}</p>
       </div>
 
@@ -101,6 +78,11 @@ export function BeeperClient({
                   <span className="font-semibold">{i.qty}×</span> {i.name}
                 </p>
                 {i.notes ? <p className="text-xs text-[var(--color-saffron-glow)]">{i.notes}</p> : null}
+                {(i.extras || []).map((extra) => (
+                  <p key={extra.ingredient_id || extra.name} className="text-xs text-[var(--color-espresso)]">
+                    + {extra.name}
+                  </p>
+                ))}
                 <p className="text-[10px] font-bold uppercase text-[var(--color-walnut)]">{im.label}</p>
               </div>
               <span className="font-semibold">{money(Number(i.unit_price) * Number(i.qty))}</span>
@@ -111,7 +93,7 @@ export function BeeperClient({
 
       <p className="mt-4 flex justify-between text-lg font-semibold">
         <span>Total</span>
-        <span>{money(total)}</span>
+        <span>{money(shownTotal || total)}</span>
       </p>
 
       <p className="mt-8 text-center text-xs text-[var(--color-walnut)]">

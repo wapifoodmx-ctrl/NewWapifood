@@ -4,16 +4,38 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { friendlyAuthError } from "@/lib/brand";
+import { homePath } from "@/lib/modules";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState("login"); // login | signup
+  const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [restaurantName, setRestaurantName] = useState("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
+
+  async function goHome(supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id;
+    if (!userId) {
+      router.push("/dashboard");
+      router.refresh();
+      return;
+    }
+    const { data: mem } = await supabase
+      .from("memberships")
+      .select("role")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+    router.push(homePath(mem?.role));
+    router.refresh();
+  }
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -25,14 +47,12 @@ export default function LoginPage() {
 
     try {
       if (mode === "login") {
-        const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+        const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (err) throw err;
-        // Onboarding automático del restaurante
         await supabase.rpc("create_my_restaurant", {
           p_name: restaurantName || "Mi restaurante",
         });
-        router.push("/dashboard");
-        router.refresh();
+        await goHome(supabase);
         return;
       }
 
@@ -41,7 +61,7 @@ export default function LoginPage() {
       }
 
       const { data, error: err } = await supabase.auth.signUp({
-        email,
+        email: email.trim(),
         password,
         options: {
           emailRedirectTo: `${origin}/auth/callback?next=/auth/confirmado`,
@@ -54,7 +74,7 @@ export default function LoginPage() {
 
       if (!data.session) {
         setInfo(
-          "Te enviamos un correo para confirmar tu cuenta. Ábrelo y sigue el enlace. Después podrás iniciar sesión.",
+          "Te enviamos un correo para confirmar tu cuenta. Ábrelo y toca el enlace. Revisa también el spam. Después ya puedes entrar.",
         );
         return;
       }
@@ -62,102 +82,105 @@ export default function LoginPage() {
       await supabase.rpc("create_my_restaurant", {
         p_name: restaurantName || "Mi restaurante",
       });
-      router.push("/dashboard");
+      router.push("/empezar");
       router.refresh();
     } catch (err) {
-      setError(err.message || "No se pudo completar la acción");
+      setError(friendlyAuthError(err.message));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--color-cream)] px-4 py-10">
-      <form
-        onSubmit={onSubmit}
-        className="w-full max-w-md rounded-3xl border border-[var(--color-line)] bg-[var(--color-paper)] p-6 shadow-sm"
-      >
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-ember)]">Wapifood</p>
-        <h1 className="mt-2 text-3xl">
-          {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
-        </h1>
-        <p className="mt-2 text-sm text-[var(--color-muted)]">
-          SaaS para restaurantes: crea tu cuenta, confirma tu correo y empieza a operar.
+    <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] px-4 py-10">
+      <form onSubmit={onSubmit} className="card w-full max-w-md p-6 sm:p-8">
+        <div className="flex items-center justify-between gap-3">
+          <p className="brand text-3xl">Wapifood</p>
+          <ThemeToggle />
+        </div>
+        <h1 className="mt-4 text-4xl">{mode === "login" ? "Entra a tu cuenta" : "Crea tu cuenta"}</h1>
+        <p className="mt-2 text-lg text-[var(--ink-soft)]">
+          {mode === "login"
+            ? "Usa el correo con el que te registraste."
+            : "Te llega un correo para confirmar. Luego armas tu carta, paso a paso."}
         </p>
 
+        <div className="mt-5 grid grid-cols-2 gap-2" aria-label="Entrar o crear cuenta">
+          <button type="button" className={mode === "login" ? "btn-primary" : "btn-ghost"} onClick={() => { setMode("login"); setError(""); setInfo(""); }} aria-pressed={mode === "login"}>
+            Ya tengo cuenta
+          </button>
+          <button type="button" className={mode === "signup" ? "btn-primary" : "btn-ghost"} onClick={() => { setMode("signup"); setError(""); setInfo(""); }} aria-pressed={mode === "signup"}>
+            Soy nuevo
+          </button>
+        </div>
+
         {mode === "signup" ? (
-          <label className="mt-6 block text-sm font-semibold">
+          <label className="mt-5 block text-base font-bold">
             Nombre del restaurante
             <input
               value={restaurantName}
               onChange={(e) => setRestaurantName(e.target.value)}
               placeholder="Ej. Taquería El Patio"
-              className="mt-1 h-12 w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-cream)] px-3"
+              className="mt-1 w-full"
             />
           </label>
         ) : null}
 
-        <label className={`${mode === "signup" ? "mt-3" : "mt-6"} block text-sm font-semibold`}>
+        <label className="mt-4 block text-base font-bold">
           Correo
           <input
             type="email"
             required
             autoComplete="email"
+            inputMode="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 h-12 w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-cream)] px-3"
+            className="mt-1 w-full"
+            placeholder="tunombre@correo.com"
           />
         </label>
 
-        <label className="mt-3 block text-sm font-semibold">
+        <label className="mt-4 block text-base font-bold">
           Contraseña
           <input
-            type="password"
+            type={showPassword ? "text" : "password"}
             required
             minLength={6}
             autoComplete={mode === "login" ? "current-password" : "new-password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 h-12 w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-cream)] px-3"
+            className="mt-1 w-full"
           />
+        </label>
+        <label className="mt-2 flex min-h-12 items-center gap-2 text-base">
+          <input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />
+          Mostrar contraseña
         </label>
 
         {mode === "login" ? (
           <div className="mt-2 text-right">
-            <Link href="/recuperar" className="text-sm font-semibold text-[var(--color-ember)]">
-              ¿Olvidaste tu contraseña?
+            <Link href="/recuperar" className="text-base font-bold text-[var(--primary)] underline">
+              Olvidé mi contraseña
             </Link>
           </div>
         ) : null}
 
-        {error ? <p className="mt-3 text-sm text-[var(--color-wine)]">{error}</p> : null}
+        {error ? (
+          <p className="mt-3 rounded-2xl bg-[var(--chip-bad-bg)] px-3 py-2 text-base text-[var(--chip-bad-fg)]" role="alert">
+            {error}
+          </p>
+        ) : null}
         {info ? (
-          <p className="mt-3 rounded-xl bg-[var(--color-cream)] px-3 py-2 text-sm text-[var(--color-sage)]">
+          <p className="mt-3 rounded-2xl bg-[var(--chip-ok-bg)] px-3 py-2 text-base text-[var(--chip-ok-fg)]" role="status">
             {info}
           </p>
         ) : null}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="mt-5 h-12 w-full rounded-full bg-[var(--color-ink)] font-semibold text-[var(--color-cream)] disabled:opacity-60"
-        >
-          {loading ? "Espera…" : mode === "login" ? "Entrar" : "Crear cuenta"}
+        <button type="submit" disabled={loading} className="btn-lg btn-primary mt-5 w-full">
+          {loading ? "Espera un momento…" : mode === "login" ? "Entrar" : "Crear cuenta"}
         </button>
 
-        <button
-          type="button"
-          className="mt-3 w-full text-sm font-semibold text-[var(--color-muted)]"
-          onClick={() => {
-            setMode(mode === "login" ? "signup" : "login");
-            setError("");
-            setInfo("");
-          }}
-        >
-          {mode === "login" ? "¿Nueva cuenta? Regístrate" : "¿Ya tienes cuenta? Entra"}
-        </button>
-
-        <Link href="/" className="mt-4 block text-center text-sm text-[var(--color-muted)]">
+        <Link href="/" className="mt-4 block text-center text-base text-[var(--ink-soft)]">
           Volver al inicio
         </Link>
       </form>

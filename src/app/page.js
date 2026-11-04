@@ -1,109 +1,86 @@
 import Link from "next/link";
 import { PricingSection } from "@/components/PricingSection";
-import SplitText from "@/components/SplitText";
 import ThemeToggle from "@/components/ThemeToggle";
-import RotatingText from "@/components/RotatingText";
-
-// Titulares: blur en vez de rise para no recortar descendentes con line-height 1.05.
-const TITLE = { effect: "blur", duration: 1, delay: 25, textAlign: "left" };
+import { Icon } from "@/components/ui/Icon";
 
 const features = [
-  { t: "Punto de venta", d: "Mesas, cuentas, cobro y ticket en un solo flujo." },
-  { t: "Cocina en vivo", d: "Comandas claras para el pase de cocina." },
-  { t: "Insumos y recetas", d: "El stock baja al cobrar, sin sistemas sueltos." },
-  { t: "Menú digital", d: "QR, kiosko y pedido del comensal." },
-  { t: "Meseros", d: "Códigos de acceso y control por mesa." },
-  { t: "Panel y reportes", d: "Ventas del día, ocupación y alertas." },
+  { icon: "register", t: "Caja", d: "Mesas, cuenta, cobro y ticket. Tres toques para cobrar." },
+  { icon: "flame", t: "Cocina", d: "Comandas grandes, con el tiempo que llevan esperando." },
+  { icon: "box", t: "Insumos y recetas", d: "El stock baja al cobrar, sin sistemas sueltos." },
+  { icon: "qr", t: "Menú para llevar", d: "QR, kiosko y pedido del comensal, con foto." },
+  { icon: "users", t: "Meseros", d: "Entran con un código y solo ven sus mesas." },
+  { icon: "home", t: "Cómo va el día", d: "Ventas, mesas ocupadas y lo que se está acabando." },
 ];
 
 const steps = [
-  { n: "01", t: "Crea tu cuenta", d: "Regístrate con tu correo y confirma en un clic." },
-  { n: "02", t: "Elige tu plan", d: "Ventas, Restaurante o Plus. Mensual o anual." },
-  { n: "03", t: "Opera el piso", d: "POS, cocina, carta e inventario listos desde el día uno." },
+  { n: "1", t: "Crea tu cuenta", d: "Con tu correo. Te llega un enlace para confirmar." },
+  { n: "2", t: "Arma la carta", d: "Platillos, una mesa y los datos del local." },
+  { n: "3", t: "Cobra la primera", d: "Elige un plan y vende en efectivo, tarjeta o Mercado Pago." },
 ];
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[var(--color-cream)] text-[var(--color-ink)]">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--ink)]">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
-        <p className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-          Wapifood
-          <RotatingText
-            texts={["Punto de venta", "Restaurantes", "Fácil", "Te ayuda", "Inventarios"]}
-            splitBy="words"
-            effect="slide"
-            direction="up"
-            rotationInterval={2500}
-            staggerDuration={0.03}
-            mainClassName="text-[var(--color-ember)]"
-          />
-        </p>
-        <div className="flex gap-2">
+        <p className="brand text-3xl">Wapifood</p>
+        <div className="flex items-center gap-2">
           <ThemeToggle />
-          <a href="#precios" className="hidden h-11 items-center rounded-full px-4 text-sm font-semibold text-[var(--color-muted)] sm:inline-flex">
+          <a href="#precios" className="btn-ghost hidden px-4 no-underline sm:inline-flex">
             Precios
           </a>
-          <Link href="/login" className="hidden h-11 items-center rounded-full border border-[var(--color-line)] px-4 text-sm font-semibold sm:inline-flex">
+          <Link href="/login" className="btn-ghost hidden px-4 no-underline sm:inline-flex">
             Entrar
           </Link>
-          <Link href="/login" className="inline-flex h-11 items-center rounded-full bg-[var(--color-ink)] px-4 text-sm font-semibold text-[var(--color-cream)]">
+          <Link href="/login" className="btn-primary inline-flex items-center px-4 no-underline">
             Crear cuenta
           </Link>
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-6xl gap-8 px-4 pb-16 pt-6 lg:grid-cols-2 lg:items-center">
+      <section className="mx-auto grid max-w-6xl gap-8 px-4 pb-16 pt-4 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-ember)]">
-            SaaS para restaurantes
-          </p>
-          <SplitText
-            {...TITLE}
-            tag="h1"
-            splitType="words"
-            delay={60}
-            text="Menú digital, punto de venta y cocina en un solo lugar"
-            className="mt-3 text-5xl leading-[1.05] sm:text-6xl"
-          />
-          <p className="mt-4 max-w-xl text-lg text-[var(--color-muted)]">
-            Wapifood es el software para operar tu restaurante: ventas, mesas,
-            cocina, inventario y menú al cliente. Crea tu cuenta y empieza sin
-            configurar bases de datos ni servidores.
+          <p className="text-base font-bold text-[var(--primary)]">Para restaurantes, fondas y cafeterías</p>
+          <h1 className="mt-2 text-5xl leading-[1.05] sm:text-6xl">
+            Caja, cocina y menú. Tan claro que cualquiera lo usa.
+          </h1>
+          <p className="mt-4 max-w-xl text-xl text-[var(--ink-soft)]">
+            Wapifood es el sistema de tu restaurante: vender, ver las mesas, pasar comandas y controlar lo que hay en bodega. Sin instalar nada raro.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/login" className="inline-flex h-12 items-center rounded-full bg-[var(--color-ember)] px-6 font-semibold text-white">
+            <Link href="/login" className="btn-lg btn-primary inline-flex items-center px-6 no-underline">
               Empezar ahora
             </Link>
-            <a href="#precios" className="inline-flex h-12 items-center rounded-full border border-[var(--color-line)] bg-[var(--color-paper)] px-6 font-semibold">
+            <a href="#precios" className="btn-lg btn-ghost inline-flex items-center px-6 no-underline">
               Ver precios
             </a>
           </div>
         </div>
-        <div className="rounded-[2rem] border border-[var(--color-line)] bg-[var(--color-paper)] p-6 shadow-sm">
+        <div className="card p-5">
           <div className="grid grid-cols-2 gap-3">
-            {["Mesas", "Cocina", "Carta", "Insumos"].map((x) => (
-              <div key={x} className="rounded-2xl bg-[var(--color-cream)] p-4">
-                <p className="text-sm text-[var(--color-muted)]">Módulo</p>
-                <p className="text-2xl font-semibold">{x}</p>
+            {features.slice(0, 4).map((f) => (
+              <div key={f.t} className="rounded-2xl bg-[var(--surface-2)] p-4">
+                <span className="role-ico">
+                  <Icon name={f.icon} size={26} />
+                </span>
+                <p className="mt-3 text-2xl font-extrabold">{f.t}</p>
               </div>
             ))}
           </div>
-          <p className="mt-4 text-sm text-[var(--color-muted)]">
-            Basado en la operación real de Wapifood: del primer pedido al cobro,
-            con control de stock incluido.
+          <p className="mt-4 text-base text-[var(--ink-soft)]">
+            Del primer pedido al cobro, con el stock incluido.
           </p>
         </div>
       </section>
 
-      <section className="border-t border-[var(--color-line)] bg-[var(--color-paper)] py-14">
+      <section className="border-t border-[var(--border)] bg-[var(--surface)] py-14">
         <div className="mx-auto max-w-6xl px-4">
-          <SplitText {...TITLE} tag="h2" text="Cómo funciona" className="text-3xl" />
+          <h2 className="text-4xl">Cómo se empieza</h2>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {steps.map((s) => (
-              <article key={s.n} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-cream)] p-5">
-                <p className="text-sm font-bold text-[var(--color-ember)]">{s.n}</p>
-                <SplitText {...TITLE} tag="h3" text={s.t} className="mt-2 text-xl" />
-                <p className="mt-2 text-sm text-[var(--color-muted)]">{s.d}</p>
+              <article key={s.n} className="rounded-3xl bg-[var(--bg)] p-5">
+                <p className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--primary-solid)] text-xl font-extrabold text-[var(--on-solid)]">{s.n}</p>
+                <h3 className="mt-3 text-2xl">{s.t}</h3>
+                <p className="mt-2 text-lg text-[var(--ink-soft)]">{s.d}</p>
               </article>
             ))}
           </div>
@@ -112,12 +89,15 @@ export default function LandingPage() {
 
       <section id="modulos" className="py-14">
         <div className="mx-auto max-w-6xl px-4">
-          <SplitText {...TITLE} tag="h2" text="Todo lo que necesitas en el piso" className="text-3xl" />
+          <h2 className="text-4xl">Todo el piso, en un solo lugar</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((f) => (
-              <article key={f.t} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5">
-                <SplitText {...TITLE} tag="h3" text={f.t} className="text-xl" />
-                <p className="mt-2 text-sm text-[var(--color-muted)]">{f.d}</p>
+              <article key={f.t} className="card p-5">
+                <span className="role-ico">
+                  <Icon name={f.icon} size={26} />
+                </span>
+                <h3 className="mt-3 text-2xl">{f.t}</h3>
+                <p className="mt-2 text-lg text-[var(--ink-soft)]">{f.d}</p>
               </article>
             ))}
           </div>
@@ -126,9 +106,9 @@ export default function LandingPage() {
 
       <PricingSection />
 
-      <footer className="mx-auto max-w-6xl px-4 py-8 text-sm text-[var(--color-muted)]">
-        Wapifood · software de operación para restaurantes ·{" "}
-        <Link href="/terminos" className="underline">
+      <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-8 text-base text-[var(--ink-soft)]">
+        <p>Wapifood · el sistema de tu restaurante</p>
+        <Link href="/terminos" className="font-bold underline">
           Términos
         </Link>
       </footer>

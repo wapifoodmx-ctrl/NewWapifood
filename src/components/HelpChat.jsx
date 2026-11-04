@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { HELP_SUGGESTIONS, answerHelp } from "@/lib/helpAnswers";
 
-export function HelpChat() {
+export function HelpChat({ lift = "" }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [messages, setMessages] = useState([
@@ -18,7 +18,7 @@ export function HelpChat() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-[1400]">
+    <div className={`help-dock fixed z-[1400] ${lift === "high" ? "help-dock-high" : ""}`}>
       {open ? (
         <section className="mb-2 flex h-[420px] w-[min(100vw-2rem,22rem)] flex-col border border-[var(--color-warm-stone)] bg-[var(--color-paper)] shadow-xl" aria-label="Ayuda">
           <header className="flex items-center justify-between border-b border-[var(--color-warm-stone)] px-3 py-2">

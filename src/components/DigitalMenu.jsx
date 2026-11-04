@@ -221,53 +221,42 @@ export function DigitalMenu({
     <div className="min-h-screen bg-[var(--color-parchment)] text-[var(--color-onyx-warm)]">
       <LoadingOverlay visible={loading} message="Enviando pedido…" />
 
-      <header className="sticky top-0 z-10 border-b border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-4 py-3">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: primary }}>
-              {mode === "kiosk" ? "Kiosko" : "Menú"}
-            </p>
-            <h1 className="truncate text-2xl font-normal sm:text-3xl">{restaurant.name}</h1>
-          </div>
-          <div className="flex items-center gap-2">
+      <header className="sticky top-0 z-10 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--bg)_92%,transparent)] px-4 py-3 backdrop-blur-md">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             {restaurant.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={restaurant.logo_url} alt="" className="h-11 w-11 object-cover" />
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setCartOpen(true)}
-              className="h-11 shrink-0 rounded-[3px] px-3 text-xs font-semibold uppercase text-[var(--color-parchment)]"
-              style={{ background: primary }}
-            >
-              Carrito ({count})
-            </button>
+              <img src={restaurant.logo_url} alt="" className="h-14 w-14 rounded-2xl object-cover" />
+            ) : (
+              <span className="grid h-14 w-14 place-items-center rounded-2xl text-2xl font-extrabold text-white" style={{ background: primary }}>
+                {(restaurant.name || "W").slice(0, 1)}
+              </span>
+            )}
+            <div className="min-w-0">
+              <p className="text-base font-bold" style={{ color: primary }}>
+                {mode === "kiosk" ? "Pide aquí" : "Menú"}
+              </p>
+              <h1 className="truncate text-2xl sm:text-3xl">{restaurant.name}</h1>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setCartOpen(true)}
+            className="btn-primary shrink-0 px-4"
+            style={{ background: primary }}
+          >
+            Carrito ({count})
+          </button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-6 pb-28">
-        <div className="mb-3 flex gap-2 overflow-x-auto">
-          <button
-            type="button"
-            onClick={() => setCat("")}
-            className={`shrink-0 rounded-[3px] px-3 py-2 text-xs font-semibold uppercase ${
-              !cat ? "bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]" : "bg-[var(--color-paper)]"
-            }`}
-          >
+      <main className="mx-auto max-w-5xl px-4 py-6 pb-28">
+        <div className="cat-row mb-4" aria-label="Categorías">
+          <button type="button" onClick={() => setCat("")} className={`cat-chip ${!cat ? "is-on" : ""}`}>
             Todos
           </button>
           {categories.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setCat(c.id)}
-              className={`shrink-0 rounded-[3px] px-3 py-2 text-xs font-semibold uppercase ${
-                cat === c.id
-                  ? "bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]"
-                  : "bg-[var(--color-paper)]"
-              }`}
-            >
+            <button key={c.id} type="button" onClick={() => setCat(c.id)} className={`cat-chip ${cat === c.id ? "is-on" : ""}`}>
               {c.name}
             </button>
           ))}
@@ -278,34 +267,40 @@ export function DigitalMenu({
             Este menú todavía no tiene productos activos.
           </p>
         ) : null}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="menu-grid">
           {list.map((p) => (
-            <div
-              key={p.id}
-              className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] text-left"
-            >
-              <button type="button" onClick={() => openDetail(p)} className="block w-full p-3 text-left">
-                {p.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.image_url} alt="" className="mb-2 h-24 w-full object-cover" />
-                ) : (
-                  <div className="mb-2 grid h-24 place-items-center bg-[var(--color-parchment)] text-[10px] text-[var(--color-walnut)]">
-                    Sin foto
-                  </div>
-                )}
-                <p className="font-semibold leading-tight">{p.name}</p>
-                <p className="mt-1 text-sm text-[var(--color-espresso)]">{money(p.price)}</p>
+            <article key={p.id} className="menu-card">
+              <button type="button" onClick={() => openDetail(p)} className="block w-full text-left">
+                <span className="menu-photo">
+                  {p.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.image_url} alt="" />
+                  ) : (
+                    <span>{(p.name || "?").slice(0, 1)}</span>
+                  )}
+                </span>
+                <span className="block px-3 pb-2 pt-3">
+                  <span className="block text-lg font-extrabold leading-tight">{p.name}</span>
+                  <span className="mt-1 block text-base font-bold text-[var(--ink-soft)]">{money(p.price)}</span>
+                </span>
               </button>
-              <button
-                type="button"
-                onClick={() => addQuick(p)}
-                className="w-full border-t border-[var(--color-warm-stone)] py-2 text-[11px] font-semibold uppercase"
-              >
-                + Agregar
+              <button type="button" onClick={() => addQuick(p)} className="btn-primary mx-3 mb-3 w-[calc(100%-1.5rem)]">
+                Agregar
               </button>
-            </div>
+            </article>
           ))}
         </div>
+        {count > 0 ? (
+          <div className="menu-dock">
+            <div>
+              <p className="text-sm font-bold opacity-80">{count} {count === 1 ? "platillo" : "platillos"}</p>
+              <p className="text-2xl font-extrabold">{money(total)}</p>
+            </div>
+            <button type="button" onClick={() => setCartOpen(true)} className="btn-primary px-5" style={{ background: primary, color: "#fff" }}>
+              Ver pedido
+            </button>
+          </div>
+        ) : null}
       </main>
 
       {/* Modal detalle producto */}

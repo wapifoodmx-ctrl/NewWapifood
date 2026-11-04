@@ -97,39 +97,35 @@ export function DashboardInsights({ orders, productNames }) {
             key={r.id}
             type="button"
             onClick={() => setRange(r.id)}
-            className={`h-9 rounded-[3px] px-3 text-xs font-semibold uppercase ${
-              range === r.id
-                ? "bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]"
-                : "bg-[var(--color-paper)]"
-            }`}
+            className={`cat-chip ${range === r.id ? "is-on" : ""}`}
           >
             {r.label}
           </button>
         ))}
         {range === "rango" ? (
           <div className="flex gap-2">
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 border border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-2 text-xs" aria-label="Desde" />
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 border border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-2 text-xs" aria-label="Hasta" />
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 card px-2 text-xs" aria-label="Desde" />
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 card px-2 text-xs" aria-label="Hasta" />
           </div>
         ) : null}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
-          <p className="text-[11px] font-semibold uppercase text-[var(--color-espresso)]">Ventas periodo</p>
+        <div className="card p-4">
+          <p className="text-base font-bold text-[var(--ink-soft)]">Ventas del periodo</p>
           <p className="text-2xl font-semibold">{money(sales)}</p>
         </div>
-        <div className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
-          <p className="text-[11px] font-semibold uppercase text-[var(--color-espresso)]">Tickets pagados</p>
+        <div className="card p-4">
+          <p className="text-base font-bold text-[var(--ink-soft)]">Tickets pagados</p>
           <p className="text-2xl font-semibold">{paid.length}</p>
         </div>
-        <div className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
-          <p className="text-[11px] font-semibold uppercase text-[var(--color-espresso)]">Pedidos hoy</p>
+        <div className="card p-4">
+          <p className="text-base font-bold text-[var(--ink-soft)]">Pedidos de hoy</p>
           <p className="text-2xl font-semibold">{todayOrders.length}</p>
         </div>
       </div>
 
-      <section className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
+      <section className="card p-4">
         <h2 className="text-xl font-normal">{range === "anio" ? "Tickets por mes" : "Tickets por día"}</h2>
         <div className="mt-4 flex h-28 items-end gap-1 overflow-x-auto">
           {series.map((v, i) => (
@@ -144,7 +140,7 @@ export function DashboardInsights({ orders, productNames }) {
       </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
+        <section className="card p-4">
           <h2 className="text-xl font-normal">Más vendidos (periodo)</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {top.length ? (
@@ -159,7 +155,7 @@ export function DashboardInsights({ orders, productNames }) {
             )}
           </ul>
         </section>
-        <section className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
+        <section className="card p-4">
           <h2 className="text-xl font-normal">Por canal (periodo)</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {Object.entries(byChannel).length ? (
@@ -178,7 +174,7 @@ export function DashboardInsights({ orders, productNames }) {
         </section>
       </div>
 
-      <section className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">
+      <section className="card p-4">
         <h2 className="text-xl font-normal">Pedidos de hoy</h2>
         <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto text-sm">
           {todayOrders.length ? (

@@ -8,6 +8,9 @@ import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { statusMeta, itemStatusMeta } from "@/lib/orderStatus";
 import { extraPayload, extrasCharge, extrasForProduct } from "@/lib/extras";
 import { ExtrasPicker } from "@/components/ExtrasPicker";
+import { Icon } from "@/components/ui/Icon";
+import { EmptyState } from "@/components/ui/States";
+import { tableStateMeta } from "@/lib/brand";
 
 const SESSION_KEY = "wapifood_waiter_session";
 
@@ -323,22 +326,31 @@ async function login(e) {
       <main className="mx-auto max-w-3xl px-4 py-5 pb-24">
         {tab === "pedir" ? (
           <>
-            <label className="block text-xs font-semibold uppercase">
-              Mesa
-              <select
-                className="mt-1 h-11 w-full border border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-2 font-normal normal-case"
-                value={tableId}
-                onChange={(e) => setTableId(e.target.value)}
-              >
-                <option value="">Selecciona mesa</option>
-                {allowedTables.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    Mesa {t.number}
-                    {t.channel_type === "tablet" ? " · tablet" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <fieldset>
+              <legend className="text-lg font-extrabold">¿En qué mesa?</legend>
+              <div className="pos-tables-grid mt-2">
+                {allowedTables.map((t) => {
+                  const meta = tableStateMeta(t.state, t.state === "ocupada");
+                  const on = tableId === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setTableId(t.id)}
+                      className={`table-tile tone-${meta.tone} ${on ? "is-on" : ""}`}
+                    >
+                      <Icon name={meta.icon} size={20} />
+                      <span className="table-tile-name">Mesa {t.number}</span>
+                      <span className="table-tile-state">{meta.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {!allowedTables.length ? (
+                <EmptyState icon="table" title="No tienes mesas" text="Pide en caja que te asignen una mesa." />
+              ) : null}
+            </fieldset>
 
             <div className="mt-3 flex gap-1 overflow-x-auto">
               <button
@@ -366,41 +378,44 @@ async function login(e) {
               ))}
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="pos-grid mt-3">
               {list.map((p) => (
                 <button
                   key={p.id}
                   type="button"
                   onClick={() => choose(p)}
-                  className="min-h-16 border border-[var(--color-warm-stone)] bg-[var(--color-paper)] px-3 py-2 text-left"
+                  className="pos-tile"
                 >
-                  <span className="block font-semibold">{p.name}</span>
-                  <span className="text-sm text-[var(--color-espresso)]">{money(p.price)}</span>
+                  <span className="pos-tile-media" style={{ background: "var(--primary-solid)", color: "var(--on-solid)" }}>
+                    {(p.name || "?").slice(0, 1)}
+                  </span>
+                  <span className="pos-tile-body">
+                    <span className="pos-tile-name">{p.name}</span>
+                    <span className="pos-tile-price">{money(p.price)}</span>
+                  </span>
                 </button>
               ))}
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 border-t border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-3">
-              <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
-                <div className="min-w-0 flex-1 text-sm">
+            <div className="menu-dock">
+              <div className="min-w-0">
+                <p className="text-2xl font-extrabold">{money(total)}</p>
+                <p className="truncate text-sm">
+                  {cart.length
+                    ? cart.map((i) => `${i.qty}× ${i.name}`).join(" · ")
+                    : "Toca un platillo. Toca de nuevo el nombre abajo para quitar uno."}
+                </p>
+                <div className="mt-1 flex flex-wrap gap-1">
                   {cart.map((i) => (
-                    <button key={i.product_id} type="button" onClick={() => dec(i.product_id)} className="mr-2">
-                      {i.qty}× {i.name}
+                    <button key={i.product_id} type="button" onClick={() => dec(i.product_id)} className="btn-ghost px-2 text-sm">
+                      − {i.name}
                     </button>
                   ))}
-                  {!cart.length ? <span className="text-[var(--color-walnut)]">Carrito vacío</span> : null}
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold">{money(total)}</p>
-                  <button
-                    type="button"
-                    onClick={send}
-                    className="mt-1 h-10 rounded-[3px] bg-[var(--color-onyx-warm)] px-4 text-xs font-semibold uppercase text-[var(--color-parchment)]"
-                  >
-                    Enviar cocina
-                  </button>
                 </div>
               </div>
+              <button type="button" onClick={send} className="btn-lg btn-primary shrink-0 px-4">
+                Enviar a cocina
+              </button>
             </div>
           </>
         ) : null}
