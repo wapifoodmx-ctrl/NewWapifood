@@ -4,6 +4,8 @@ export const MODULES = [
   { id: "pos", title: "Caja", href: "/pos", group: "ops", nav: "hoy", icon: "register", hint: "Pedidos y cobro" },
   { id: "kitchen", title: "Cocina", href: "/cocina", group: "ops", nav: "hoy", icon: "flame", hint: "Comandas en vivo" },
   { id: "tickets", title: "Cuentas", href: "/tickets", group: "ops", nav: "hoy", icon: "receipt", hint: "Ver e imprimir" },
+  { id: "turno", title: "Turno de caja", href: "/turno", group: "ops", nav: "hoy", icon: "cash", hint: "Fondo, corte y diferencia" },
+  { id: "reportes", title: "Reportes", href: "/reportes", group: "ops", nav: "hoy", icon: "list", hint: "Ventas del periodo" },
   { id: "mesas", title: "Mesas", href: "/mesas", group: "setup", nav: "piso", icon: "table", hint: "Mapa del salón" },
   { id: "meseros", title: "Meseros", href: "/meseros", group: "setup", nav: "piso", icon: "users", hint: "Códigos y mesas" },
   { id: "kiosko", title: "Kiosko", href: "/kiosko", group: "ops", nav: "piso", icon: "tablet", hint: "Pedido en el local" },
@@ -17,6 +19,7 @@ export const MODULES = [
   { id: "empezar", title: "Primeros pasos", href: "/empezar", group: "setup", nav: "cuenta", icon: "steps", hint: "Hasta la primera venta" },
   { id: "config", title: "Datos del local", href: "/config", group: "setup", nav: "cuenta", icon: "store", hint: "Nombre, teléfono y logo" },
   { id: "equipo", title: "Equipo", href: "/equipo", group: "setup", nav: "cuenta", icon: "team", hint: "Quién puede entrar" },
+  { id: "clientes", title: "Clientes", href: "/clientes", group: "setup", nav: "cuenta", icon: "users", hint: "Teléfono y domicilio" },
   { id: "pagos", title: "Plan", href: "/pagos", group: "setup", nav: "cuenta", icon: "card", hint: "Pagar con Mercado Pago" },
   { id: "masa", title: "Masa", href: "/masa", group: "ops", nav: "cuenta", icon: "bread", hint: "Producción de masa" },
 ];

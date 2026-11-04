@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
 import { extraPayload, extrasCharge, extrasForProduct } from "@/lib/extras";
+import { isOpenNow } from "@/lib/hours";
 import { toast } from "@/components/ui/Toast";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { ExtrasLines, ExtrasPicker } from "@/components/ExtrasPicker";
@@ -23,6 +24,7 @@ export function DigitalMenu({
   orderSource = "web_menu",
   fixedTableId = null,
   productExtras = [],
+  schedule = "",
 }) {
   const primary = theme?.primary_color || "var(--color-saffron-glow)";
   const [cat, setCat] = useState("");
@@ -44,6 +46,7 @@ export function DigitalMenu({
   const [detailExtras, setDetailExtras] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const openNow = orderSource !== "web_menu" || isOpenNow(schedule);
 
   const list = useMemo(
     () => products.filter((p) => p.active !== false && (!cat || p.category_id === cat)),
@@ -120,6 +123,11 @@ export function DigitalMenu({
 
   async function submit() {
     setStatus("");
+    if (!openNow) {
+      setStatus("El restaurante está fuera de horario.");
+      toast.warning("Fuera de horario");
+      return;
+    }
     if (!cart.length) {
       setStatus("Agrega productos al carrito.");
       toast.warning("Carrito vacío");
@@ -221,6 +229,11 @@ export function DigitalMenu({
     <div className="min-h-screen bg-[var(--color-parchment)] text-[var(--color-onyx-warm)]">
       <LoadingOverlay visible={loading} message="Enviando pedido…" />
 
+      {!openNow ? (
+        <p className="bg-[var(--chip-warn-bg)] px-4 py-3 text-center text-base font-bold text-[var(--chip-warn-fg)]" role="status">
+          Fuera de horario. Puedes ver la carta, no enviar el pedido.
+        </p>
+      ) : null}
       <header className="sticky top-0 z-10 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--bg)_92%,transparent)] px-4 py-3 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">

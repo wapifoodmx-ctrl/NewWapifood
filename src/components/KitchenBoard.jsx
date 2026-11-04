@@ -8,6 +8,7 @@ import { EmptyState, Skeleton } from "@/components/ui/States";
 import { Icon } from "@/components/ui/Icon";
 import { statusMeta, itemStatusMeta, waitMeta } from "@/lib/orderStatus";
 import { OrderComments } from "@/components/OrderComments";
+import { confirmAsync } from "@/components/ui/confirm";
 
 /**
  * Cocina — status por ítem + status de orden (paridad Front).
@@ -31,7 +32,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
     const { data, error } = await supabase
       .from("orders")
       .select(
-        "id,status,source,order_type,customer_phone,delivery_address,opened_at,needs_confirmation,public_code,table_id,order_items(product_id,qty,unit_price,notes,status),dining_tables(number,channel_type)",
+        "id,status,source,order_type,customer_name,customer_phone,delivery_address,opened_at,needs_confirmation,public_code,table_id,order_items(product_id,qty,unit_price,notes,status),dining_tables(number,channel_type)",
       )
       .eq("restaurant_id", restaurantId)
       .in("status", ["cocina", "lista", "pendiente", "abierta", "entregada"])
@@ -122,6 +123,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
       const active = items.filter((i) => (i.status || "pendiente") !== "cancelado");
       const allPrep = active.length > 0 && active.every((i) => i.status === "preparado");
       const anyPend = items.some((i) => (i.status || "pendiente") === "pendiente");
+      if (queue === "domicilio") return o.order_type === "domicilio";
       if (queue === "preparados") return allPrep || o.status === "lista" || o.status === "entregada";
       return (
         anyPend ||
@@ -184,6 +186,24 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
     await refresh();
   }
 
+  async function rejectWeb(id) {
+    const ok = await confirmAsync("No se cobra y no pasa a cocina.", {
+      title: "Rechazar este domicilio",
+      confirmLabel: "Rechazar",
+      cancelLabel: "Volver",
+    });
+    if (!ok) return;
+    setLoading(true);
+    const { error } = await supabase.rpc("cancel_order", {
+      p_order: id,
+      p_reason: "Domicilio rechazado",
+    });
+    setLoading(false);
+    if (error) return toast.error(error.message);
+    toast.success("Domicilio rechazado");
+    await refresh();
+  }
+
   async function markDelivered(id) {
     setLoading(true);
     const { error } = await supabase.from("orders").update({ status: "entregada" }).eq("id", id);
@@ -221,6 +241,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
         <div className="flex flex-wrap gap-2">
           {[
             { id: "pendientes", label: "Por preparar" },
+            { id: "domicilio", label: "Domicilio" },
             { id: "preparados", label: "Preparados" },
             { id: "todos", label: "Todos" },
           ].map((q) => (
@@ -283,6 +304,13 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
                 <Icon name="clock" size={18} />
                 {wait.label}
               </p>
+              {order.order_type === "domicilio" ? (
+                <p className="text-lg font-bold">
+                  {order.customer_name || "Cliente"} · {order.customer_phone || "sin teléfono"}
+                  <br />
+                  {order.delivery_address || "Sin dirección"}
+                </p>
+              ) : null}
               <p className="text-base text-[var(--ink-soft)]">
                 Llegó de {order.source || "caja"}
                 {order.opened_at
@@ -327,9 +355,14 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
                   Ver detalle
                 </button>
                 {order.status === "pendiente" ? (
-                  <button type="button" onClick={() => confirmWeb(order.id)} className="btn-lg btn-primary">
-                    Confirmar y pasar a cocina
-                  </button>
+                  <>
+                    <button type="button" onClick={() => confirmWeb(order.id)} className="btn-lg btn-primary">
+                      Confirmar y pasar a cocina
+                    </button>
+                    <button type="button" onClick={() => rejectWeb(order.id)} className="btn-danger">
+                      Rechazar
+                    </button>
+                  </>
                 ) : order.status === "lista" || order.status === "entregada" ? (
                   <button type="button" onClick={() => markDelivered(order.id)} className="btn-lg btn-accent">
                     {order.status === "entregada" ? "Entregada" : "Marcar entregada"}

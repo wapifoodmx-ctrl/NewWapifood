@@ -17,7 +17,7 @@ export default async function CocinaPage() {
   const { data: orders } = await supabase
     .from("orders")
     .select(
-      "id,status,source,order_type,customer_phone,delivery_address,opened_at,needs_confirmation,public_code,order_items(product_id,qty,unit_price,notes,status),dining_tables(number)",
+      "id,status,source,order_type,customer_name,customer_phone,delivery_address,opened_at,needs_confirmation,public_code,order_items(product_id,qty,unit_price,notes,status),dining_tables(number)",
     )
     .eq("restaurant_id", rid)
     .in("status", ["cocina", "lista", "pendiente", "abierta", "entregada"])

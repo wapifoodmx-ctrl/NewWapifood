@@ -1,11 +1,11 @@
 export const dynamic = "force-dynamic";
 
 import { AppShell } from "@/components/AppShell";
+import { EquipoPanel } from "@/components/EquipoPanel";
 import { requireTenantSetup } from "@/lib/auth";
 
 export default async function EquipoPage() {
   const { supabase, membership, user, operational, setupOnly } = await requireTenantSetup();
-
   if (!membership?.restaurant_id) {
     return (
       <AppShell title="Equipo" operational={operational} setupOnly={setupOnly}>
@@ -14,10 +14,24 @@ export default async function EquipoPage() {
     );
   }
 
-  const { data: members, error } = await supabase
-    .from("memberships")
-    .select("user_id, role, created_at")
-    .eq("restaurant_id", membership.restaurant_id);
+  const { data, error } = await supabase.rpc("list_team", {
+    p_restaurant: membership.restaurant_id,
+  });
+
+  let fallback = null;
+  if (error) {
+    const members = await supabase
+      .from("memberships")
+      .select("user_id, role, created_at")
+      .eq("restaurant_id", membership.restaurant_id);
+    fallback = {
+      members: (members.data || []).map((m) => ({ ...m, email: null })),
+      invites: [],
+    };
+  }
+
+  const team = data || fallback || { members: [], invites: [] };
+  const canManage = membership.role === "owner" || membership.role === "admin";
 
   return (
     <AppShell
@@ -27,38 +41,17 @@ export default async function EquipoPage() {
       operational={operational}
       setupOnly={setupOnly}
     >
-      <p className="mb-4 text-[var(--color-muted)]">
-        Cuentas con acceso al panel (owner/admin). Los meseros de piso usan su propio acceso en{" "}
-        <code className="rounded bg-[var(--color-cream)] px-1">/mesero/…</code>, no esta pantalla.
-      </p>
-
       {error ? (
-        <p className="mb-4 text-sm text-[var(--color-wine)]">Error al cargar: {error.message}</p>
+        <p className="mb-4 text-base text-[var(--ink-soft)]">
+          Todavía no se puede invitar desde la base ({error.message}). Se muestra la lista que ya existía.
+        </p>
       ) : null}
-
-      <div className="overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)]">
-        {(members || []).length === 0 ? (
-          <p className="p-5 text-[var(--color-muted)]">No hay miembros registrados.</p>
-        ) : (
-          (members || []).map((m) => (
-            <div
-              key={m.user_id}
-              className="flex items-center justify-between border-b border-[var(--color-line)] px-4 py-3 last:border-0"
-            >
-              <div>
-                <p className="font-mono text-sm font-semibold">{m.user_id}</p>
-                <p className="text-xs text-[var(--color-muted)]">
-                  {user && m.user_id === user.id ? "Tú · " : ""}
-                  desde {m.created_at ? new Date(m.created_at).toLocaleDateString("es-MX") : "—"}
-                </p>
-              </div>
-              <span className="rounded-full bg-[var(--color-cream)] px-3 py-1 text-xs font-bold uppercase">
-                {m.role}
-              </span>
-            </div>
-          ))
-        )}
-      </div>
+      <EquipoPanel
+        restaurantId={membership.restaurant_id}
+        initial={team}
+        currentUserId={user.id}
+        canManage={canManage && !error}
+      />
     </AppShell>
   );
 }
