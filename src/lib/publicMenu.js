@@ -36,7 +36,7 @@ export async function loadPublicMenu(restaurantId) {
         .maybeSingle(),
       supabase
         .from("restaurant_profiles")
-        .select("require_confirm_code,delivery_enabled,confirmation_code")
+        .select("require_confirm_code,delivery_enabled,confirmation_code,schedule")
         .eq("restaurant_id", restaurantId)
         .maybeSingle(),
       supabase

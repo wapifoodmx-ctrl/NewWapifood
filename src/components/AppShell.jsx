@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { MODULES, NAV_GROUPS, homePath, primaryModules, roleLabel } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/client";
@@ -22,6 +22,13 @@ export function AppShell({
   const router = useRouter();
   const [more, setMore] = useState(false);
   const primary = primaryModules(role);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.rpc("accept_team_invites").then(({ data }) => {
+      if (Number(data) > 0) router.refresh();
+    });
+  }, [router]);
 
   async function signOut() {
     const supabase = createClient();

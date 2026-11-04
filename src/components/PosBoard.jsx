@@ -35,6 +35,8 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   const [extraPick, setExtraPick] = useState(null);
   const [splitIds, setSplitIds] = useState([]);
   const [orderDiscount, setOrderDiscount] = useState({ type: "", value: "" });
+  const [tip, setTip] = useState("");
+  const [guest, setGuest] = useState({ name: "", phone: "" });
   const [flashId, setFlashId] = useState(null);
 
   const supabase = useMemo(() => createClient(), []);
@@ -123,6 +125,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   }, [order, subtotal]);
 
   const itemCount = (order?.order_items || []).reduce((s, i) => s + Number(i.qty), 0);
+  const tipAmount = Math.max(0, Number(tip) || 0);
 
   async function refresh() {
     const { data } = await supabase
@@ -137,6 +140,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   async function openTable(tableId) {
     setActiveTableId(tableId);
     setLastTicket(null);
+    setTip("");
     const existing = orders.find(
       (o) => o.table_id === tableId && o.status !== "pagada" && o.status !== "cancelada",
     );
@@ -370,6 +374,50 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     toast.success("Descuento aplicado");
   }
 
+  async function applyLineDiscount(productId, type, value) {
+    if (!order) return;
+    const numeric = Number(value || 0);
+    setLoading(true);
+    const rpc = await supabase.rpc("set_item_discount", {
+      p_order: order.id,
+      p_product: productId,
+      p_type: type || null,
+      p_value: numeric,
+    });
+    if (rpc.error && /set_item_discount|schema cache|PGRST202/i.test(rpc.error.message)) {
+      const { error } = await supabase
+        .from("order_items")
+        .update({
+          discount_type: type || null,
+          discount_value: type ? numeric : 0,
+        })
+        .eq("order_id", order.id)
+        .eq("product_id", productId);
+      setLoading(false);
+      if (error) return toast.error(error.message);
+    } else if (rpc.error) {
+      setLoading(false);
+      return toast.error(rpc.error.message);
+    } else {
+      setLoading(false);
+    }
+    await refresh();
+  }
+
+  async function saveGuest() {
+    if (!order) return;
+    const { error } = await supabase
+      .from("orders")
+      .update({
+        customer_name: guest.name.trim() || null,
+        customer_phone: guest.phone.trim() || null,
+      })
+      .eq("id", order.id);
+    if (error) return toast.error(error.message);
+    toast.success("Cliente anotado en la cuenta");
+    await refresh();
+  }
+
   const chargeItems = splitIds.length
     ? (order?.order_items || []).filter((i) => splitIds.includes(i.product_id))
     : null;
@@ -390,6 +438,10 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     setPayMethod("efectivo");
     setCashGiven("");
     setPayOpen(true);
+    setGuest({
+      name: order.customer_name || "",
+      phone: order.customer_phone || "",
+    });
   }
 
   async function moveMarkedLines() {
@@ -413,6 +465,8 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         unit_price: line.unit_price,
         notes: line.notes || null,
         status: line.status || "pendiente",
+        discount_type: line.discount_type || null,
+        discount_value: line.discount_value || 0,
       });
       if (insErr) throw insErr;
       const extras = await supabase
@@ -438,9 +492,10 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
 
   async function confirmPay() {
     if (!order) return;
+    const due = Math.round((chargeTotal + tipAmount) * 100) / 100;
     if (payMethod === "efectivo") {
       const given = Number(cashGiven);
-      if (!Number.isNaN(given) && given > 0 && given < chargeTotal) {
+      if (!Number.isNaN(given) && given > 0 && given + 0.001 < due) {
         toast.error("El efectivo recibido es menor al total");
         return;
       }
@@ -466,15 +521,26 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         line: lineAmount(i),
         notes: i.notes,
       })),
-      total: chargeTotal,
+      total: due,
+      food: chargeTotal,
+      tip: tipAmount,
       method: payMethod,
       table: tableMap.get(order.table_id)?.number,
       cashGiven: payMethod === "efectivo" ? Number(cashGiven) || null : null,
+      change: payMethod === "efectivo" && Number(cashGiven) > 0 ? Math.round((Number(cashGiven) - due) * 100) / 100 : null,
     };
-    const { error } = await supabase.rpc("close_order", {
+    let { error } = await supabase.rpc("close_order", {
       p_order: targetId,
       p_method: payMethod,
+      p_cash: payMethod === "efectivo" && cashGiven !== "" ? Number(cashGiven) : null,
+      p_tip: tipAmount,
     });
+    if (error && /close_order|schema cache|PGRST202|could not find/i.test(error.message)) {
+      ({ error } = await supabase.rpc("close_order", {
+        p_order: targetId,
+        p_method: payMethod,
+      }));
+    }
     setLoading(false);
     if (error) {
       toast.error(error.message);
@@ -494,9 +560,10 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     toast.success(splitIds.length ? `Parte cobrada con ${payMethod}` : `Cobrado con ${payMethod}`);
   }
 
+  const dueNow = Math.round((chargeTotal + tipAmount) * 100) / 100;
   const change =
-    payMethod === "efectivo" && Number(cashGiven) > 0 ? Number(cashGiven) - chargeTotal : null;
-  const suggestions = cashSuggestions(chargeTotal);
+    payMethod === "efectivo" && Number(cashGiven) > 0 ? Math.round((Number(cashGiven) - dueNow) * 100) / 100 : null;
+  const suggestions = cashSuggestions(dueNow);
   const activeTable = tableMap.get(activeTableId);
   const catName = (id) => categories.find((c) => c.id === id)?.name || "Platillo";
 
@@ -561,6 +628,26 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 >
                   Nota
                 </button>
+                <label className="sr-only" htmlFor={`line-discount-${i.product_id}`}>Descuento del platillo</label>
+                <select
+                  id={`line-discount-${i.product_id}`}
+                  value={i.discount_type || ""}
+                  onChange={(e) => applyLineDiscount(i.product_id, e.target.value, i.discount_value || 0)}
+                >
+                  <option value="">Sin desc.</option>
+                  <option value="porcentaje">%</option>
+                  <option value="monto">$</option>
+                </select>
+                {i.discount_type ? (
+                  <input
+                    aria-label={`Valor del descuento de ${p?.name || "platillo"}`}
+                    className="w-16"
+                    inputMode="decimal"
+                    defaultValue={i.discount_value || ""}
+                    key={`${i.product_id}-${i.discount_type}-${i.discount_value}`}
+                    onBlur={(e) => applyLineDiscount(i.product_id, i.discount_type, e.target.value)}
+                  />
+                ) : null}
               </div>
             </li>
           );
@@ -569,6 +656,17 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       {!(order?.order_items || []).length ? (
         <EmptyState icon="cart" title="La cuenta está vacía" text="Toca un platillo para agregarlo. Un toque suma uno." />
       ) : null}
+      <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+        <label className="text-sm font-bold">
+          Cliente
+          <input className="mt-1 h-12 w-full rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3" value={guest.name} onChange={(e) => setGuest((g) => ({ ...g, name: e.target.value }))} placeholder="Nombre" />
+        </label>
+        <label className="text-sm font-bold">
+          Teléfono
+          <input className="mt-1 h-12 w-full rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3" value={guest.phone} onChange={(e) => setGuest((g) => ({ ...g, phone: e.target.value }))} inputMode="tel" placeholder="10 dígitos" />
+        </label>
+        <button type="button" className="btn-ghost mt-5" onClick={saveGuest}>Anotar</button>
+      </div>
       <div className="mt-4 grid grid-cols-[1.2fr_0.8fr_auto] gap-2">
         <label className="sr-only" htmlFor="pos-discount-type">Tipo de descuento</label>
         <select
@@ -743,9 +841,10 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 ))}
               </ul>
               <p className="mt-2 text-2xl font-extrabold">{money(lastTicket.total)}</p>
+              {lastTicket.tip ? <p className="text-base">Incluye propina {money(lastTicket.tip)}</p> : null}
               {lastTicket.cashGiven ? (
                 <p className="text-base text-[var(--ink-soft)]">
-                  Recibiste {money(lastTicket.cashGiven)}. Cambio {money(Math.max(0, lastTicket.cashGiven - lastTicket.total))}.
+                  Recibiste {money(lastTicket.cashGiven)}. Cambio {money(lastTicket.change ?? Math.max(0, lastTicket.cashGiven - lastTicket.total))}.
                 </p>
               ) : null}
             </div>
@@ -845,8 +944,23 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
           <div role="dialog" aria-modal="true" aria-labelledby="pos-pay-title" className="sheet">
             <div className="sheet-handle" />
             <h2 id="pos-pay-title" className="text-2xl">Cobrar</h2>
-            <p className="text-4xl font-extrabold">{money(chargeTotal)}</p>
-            {splitIds.length ? <p className="text-base text-[var(--ink-soft)]">Solo los platillos marcados para separar.</p> : null}
+            <p className="text-4xl font-extrabold">{money(dueNow)}</p>
+            <p className="text-base text-[var(--ink-soft)]">
+              Alimentos {money(chargeTotal)}
+              {tipAmount ? ` · propina ${money(tipAmount)}` : ""}
+            </p>
+            {splitIds.length ? <p className="text-base text-[var(--ink-soft)]">Solo los platillos marcados para separar. El descuento de toda la cuenta no se parte.</p> : null}
+            <label className="mt-3 block text-base font-bold" htmlFor="pos-tip">
+              Propina (no cambia el precio del platillo)
+              <input
+                id="pos-tip"
+                value={tip}
+                onChange={(e) => setTip(e.target.value.replace(/[^\d.]/g, ""))}
+                className="mt-1 w-full"
+                inputMode="decimal"
+                placeholder="0.00"
+              />
+            </label>
             <div className="mt-4 grid grid-cols-3 gap-2">
               {PAY_METHODS.map((m) => (
                 <button

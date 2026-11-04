@@ -1,76 +1,123 @@
 # Paridad Wapifood legado → NewWapifood
 
-Fecha: 2026-11-03. Los tres repos se clonaron en solo lectura:
+Fecha: 2026-11-04. El detalle de cada pantalla y endpoint está en `docs/LEGADO-INVENTARIO.md`. Esta matriz solo marca el estado en New, con la ruta de los dos lados. Nada queda en «completo» sin un camino de código de punta a punta.
 
-- `WapifoodFront` rama `main`
-- `ApiWapifood` rama `master`
-- `microServicioWapiFood` rama `master`
+Leyenda: **completo**, **parcial** (se dice qué falta), **ausente**, **distinto** (a propósito o porque el legado tampoco lo tenía y aquí se tomó una regla explícita).
 
-El microservicio de GitHub no contiene `/inventory/extras`. El front llama `https://api-micro.wapifood.com/inventory/extras/`, que no está en ese snapshot. La regla de adicionales se reconstruyó del front (`Recetas/ExtrasModals.jsx`, `useCases/postExtras.js`, `getExtras.js`) y de `product_extras` en Supabase.
+## Conteos
+
+Inventario legado: 27 páginas, 48 componentes con flujo, 80 casos de uso HTTP, 64 rutas únicas en `ApiWapifood`, 14 llamadas de inventario que el snapshot de `microServicioWapiFood` no trae.
+
+Flujos de esta matriz: **58**. Cada fila está en un solo grupo.
+
+| | Antes (main, verificado en código) | Después de este cambio |
+|---|---|---|
+| Completo | 26 | 38 |
+| Parcial | 13 | 7 |
+| Ausente | 11 | 2 |
+| Distinto | 8 | 11 |
+
+12 flujos pasaron a completo (horario del menú, liberar mesas, tope en la base, descuento de línea, cambio guardado, merma o devolución, rechazar domicilio, dirección en cocina, total del ticket, equipo, clientes, roles). Tres capacidades que el legado no tenía quedaron operando con regla explícita: áreas, propina y turno. La utilidad exportable pasó de ausente a parcial. Siguen ausentes los comentarios de redes y los modificadores con mínimo y máximo.
 
 ## Matriz
 
-Leyenda: **Sí** = usable en New. **Parcial** = existe con huecos. **No** = no está. **Este PR** = se cierra aquí (el SQL de adicionales corre en el deploy, no en este preview).
+| # | Flujo legado | Legado | New | Antes | Ahora |
+|---|---|---|---|---|---|
+| 1 | Landing y precios | `pages/index.js` | `src/app/page.js` | completo | completo |
+| 2 | Login, recuperar, confirmar | `login`, `resetLink`, `resetpass` | `/login`, `/recuperar`, `/auth` | completo | completo |
+| 3 | Alta sin seed | `POST /user` | `create_my_restaurant` | completo | completo |
+| 4 | Perfil, logo, horario, código | `user/userpage.jsx`, `/user/me/info` | `ConfigPanel.jsx` | completo | completo |
+| 5 | Horario bloquea el menú web | `webmenu/[uuid].js` `checkRestaurantHours` | `src/lib/hours.js`, `DigitalMenu.jsx` | ausente | completo. Kiosko y tablet no se bloquean |
+| 6 | Carta, categorías, foto, costo | `menu/` | `CartaManager.jsx` | completo | completo |
+| 7 | Varias fotos | `images` | `product_images` | completo | completo |
+| 8 | Receta multi-insumo y unitario | `Recetas/`, micro recipes | `RecetasManager.jsx`, `ensure_unit_product_inventory` | completo | completo |
+| 9 | Extra con precio | `ExtrasModals`, micro `/inventory/extras` (no está en el snapshot) | `product_extras` | completo | completo |
+| 10 | Insumos, PIN, kardex, merma, entrada | `Inventarios/` | `InsumosManager.jsx` | completo | completo |
+| 11 | Import CSV | `importrouter.py` | `/importar` | completo | completo |
+| 12 | Listas custom y pantallas | `custom-list`, `pantallas` | `/listas`, `/pantallas` | parcial. La pantalla es un enlace, no el carrusel del legado | parcial. Igual |
+| 13 | Mesas Libre / Ocupado / NoDisponible | `tablesStatus.js` | `dining_tables.state`, `MesasManager` | completo | completo |
+| 14 | Liberar mesas sin cuenta | `POST /tables/LiberarTodasLasMesas` | botón en `MesasManager.releaseIdle` | ausente | completo |
+| 15 | Áreas de mesa | no existían | `dining_areas`, selector en Mesas | ausente | distinto. Se agregaron porque el encargo las pidió. No cambian el cobro |
+| 16 | Tope de mesas y meseros en la base | `waiters.py` `PLAN_WAITER_LIMITS`, `POST /tables/generate` | trigger `enforce_plan_caps` | parcial. El tope de meseros solo estaba en la pantalla | completo. Usa 3/15/25 y 2/5/10 de `plans.js`, no el comentario viejo 1/16/26 |
+| 17 | POS: abrir, sumar, nota, cocina | `Puntodeventa/` | `PosBoard.jsx`, `send_order_to_kitchen` | completo | completo |
+| 18 | Mismo producto en dos líneas | `orders_details` sin unicidad | PK `(order_id, product_id)` | parcial | parcial. Sigue una sola línea por producto |
+| 19 | Descuento de línea y luego de la orden | `crear_orden` en `orders.py` | `set_item_discount`, `set_order_discount`, `order_subtotal` | parcial. La orden sí; la línea solo tenía columna | completo en caja y en SQL |
+| 20 | Cobro efectivo, tarjeta, transferencia | `cambio_estatus` + `metodo_pago` | `close_order` | completo | completo |
+| 21 | Efectivo recibido y cambio guardados | no se guardaban; la caja solo lo mostraba | `orders.cash_tendered`, `change_amount` | parcial | completo |
+| 22 | Propina | el PDF la imprime si viene; el API no la tiene | `tip_amount` en `close_order` | ausente | distinto. Se captura aparte, default 0, no cambia el precio. Ver decisiones |
+| 23 | Separar cuenta | no estaba | `PosBoard.moveMarkedLines` | distinto (extra de New) | distinto. El descuento de toda la orden no se reparte |
+| 24 | Cancelar orden y liberar mesa | `cambio_estatus=Cancelado` | `cancel_order` | completo | completo |
+| 25 | Cocina por ítem: listo, regresar, cancelar | `modalCocina.jsx` | `KitchenBoard`, `set_order_item_status` | completo | completo |
+| 26 | Devolver insumo o merma al anular un platillo ya cobrado | `return-product` del micro | `return_sold_stock` en Cuentas | ausente | completo. No devuelve dinero |
+| 27 | Stock al cobrar, no al marcar listo | el front llama process-order al cerrar; el web accept del API arma la orden antes | `close_order` si `stock_applied` es falso | completo en POS | completo. El domicilio también descuenta al cobrar, no al aceptar |
+| 28 | Confirmar domicilio | `web/process?accion=ACEPTAR` | `confirm_web_order` | completo | completo |
+| 29 | Rechazar domicilio | `accion=DESCARTAR` → `RECHAZADO` | botón Rechazar → `cancel_order` | ausente | completo |
+| 30 | Dirección y teléfono en cocina | `VistaCocina.jsx` | tarjeta de `KitchenBoard` | parcial. El dato se pedía y no se veía | completo |
+| 31 | Interruptor de domicilio | `PUT /orders/web/status/delivery` | `ConfigPanel` `delivery_enabled` | completo | completo |
+| 32 | Menú QR, código, kiosko, tablet | `clientmenu`, `webmenu`, `kiosko`, mesero | `/m`, `/kiosko`, `/tablet`, `/mesero` | completo | completo |
+| 33 | Beeper `/t/{id}` | ticket externo | `get_public_ticket` | completo | completo |
+| 34 | Mesero por código y mesas | `/login/waiter`, assignments | `waiter_login`, `WaiterApp` | completo | completo |
+| 35 | Historial de venta del mesero | `orders-history` | conteo en `/meseros` | parcial. Suma precio × cantidad, sin descuento ni propina | parcial. El reporte nuevo sí resta descuentos; la ficha del mesero no |
+| 36 | Comentarios de orden | `/orders/{uuid}/comments` | `order_comments` | completo | completo |
+| 37 | Dashboard día, semana, mes, año | `analytics/*` | `DashboardInsights.jsx` | parcial. Sin utilidad ni CSV | parcial. Sigue el tablero. El CSV y el margen están en Reportes |
+| 38 | Utilidad y export | `get-utilidades` | `sales_report`, `/reportes` | ausente | parcial. El margen usa `products.cost`, no la receta, y no resta descuentos |
+| 39 | Tickets, impresión, PDF | `Ticketview`, `pdfGenerator.js` | `TicketCard`, `ticketPdf.js` | parcial. El total ignoraba descuento | completo en el total (descuento de orden y de línea). El PDF sigue siendo texto, no el formato del legado |
+| 40 | Plan Mercado Pago | `payments.py` | `/pagos`, webhook | completo | completo. Sin Stripe |
+| 41 | Activar plan sin pago | `POST /free/activate-plan` | no existe | distinto | distinto |
+| 42 | Equipo: ver, invitar, rol, quitar | no había equipo; un usuario | `EquipoPanel`, `list_team`, `invite_team_member` | parcial. Lista de UUID | completo para el panel. No se envía correo |
+| 43 | Clientes por teléfono | solo texto en la orden web | `customers` + trigger | ausente | completo |
+| 44 | Turno, fondo, entradas, salidas, corte | no existía | `/turno`, `cash_sessions` | ausente | distinto. Se agregó con las reglas de dinero de abajo. Cobrar no exige turno abierto |
+| 45 | Roles owner, admin, piso, cocina | un rol de dueño | `memberships.role`, `has_role` | parcial | completo en invitaciones y en cerrar el turno |
+| 46 | Chatbot remoto | `POST /api/chatbot` | `helpAnswers.js` | distinto | distinto |
+| 47 | Masa | página «en desarrollo» | `/masa` | distinto | distinto |
+| 48 | Comentarios de redes | `componenteComentario.jsx` | — | ausente | ausente |
+| 49 | Grupos de modificadores (mínimo, máximo, obligatorio) | no existían; solo extras | extras | ausente | ausente |
+| 50 | Sucursales | modelo comentado | un restaurante por cuenta | distinto | distinto |
+| 51 | IVA desglosado | no se calcula | no se calcula | distinto | distinto |
+| 52 | WebSocket `/ws` | `websockets.py` | realtime de `orders`, `order_items`, `dining_tables` | distinto | distinto |
+| 53 | OTP de registro | `solicitarOTP.py` | Supabase Auth | distinto | distinto |
+| 54 | Datos de envío caducan a las 12 h | `delivery-info` | la orden guarda la dirección sin caducidad | parcial | parcial |
+| 55 | Recorte de órdenes del dashboard según plan | `latest-by-plan` | el dashboard no recorta | parcial | parcial |
+| 56 | Colores del menú | `/menucolors` | `menu_theme`, `ThemePanel` | completo | completo |
+| 57 | Código de confirmación en mesa | `confirmation-code` | `place_public_order` | completo | completo |
+| 58 | Impresora de comandas en cocina | no hay servicio; imprime el navegador en tickets | igual en Cuentas | completo | completo |
 
-| Flujo legado | Dónde vivía | New | Estado |
-|---|---|---|---|
-| Landing, login, recuperar, confirmar correo | `pages/index`, `login`, `reset*` | `/`, `/login`, `/recuperar`, `/auth` | Sí |
-| Onboarding sin seed | API user | RPC `create_my_restaurant` | Sí |
-| Config restaurante + logo | `user/` | `/config` + bucket `public-media` | Sí |
-| Carta, categorías, foto | `menu/` | `/carta` | Sí |
-| Insumos, PIN, kardex, pestaña adicionales | Inventarios + micro | `/insumos` | Sí |
-| Receta multi-insumo y unitario | `Recetas/` | `/recetas` + `ensure_unit_product_inventory` | Sí |
-| Adicional con precio en receta, POS y menú | `ExtrasModals`, carrito | `product_extras` + `order_item_extras` | Este PR |
-| Mesas libre / ocupada / no disponible | `tablesStatus` | `/mesas` | Sí |
-| POS, descuento, comentario, cobro | `Puntodeventa/` | `/pos` + `close_order` | Sí. Un producto sigue siendo una sola línea (PK `order_id, product_id`); los extras cuelgan de esa línea |
-| Cocina por ítem | `modalCocina` | `/cocina` | Sí |
-| Beeper `/t/{id}` | tickets externos | `/t/[orderId]` | Sí. La lectura pública de todas las órdenes sigue abierta por RLS; `get_public_ticket` queda para acotarla |
-| Mesero por código | `meseroMenu` | `/mesero/[id]` | Sí, con adicionales |
-| Tablet y kiosko | `kiosko`, tablet | `/tablet`, `/kiosko` | Sí, con adicionales |
-| Menú QR y domicilio | `webmenu`, `clientmenu` | `/m/[id]` | Sí |
-| Plan Mercado Pago | API payments (antes Stripe) | `/pagos` + webhook firmado | Este PR. No hay Stripe. Se quitó “Activar sin pago” |
-| Dashboard | `dashboardComponents` | `/dashboard` | Parcial (sin todas las gráficas del front) |
-| Tickets listado | `tickets/` | `/tickets` | Parcial (sin PDF nativo) |
-| Pantallas | `pantallas` | `/pantallas` | Parcial |
-| Equipo / roles | memberships | `/equipo` | Parcial |
-| Chatbot, masa, comentarios sociales, import CSV, listas custom, multi-foto | useCases sueltos | — | No. No se reintroducen en este PR |
+Grupos de después, sin repetir filas: completo 1–11, 13, 14, 16, 17, 19–21, 24–34, 36, 39, 40, 42, 43, 45, 56–58 (38). Parcial 12, 18, 35, 37, 38, 54, 55 (7). Ausente 48, 49 (2). Distinto 15, 22, 23, 41, 44, 46, 47, 50–53 (11).
 
-## Base viva (verificada, no modificada)
+## Reglas de dinero que quedaron escritas
 
-Proyecto `bdimvrykjcvccbjczqkh`. El dump `base_actual.sql` coincide en tablas y columnas y no trae enums, RPC, triggers, RLS, realtime ni storage.
+Migración `supabase/migrations/20261104010000_paridad_caja_equipo_clientes.sql`.
 
-- `order_status`: abierta, cocina, lista, pagada, cancelada, pendiente, entregada
-- `table_state`: libre, ocupada, no_disponible
-- También existen `app_role`, `pay_method`, `stock_reason`
-- Realtime: `orders`, `order_items`, `dining_tables`
-- Bucket `public-media` con políticas duplicadas (las débiles se eliminan en la migración nueva)
-- 033 aplicada (`product_extras`, `is_extra`, `inventory_mode`)
-- No hay `supabase_migrations`
-- 30 funciones `security definer` ejecutables por `anon` y `authenticated`, incluidas `activate_plan`, `close_order`, `register_merma` y `rls_auto_enable`
-- `close_order` tiene dos firmas (`pay_method` y `text`). El POS manda texto. La migración deja solo `text`
-- `place_public_order` tiene 4 firmas (5, 6, 7 y 10). El código usa nombres de la de 10. Las otras se eliminan
-- `set_order_waiter` lo llama el mesero y no está en producción. La migración lo crea
-- 13 llaves foráneas sin índice, 6 políticas con `auth.uid()` por fila
+- El precio capturado es lo que se cobra. No hay IVA.
+- Descuento de línea primero. Descuento de la orden después, sobre ese subtotal. Igual que `crear_orden`.
+- Propina default 0. A cobrar = alimentos ya descontados + propina. No hay porcentaje automático.
+- Cambio = efectivo recibido − a cobrar, a centavos (`round` de Postgres, half away from zero).
+- El cajón suma fondo + alimentos en efectivo + propina en efectivo + entradas − salidas. Tarjeta y transferencia no entran.
+- Se puede cobrar sin turno. Si no hay turno abierto, la venta se guarda y no hay movimiento de cajón.
+- Anular un platillo ya cobrado mueve inventario (devolución o merma) y no toca el dinero.
 
-La migración `20261103231000` no se aplicó desde aquí. El preview sigue sobre el esquema actual.
+## Decisiones que Hugo tiene que tomar
 
-## Hecho en este trabajo
+1. **Mesas por plan.** El comentario viejo del enum dice 1 / 16 / 26. La página de precios de New dice 3 / 15 / 25. El tope nuevo usa 3 / 15 / 25. Si el contrato con los clientes es el otro, hay que cambiar `plans.js` y `restaurant_caps` juntos.
+2. **Propina.** El legado no la guardaba. Aquí es opcional y no entra al precio. Si debe ser un porcentaje sugerido, o si la propina con tarjeta también entra al cajón, hay que decirlo. Hoy la de tarjeta solo se registra.
+3. **Turno obligatorio.** Hoy se puede cobrar con el turno cerrado, porque el legado no tenía corte. Si el cajón debe rechazar el efectivo sin turno, es un cambio de una línea en `close_order`.
+4. **Una línea por producto.** Dos «tacos al pastor» con notas distintas se suman en la misma línea. Separarlos implica cambiar la llave de `order_items` y de `order_item_extras`. No se hizo para no romper las órdenes vivas.
+5. **Cuándo descuenta inventario el domicilio.** Al cobrar, no al aceptar. El API legado armaba la orden al aceptar y el micro (ausente en GitHub) descontaba en otro momento. Descontar al aceptar y otra vez al cobrar duplicaría la salida.
+6. **Margen.** Es precio de venta menos `products.cost`. No resta descuentos ni usa los gramos de la receta. Si el margen debe salir de la receta, hace falta definir de dónde sale el costo del insumo: la tabla `ingredients` no tiene costo.
+7. **Correo de invitación.** La invitación queda guardada y se acepta cuando esa persona entra con el mismo correo. No se manda mail. Hace falta un proveedor si Hugo quiere el correo.
+8. **Una cuenta, un restaurante.** Quien ya tiene restaurante no acepta la invitación de otro. El legado era igual (un usuario). Si un gerente debe ver dos locales, hay que diseñar sucursales.
+9. **Datos de envío a las 12 horas.** El legado dejaba de mostrarlos. New los conserva en la orden. Borrar la dirección a las 12 h es un cambio de privacidad, no se hizo solo.
+10. **Reembolso.** Devolver inventario no devuelve dinero. Un reembolso parcial contra Mercado Pago o contra el cajón no está modelado.
+11. **Comentarios de redes y modificadores con mínimo y máximo.** No están en el legado operativo (el extra sí). No se inventó el modelo.
 
-- Adicionales en receta, caja, menú, mesero, tablet y kiosko. Si `order_item_extras` no existe, la venta sigue y no se muestra error.
-- Listas custom en `/listas` (`product_lists`). Si la tabla no existe, la pantalla avisa y no rompe el panel.
-- Comentarios de orden en Tickets y en el detalle de cocina (`order_comments`), ocultos si la tabla no existe.
-- Varias fotos por producto en Carta (`product_images`, ya presente en producción).
-- PDF de ticket descargable, además de la impresión HTML.
-- Dashboard: día, semana, mes, año y rango de fechas.
-- Rendimiento del mesero (tickets y venta cobrada) y tope de meseros activos según el plan.
-- División de cuenta en el POS: se marcan líneas, se cobran aparte en una orden nueva y el resto queda en la mesa. El legado no tenía un flujo de división; solo lo mencionaba el chatbot.
-- Importación CSV, ayuda local y `/masa` como aviso, igual que el original.
+## Qué sigue pendiente y por qué
 
-## Fuera de alcance, a propósito
-
-- Chatbot remoto (`api.wapifood.com/api/chatbot`): no hay proveedor en este stack. Quedó un asistente local con las mismas preguntas. Un proveedor nuevo se conectaría reemplazando `answerHelp` en `src/lib/helpAnswers.js`.
-- Producción de masa: el legado solo muestra “en desarrollo”. `/masa` documenta eso. Un módulo real descontaría harina por lote contra insumos.
-
-## Sigue pendiente de operación
-
-Aplicar la migración (`migration repair` de `20261103230000` y luego el push de `20261103231000`). Hasta entonces no existen `order_item_extras`, `product_lists` ni `order_comments`. El preview no debe usarse para crear datos ni cobrar.
+- Dos líneas del mismo platillo (decisión 4).
+- Carrusel de pantallas como el legado.
+- Ficha del mesero sin descuento.
+- Caducidad de 12 h de la dirección (decisión 9).
+- Recorte del dashboard por plan.
+- Margen desde la receta (decisión 6).
+- Correo de invitación (decisión 7).
+- Comentarios sociales y modificadores avanzados (decisión 11).
+- La migración `20261104010000` corre en el deploy a `main`, no en este preview. Hasta entonces Turno, Clientes, Equipo invitable, Reportes y la propina guardada muestran el aviso o caen al cobro anterior. La caja actual sigue cobrando.

@@ -15,8 +15,12 @@ const CHANNELS = [
   { id: "kiosko", label: "Kiosko" },
 ];
 
-export function MesasManager({ restaurantId, initialTables }) {
+export function MesasManager({ restaurantId, initialTables, tableLimit = null }) {
   const [tables, setTables] = useState(initialTables);
+  const [areas, setAreas] = useState([]);
+  const [areasReady, setAreasReady] = useState(false);
+  const [areaId, setAreaId] = useState("");
+  const [areaName, setAreaName] = useState("");
   const [live, setLive] = useState(false);
   const [number, setNumber] = useState("");
   const [seats, setSeats] = useState("2");
@@ -29,7 +33,7 @@ export function MesasManager({ restaurantId, initialTables }) {
     async function pull() {
       const { data } = await supabase
         .from("dining_tables")
-        .select("id,number,seats,channel_type,state,active,access_pin")
+        .select("id,number,seats,channel_type,state,active,access_pin,area_id")
         .eq("restaurant_id", restaurantId)
         .order("number");
       if (data) setTables(data);
@@ -43,6 +47,18 @@ export function MesasManager({ restaurantId, initialTables }) {
         () => pull(),
       )
       .subscribe((status) => setLive(status === "SUBSCRIBED"));
+
+    supabase
+      .from("dining_areas")
+      .select("id,name,sort_order")
+      .eq("restaurant_id", restaurantId)
+      .order("sort_order")
+      .then(({ data, error }) => {
+        if (!error) {
+          setAreas(data || []);
+          setAreasReady(true);
+        }
+      });
 
     return () => {
       supabase.removeChannel(ch);
@@ -89,6 +105,7 @@ export function MesasManager({ restaurantId, initialTables }) {
         active: true,
         channel_type: channel,
         access_pin: channel === "tablet" ? pin || null : null,
+        ...(areasReady && areaId ? { area_id: areaId } : {}),
       })
       .select("*")
       .single();
@@ -98,6 +115,56 @@ export function MesasManager({ restaurantId, initialTables }) {
     setSeats("2");
     setPin("");
     setChannel("piso");
+  }
+
+  async function addArea(e) {
+    e.preventDefault();
+    const name = areaName.trim();
+    if (!name) return;
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("dining_areas")
+      .insert({ restaurant_id: restaurantId, name, sort_order: areas.length })
+      .select("id,name,sort_order")
+      .single();
+    if (error) return setErr(error.message);
+    setAreas((list) => [...list, data]);
+    setAreaId(data.id);
+    setAreaName("");
+    setAreasReady(true);
+  }
+
+  async function assignArea(table, nextArea) {
+    const supabase = createClient();
+    const { error } = await supabase.from("dining_tables").update({ area_id: nextArea || null }).eq("id", table.id);
+    if (error) return setErr(error.message);
+    setTables((list) => list.map((t) => (t.id === table.id ? { ...t, area_id: nextArea || null } : t)));
+  }
+
+  async function releaseIdle() {
+    const ok = await confirmAsync("Las mesas ocupadas sin cuenta abierta pasan a libres. Las no disponibles se quedan así.", {
+      title: "Liberar mesas vacías",
+      confirmLabel: "Liberar",
+      cancelLabel: "Cancelar",
+    });
+    if (!ok) return;
+    const supabase = createClient();
+    const { data: openOrders } = await supabase
+      .from("orders")
+      .select("table_id")
+      .eq("restaurant_id", restaurantId)
+      .not("status", "in", "(pagada,cancelada)");
+    const busy = new Set((openOrders || []).map((o) => o.table_id));
+    let freed = 0;
+    for (const table of tables) {
+      if (table.state !== "ocupada" || busy.has(table.id)) continue;
+      const { error } = await supabase.rpc("set_table_state", { p_table: table.id, p_state: "libre" });
+      if (!error) {
+        freed += 1;
+        setTables((list) => list.map((t) => (t.id === table.id ? { ...t, state: "libre" } : t)));
+      }
+    }
+    toast.success(freed ? `${freed} mesa${freed === 1 ? "" : "s"} libre${freed === 1 ? "" : "s"}` : "No había mesas ocupadas sin cuenta");
   }
 
   async function setType(t, type) {
@@ -121,7 +188,7 @@ export function MesasManager({ restaurantId, initialTables }) {
       const { error: e2 } = await supabase.from("dining_tables").update({ state }).eq("id", t.id);
       if (e2) return toast?.error ? toast.error(error.message) : alert(error.message);
     }
-    setItems((xs) => xs.map((x) => (x.id === t.id ? { ...x, state } : x)));
+    setTables((xs) => xs.map((x) => (x.id === t.id ? { ...x, state } : x)));
   }
 
   async function toggle(t) {
@@ -155,6 +222,14 @@ export function MesasManager({ restaurantId, initialTables }) {
           >
             Crear caja + kiosko base
           </button>
+          <button type="button" onClick={releaseIdle} className="h-10 rounded-full bg-[var(--color-cream)] px-4 text-sm font-semibold">
+            Liberar mesas vacías
+          </button>
+          {tableLimit ? (
+            <span className="text-sm text-[var(--ink-soft)]">
+              Piso y tablet: {tables.filter((t) => t.active !== false && (t.channel_type === "piso" || t.channel_type === "tablet")).length}/{tableLimit}
+            </span>
+          ) : null}
           {msg ? <span className="text-sm text-[var(--color-sage)]">{msg}</span> : null}
         </div>
         {!tables.length ? (
@@ -179,6 +254,19 @@ export function MesasManager({ restaurantId, initialTables }) {
                 {t.channel_type === "caja" ? "Caja" : t.channel_type === "kiosko" ? "Kiosko" : t.channel_type === "tablet" ? "Tablet" : "Piso"}
                 {t.active ? "" : " · pausada"}
               </p>
+              {areasReady ? (
+                <select
+                  aria-label={`Área de la mesa ${t.number}`}
+                  className="mt-2 h-9 w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-cream)] px-2 text-xs"
+                  value={t.area_id || ""}
+                  onChange={(e) => assignArea(t, e.target.value)}
+                >
+                  <option value="">Sin área</option>
+                  {areas.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              ) : null}
               <select
                 className="mt-2 h-9 w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-cream)] px-2 text-xs"
                 value={t.channel_type || "piso"}
@@ -249,6 +337,21 @@ export function MesasManager({ restaurantId, initialTables }) {
             ))}
           </select>
         </label>
+        {areasReady ? (
+          <label className="mt-2 block text-sm font-semibold">
+            Área
+            <select
+              value={areaId}
+              onChange={(e) => setAreaId(e.target.value)}
+              className="mt-1 h-11 w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-cream)] px-3"
+            >
+              <option value="">Sin área</option>
+              {areas.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         {channel === "tablet" ? (
           <label className="mt-2 block text-sm font-semibold">
             PIN tablet (opcional)
@@ -258,6 +361,17 @@ export function MesasManager({ restaurantId, initialTables }) {
               className="mt-1 h-11 w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-cream)] px-3"
             />
           </label>
+        ) : null}
+        {areasReady ? (
+          <div className="mt-3 flex gap-2">
+            <input
+              value={areaName}
+              onChange={(e) => setAreaName(e.target.value)}
+              placeholder="Nueva área, ej. Terraza"
+              className="h-11 min-w-0 flex-1 rounded-xl border border-[var(--color-line)] bg-[var(--color-cream)] px-3"
+            />
+            <button type="button" onClick={addArea} className="btn-ghost px-3">Crear área</button>
+          </div>
         ) : null}
         {err ? <p className="mt-2 text-sm text-[var(--color-wine)]">{err}</p> : null}
         <button

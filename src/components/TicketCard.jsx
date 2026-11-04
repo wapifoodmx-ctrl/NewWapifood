@@ -3,7 +3,9 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { money } from "@/lib/format";
-import { itemStatusMeta, statusMeta } from "@/lib/orderStatus";
+import { lineAmount } from "@/lib/extras";
+import { confirmAsync } from "@/components/ui/confirm";
+import { statusMeta } from "@/lib/orderStatus";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import { OrderComments } from "@/components/OrderComments";
@@ -11,14 +13,17 @@ import { downloadTicketPdf } from "@/lib/ticketPdf";
 
 export function TicketCard({ order, productNames = {}, onChanged }) {
   const meta = statusMeta(order.status);
-  const total = useMemo(
-    () =>
-      (order.order_items || []).reduce(
-        (s, i) => s + Number(i.unit_price) * Number(i.qty),
-        0,
-      ),
-    [order.order_items],
-  );
+  const total = useMemo(() => {
+    const food = (order.order_items || []).reduce((s, i) => {
+      if (order.status === "pagada" && i.status === "cancelado") {
+        return s + lineAmount({ ...i, status: "pendiente" });
+      }
+      return s + lineAmount(i);
+    }, 0);
+    const discount = Number(order.discount_amount) || 0;
+    const tip = Number(order.tip_amount) || 0;
+    return Math.max(0, food - discount) + tip;
+  }, [order.order_items, order.discount_amount, order.tip_amount, order.status]);
 
   function productName(id) {
     return productNames[id] || "Producto";
@@ -96,6 +101,32 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
     onChanged?.();
   }
 
+  async function settleStock(item, asMerma) {
+    const ok = await confirmAsync(
+      asMerma
+        ? "El inventario se queda descontado y se anota como merma. El dinero cobrado no cambia."
+        : "Los insumos de este platillo regresan al stock. El dinero cobrado no cambia.",
+      {
+        title: asMerma ? "Dejar como merma" : "Devolver al inventario",
+        confirmLabel: asMerma ? "Anotar merma" : "Devolver",
+        cancelLabel: "Cancelar",
+      },
+    );
+    if (!ok) return;
+    const supabase = createClient();
+    const { error } = await supabase.rpc("return_sold_stock", {
+      p_order: order.id,
+      p_product: item.product_id,
+      p_as_merma: asMerma,
+    });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(asMerma ? "Quedó como merma" : "Inventario devuelto");
+    onChanged?.();
+  }
+
   const canCancel = !["pagada", "cancelada"].includes(order.status);
   const beeperHref = `/t/${order.id}`;
 
@@ -131,8 +162,19 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
       </div>
       <ul className="mt-3 space-y-1 text-sm text-[var(--color-espresso)]">
         {(order.order_items || []).map((i) => (
-          <li key={`${order.id}-${i.product_id}`}>
-            {i.qty} × {productName(i.product_id)} — {money(Number(i.unit_price) * Number(i.qty))}
+          <li key={`${order.id}-${i.product_id}`} className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              {i.qty} × {productName(i.product_id)} — {money(lineAmount(i))}
+              {i.status === "cancelado" ? " · cancelado" : ""}
+              {i.stock_resolution === "devuelto" ? " · inventario devuelto" : ""}
+              {i.stock_resolution === "merma" ? " · merma" : ""}
+            </span>
+            {order.status === "pagada" && i.status !== "cancelado" && !i.stock_resolution ? (
+              <span className="flex gap-2">
+                <button type="button" className="btn-ghost px-2" onClick={() => settleStock(i, false)}>Devolver inventario</button>
+                <button type="button" className="btn-ghost px-2" onClick={() => settleStock(i, true)}>Merma</button>
+              </span>
+            ) : null}
           </li>
         ))}
       </ul>
