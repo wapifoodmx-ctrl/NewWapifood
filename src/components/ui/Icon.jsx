@@ -186,6 +186,30 @@ function draw(name) {
       );
     case "close":
       return <path d="M6 6l12 12M18 6 6 18" />;
+    case "search":
+      return (
+        <>
+          <circle cx="11" cy="11" r="6" />
+          <path d="M16 16l4 4" />
+        </>
+      );
+    case "chart":
+      return (
+        <>
+          <path d="M4 19V5" />
+          <path d="M4 19h16" />
+          <path d="M8 16v-4M12 16V8M16 16v-6" />
+        </>
+      );
+    case "chevron":
+      return <path d="M9 6l6 6-6 6" />;
+    case "rail":
+      return (
+        <>
+          <rect x="4" y="4" width="16" height="16" rx="2" />
+          <path d="M9 4v16" />
+        </>
+      );
     default:
       return (
         <>
