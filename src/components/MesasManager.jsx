@@ -206,6 +206,19 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null })
   async function remove(id) {
     if (!(await confirmAsync("¿Eliminar esta mesa?", { title: "Eliminar mesa" }))) return;
     const supabase = createClient();
+    // Si la mesa tiene pedidos históricos, no se puede borrar (FK orders.table_id):
+    // se desactiva (soft delete) para conservar el historial.
+    const { count } = await supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("table_id", id);
+    if (count && count > 0) {
+      const { error } = await supabase.from("dining_tables").update({ active: false }).eq("id", id);
+      if (error) return setErr(error.message);
+      setTables((xs) => xs.map((x) => (x.id === id ? { ...x, active: false } : x)));
+      setErr("La mesa tiene historial de pedidos; se desactivó en lugar de eliminarse.");
+      return;
+    }
     const { error } = await supabase.from("dining_tables").delete().eq("id", id);
     if (error) return setErr(error.message);
     setTables((xs) => xs.filter((x) => x.id !== id));
