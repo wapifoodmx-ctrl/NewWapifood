@@ -1,14 +1,36 @@
-// Planes del SaaS. Un solo restaurante (single) y multi-restaurante (cadena).
-// Los ids se mantienen para no romper suscripciones existentes; solo cambian
-// título, precio, mesas, meseros y cantidad de locales.
+// Planes del SaaS. Una sola fuente para precios, topes y nombres.
+// El precio multi es el total del grupo. Cada local usa los topes de su nivel.
+// Los ids viejos siguen resolviendo al plan nuevo; no se reescriben filas ya pagadas.
+
+const ALIASES = {
+  brasa: "brasa",
+  ventas: "brasa",
+  esencial: "brasa",
+  brasas: "brasas",
+  ventas_multi: "brasas",
+  cadena: "brasas",
+  comal: "comal",
+  restaurante: "comal",
+  profesional: "comal",
+  comales: "comales",
+  restaurante_multi: "comales",
+  franquicia: "comales",
+  fogon: "fogon",
+  "fogón": "fogon",
+  plus: "fogon",
+  empresarial: "fogon",
+  fogones: "fogones",
+  plus_multi: "fogones",
+  corporativo: "fogones",
+};
+
 export const PLANS = [
-  // --- Un solo restaurante ---
   {
-    id: "ventas",
-    title: "Plan Esencial",
+    id: "brasa",
+    title: "Brasa",
     subtitle: "Para empezar a vender",
     monthly: 300,
-    yearly: 3000, // 10 meses: ahorra 2
+    yearly: 3000,
     mesas: 5,
     meseros: 3,
     restaurants: 1,
@@ -16,18 +38,18 @@ export const PLANS = [
     popular: false,
     features: [
       "Punto de venta completo",
-      "Dashboard y reportes",
+      "Cómo va el día y reportes",
       "Menú digital con QR",
       "Tickets digitales",
-      "Gestión de cocina",
-      "Control de inventario",
-      "Hasta 3 meseros",
+      "Cocina",
+      "Inventario",
+      "Hasta 5 mesas y 3 meseros",
     ],
   },
   {
-    id: "restaurante",
-    title: "Plan Profesional",
-    subtitle: "Ideal para restaurantes",
+    id: "comal",
+    title: "Comal",
+    subtitle: "Para el día a día del local",
     monthly: 500,
     yearly: 5000,
     mesas: 15,
@@ -36,19 +58,19 @@ export const PLANS = [
     multi: false,
     popular: true,
     features: [
-      "Todo lo del Plan Esencial",
-      "Más mesas y meseros",
+      "Todo lo de Brasa",
+      "Hasta 15 mesas y 7 meseros",
       "Menú digital con QR",
       "Tickets digitales",
       "Cocina en tiempo real",
       "Inventario y recetas",
-      "Hasta 7 meseros",
+      "Reportes más completos",
     ],
   },
   {
-    id: "plus",
-    title: "Plan Empresarial",
-    subtitle: "Para operación intensa",
+    id: "fogon",
+    title: "Fogón",
+    subtitle: "Para un local con mucho movimiento",
     monthly: 800,
     yearly: 8000,
     mesas: 25,
@@ -57,20 +79,18 @@ export const PLANS = [
     multi: false,
     popular: false,
     features: [
-      "Todo lo del Plan Profesional",
-      "Hasta 25 mesas",
-      "Hasta 15 meseros",
+      "Todo lo de Comal",
+      "Hasta 25 mesas y 15 meseros",
       "Prioridad en soporte",
       "Menú digital y kiosko",
       "Inventario avanzado",
       "Reportes ampliados",
     ],
   },
-  // --- Multi-restaurante (cadena) ---
   {
-    id: "ventas_multi",
-    title: "Plan Cadena",
-    subtitle: "Varios locales, un solo control",
+    id: "brasas",
+    title: "Brasas",
+    subtitle: "Varios locales chicos, un solo pago",
     monthly: 500,
     yearly: 5000,
     mesas: 5,
@@ -79,17 +99,17 @@ export const PLANS = [
     multi: true,
     popular: false,
     features: [
-      "Todo lo del Plan Esencial",
+      "Todo lo de Brasa en cada local",
       "Hasta 3 restaurantes",
-      "Panel centralizado",
+      "El precio cubre todos los locales",
+      "Hasta 5 mesas y 3 meseros por local",
       "Reportes por local",
-      "Hasta 3 meseros por local",
     ],
   },
   {
-    id: "restaurante_multi",
-    title: "Plan Franquicia",
-    subtitle: "Para cadenas en crecimiento",
+    id: "comales",
+    title: "Comales",
+    subtitle: "Varios locales, un solo pago",
     monthly: 800,
     yearly: 8000,
     mesas: 15,
@@ -98,17 +118,17 @@ export const PLANS = [
     multi: true,
     popular: true,
     features: [
-      "Todo lo del Plan Profesional",
+      "Todo lo de Comal en cada local",
       "Hasta 5 restaurantes",
-      "Panel centralizado",
-      "Reportes consolidados",
-      "Hasta 7 meseros por local",
+      "El precio cubre todos los locales",
+      "Hasta 15 mesas y 7 meseros por local",
+      "Reportes por local",
     ],
   },
   {
-    id: "plus_multi",
-    title: "Plan Corporativo",
-    subtitle: "Operación a escala",
+    id: "fogones",
+    title: "Fogones",
+    subtitle: "Varios locales grandes, un solo pago",
     monthly: 1000,
     yearly: 10000,
     mesas: 25,
@@ -117,31 +137,46 @@ export const PLANS = [
     multi: true,
     popular: false,
     features: [
-      "Todo lo del Plan Empresarial",
+      "Todo lo de Fogón en cada local",
       "Hasta 8 restaurantes",
-      "Panel centralizado",
-      "Reportes consolidados",
+      "El precio cubre todos los locales",
+      "Hasta 25 mesas y 15 meseros por local",
       "Soporte prioritario",
     ],
   },
 ];
 
-export function planMeta(id) {
-  return PLANS.find((p) => p.id === id) || PLANS[0];
+export function canonicalPlanId(id) {
+  const key = String(id || "").trim().toLowerCase();
+  return ALIASES[key] || null;
 }
 
-// Nivel del plan: 'basic' (Ventas/Esencial), 'pro' (Restaurante/Profesional), 'enterprise' (Plus/Empresarial).
+export function resolvePlan(id) {
+  const canon = canonicalPlanId(id);
+  if (!canon) return null;
+  return PLANS.find((p) => p.id === canon) || null;
+}
+
+export function planMeta(id) {
+  return resolvePlan(id) || PLANS[0];
+}
+
 export function planTier(id) {
-  const p = (id || "").toLowerCase();
-  if (p.includes("plus") || p.includes("empresarial") || p.includes("corporativo") || p.includes("franquicia")) return "enterprise";
-  if (p.includes("restaurante") || p.includes("profesional")) return "pro";
+  const canon = canonicalPlanId(id);
+  if (canon === "comal" || canon === "comales") return "pro";
+  if (canon === "fogon" || canon === "fogones") return "enterprise";
   return "basic";
 }
 
-// Funciones avanzadas del dashboard (top productos, canales) solo en pro+.
 export function hasAdvancedReports(id) {
-  const t = planTier(id);
-  return t === "pro" || t === "enterprise";
+  const tier = planTier(id);
+  return tier === "pro" || tier === "enterprise";
+}
+
+export function planAmount(planId, billing) {
+  const plan = resolvePlan(planId);
+  if (!plan) return null;
+  return billing === "anual" ? plan.yearly : plan.monthly;
 }
 
 export function moneyMX(n) {

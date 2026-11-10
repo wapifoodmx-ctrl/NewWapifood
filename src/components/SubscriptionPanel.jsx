@@ -6,6 +6,7 @@ import { PLANS, moneyMX, planMeta } from "@/lib/plans";
 export function SubscriptionPanel({ restaurantId, initialSubs }) {
   const [subs] = useState(initialSubs || []);
   const [billing, setBilling] = useState("mensual");
+  const [mode, setMode] = useState("single");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -46,6 +47,12 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
         {current ? (
           <>
             <h2 className="mt-2 text-3xl">{meta?.title || current.plan}</h2>
+            {meta ? (
+              <p className="mt-1 text-sm text-[var(--color-muted)]">
+                Hasta {meta.mesas} mesas y {meta.meseros} meseros
+                {meta.multi ? ` por local · ${meta.restaurants} locales` : ""}.
+              </p>
+            ) : null}
             <p className="mt-1 text-[var(--color-muted)]">
               Estado: <strong>{current.status}</strong>
               {current.provider ? ` · ${current.provider}` : ""}
@@ -59,15 +66,25 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
         )}
       </section>
 
-      <div className="flex justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="inline-flex rounded-full border border-[var(--color-line)] bg-[var(--color-cream)] p-1">
+          <button type="button" onClick={() => setMode("single")} className={`h-10 rounded-full px-5 text-sm font-semibold ${mode === "single" ? "bg-[var(--color-ink)] text-[var(--color-cream)]" : "text-[var(--color-muted)]"}`}>Un local</button>
+          <button type="button" onClick={() => setMode("multi")} className={`h-10 rounded-full px-5 text-sm font-semibold ${mode === "multi" ? "bg-[var(--color-ink)] text-[var(--color-cream)]" : "text-[var(--color-muted)]"}`}>Varios locales</button>
+        </div>
         <div className="inline-flex rounded-full border border-[var(--color-line)] bg-[var(--color-cream)] p-1">
           <button type="button" onClick={() => setBilling("mensual")} className={`h-10 rounded-full px-5 text-sm font-semibold ${billing === "mensual" ? "bg-[var(--color-ink)] text-[var(--color-cream)]" : "text-[var(--color-muted)]"}`}>Mensual</button>
-          <button type="button" onClick={() => setBilling("anual")} className={`h-10 rounded-full px-5 text-sm font-semibold ${billing === "anual" ? "bg-[var(--color-ink)] text-[var(--color-cream)]" : "text-[var(--color-muted)]"}`}>Anual</button>
+          <button type="button" onClick={() => setBilling("anual")} className={`h-10 rounded-full px-5 text-sm font-semibold ${billing === "anual" ? "bg-[var(--color-ink)] text-[var(--color-cream)]" : "text-[var(--color-muted)]"}`}>Anual · 2 meses gratis</button>
         </div>
       </div>
+      <p className="text-center text-sm text-[var(--color-muted)]">
+        {mode === "multi"
+          ? "El precio es el total de todos los locales. Cada uno conserva sus mesas y meseros. "
+          : null}
+        Si bajas de plan y ya tienes más mesas o meseros, no se borran. Solo no podrás dar de alta más hasta que quites los que sobran.
+      </p>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        {PLANS.filter((p) => !p.multi).map((p) => {
+        {PLANS.filter((p) => (mode === "multi") === !!p.multi).map((p) => {
           const price = billing === "anual" ? p.yearly : p.monthly;
           const body = (
             <>
@@ -76,7 +93,10 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
                 {moneyMX(price)}
                 <span className="ml-1 text-sm font-normal text-[var(--color-muted)]">/ {billing === "anual" ? "año" : "mes"}</span>
               </p>
-              <p className="mt-2 text-sm text-[var(--color-muted)]">Hasta {p.mesas} mesas · {p.meseros} meseros</p>
+              <p className="mt-2 text-sm text-[var(--color-muted)]">
+                Hasta {p.mesas} mesas · {p.meseros} meseros{p.multi ? " por local" : ""}
+                {p.multi ? ` · ${p.restaurants} locales` : ""}
+              </p>
               <button
                 type="button"
                 disabled={loading}
@@ -104,7 +124,7 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
           <ul className="space-y-2 text-sm">
             {subs.map((s) => (
               <li key={s.id} className="rounded-xl border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2">
-                {s.plan} · {s.status} · {moneyMX(s.amount)} · {s.provider || "—"}
+                {planMeta(s.plan).title} · {s.status} · {moneyMX(s.amount)} · {s.provider || "—"}
                 {s.ends_at ? ` · hasta ${new Date(s.ends_at).toLocaleDateString("es-MX")}` : ""}
               </li>
             ))}
