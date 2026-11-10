@@ -31,6 +31,7 @@ export function ConfigPanel({ restaurant, profile }) {
     manager_pin: profile?.manager_pin || "",
     tips_enabled: profile?.tips_enabled !== false,
     tip_rates: profile?.tip_rates || "10,15,20",
+    iva_enabled: !!profile?.iva_enabled,
   });
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -148,6 +149,7 @@ export function ConfigPanel({ restaurant, profile }) {
         manager_pin: form.manager_pin ? String(form.manager_pin) : null,
         tips_enabled: form.tips_enabled !== false,
         tip_rates: form.tip_rates || "10,15,20",
+        iva_enabled: !!form.iva_enabled,
       });
       if (e2) throw e2;
 
@@ -250,6 +252,10 @@ export function ConfigPanel({ restaurant, profile }) {
           <label className="mt-3 flex items-center gap-2 text-sm font-semibold">
             <input type="checkbox" checked={form.tips_enabled !== false} onChange={(e) => set("tips_enabled", e.target.checked)} />
             Mostrar propina sugerida al cobrar
+          </label>
+          <label className="mt-3 flex items-center gap-2 text-sm font-semibold">
+            <input type="checkbox" checked={!!form.iva_enabled} onChange={(e) => set("iva_enabled", e.target.checked)} />
+            Mostrar IVA 16% incluido en el ticket. No se suma al precio.
           </label>
           <label className="mt-2 block text-sm font-semibold">
             Porcentajes, separados por coma

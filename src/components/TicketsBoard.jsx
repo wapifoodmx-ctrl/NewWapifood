@@ -11,7 +11,7 @@ const FILTERS = [
   { id: "todas", label: "Todas" },
 ];
 
-export function TicketsBoard({ orders, productNames }) {
+export function TicketsBoard({ orders, productNames, ivaEnabled = false }) {
   const [filter, setFilter] = useState("activas");
   const router = useRouter();
 
@@ -49,6 +49,7 @@ export function TicketsBoard({ orders, productNames }) {
         ) : (
           list.map((o) => (
             <TicketCard
+              ivaEnabled={ivaEnabled}
               key={o.id}
               order={o}
               productNames={productNames}

@@ -12,8 +12,9 @@ import { OrderComments } from "@/components/OrderComments";
 import { downloadTicketPdf } from "@/lib/ticketPdf";
 import { QuePaso } from "@/components/QuePaso";
 import { askManagerPin } from "@/lib/managerPin";
+import { includedIva } from "@/lib/iva";
 
-export function TicketCard({ order, productNames = {}, onChanged }) {
+export function TicketCard({ order, productNames = {}, onChanged, ivaEnabled = false }) {
   const meta = statusMeta(order.status);
   const total = useMemo(() => {
     const food = (order.order_items || []).reduce((s, i) => {
@@ -65,6 +66,7 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
 <p style="font-size:11px">Código: ${code}</p>
 <table>${rows}</table>
 <div class="total"><span>Total</span><span>${money(total)}</span></div>
+${ivaEnabled ? `<p style="font-size:11px">IVA 16% incluido: ${money(includedIva(total))}. No se suma.</p>` : ""}
 <script>window.onload=function(){window.print();}</script>
 </body></html>`);
     w.document.close();
@@ -83,6 +85,7 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
       ),
       "",
       `Total ${money(total)}`,
+      ...(ivaEnabled ? [`IVA 16% incluido ${money(includedIva(total))}. No se suma.`] : []),
     ];
     downloadTicketPdf({ filename: `ticket-${code}.pdf`, lines });
   }

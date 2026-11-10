@@ -17,7 +17,7 @@ export default async function TicketsPage() {
 
   const rid = membership.restaurant_id;
 
-  const [{ data: orders, error: ordersError }, { data: products }] = await Promise.all([
+  const [{ data: orders, error: ordersError }, { data: products }, { data: profile }] = await Promise.all([
     supabase
       .from("orders")
       .select(
@@ -27,6 +27,7 @@ export default async function TicketsPage() {
       .order("opened_at", { ascending: false })
       .limit(80),
     supabase.from("products").select("id,name").eq("restaurant_id", rid),
+    supabase.from("restaurant_profiles").select("iva_enabled").eq("restaurant_id", rid).maybeSingle(),
   ]);
 
   const productNames = Object.fromEntries((products || []).map((p) => [p.id, p.name]));
@@ -48,7 +49,7 @@ export default async function TicketsPage() {
           Error: {ordersError.message}
         </div>
       ) : null}
-      <TicketsBoard orders={orders || []} productNames={productNames} />
+      <TicketsBoard orders={orders || []} productNames={productNames} ivaEnabled={!!profile?.iva_enabled} />
     </AppShell>
   );
 }
