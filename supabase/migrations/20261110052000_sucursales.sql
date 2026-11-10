@@ -487,6 +487,9 @@ declare
   v_prod uuid;
   v_ing uuid;
   v_list uuid;
+  v_cats jsonb := '{}'::jsonb;
+  v_prods jsonb := '{}'::jsonb;
+  v_ings jsonb := '{}'::jsonb;
 begin
   if auth.uid() is null then raise exception 'no autenticado'; end if;
   if p_from = p_to then raise exception 'elige otro local'; end if;
@@ -504,13 +507,6 @@ begin
     raise exception 'los locales no son del mismo grupo';
   end if;
 
-  drop table if exists pg_temp._copy_cat;
-  drop table if exists pg_temp._copy_prod;
-  drop table if exists pg_temp._copy_ing;
-  create temp table _copy_cat (src uuid primary key, dest uuid) on commit drop;
-  create temp table _copy_prod (src uuid primary key, dest uuid) on commit drop;
-  create temp table _copy_ing (src uuid primary key, dest uuid) on commit drop;
-
   for cat in
     select id, name, sort_order from public.categories
     where restaurant_id = p_from
@@ -524,13 +520,13 @@ begin
       values (p_to, cat.name, cat.sort_order)
       returning id into v_cat;
     end if;
-    insert into _copy_cat (src, dest) values (cat.id, v_cat);
+    v_cats := v_cats || jsonb_build_object(cat.id::text, v_cat);
   end loop;
 
   for prod in
     select * from public.products where restaurant_id = p_from order by name
   loop
-    select dest into v_cat from _copy_cat where src = prod.category_id;
+    v_cat := nullif(v_cats ->> prod.category_id::text, '')::uuid;
     if v_cat is null then
       continue;
     end if;
@@ -541,7 +537,7 @@ begin
       prod.description, prod.image_url, prod.inventory_mode
     )
     returning id into v_prod;
-    insert into _copy_prod (src, dest) values (prod.id, v_prod);
+    v_prods := v_prods || jsonb_build_object(prod.id::text, v_prod);
     v_count := v_count + 1;
   end loop;
 
@@ -549,9 +545,9 @@ begin
     select pe.product_id, pe.ingredient_id, pe.qty, pe.extra_price, i.name, i.unit, i.kind, i.is_extra, i.cost
     from public.product_extras pe
     join public.ingredients i on i.id = pe.ingredient_id
-    join _copy_prod map on map.src = pe.product_id
+    where (v_prods ? pe.product_id::text)
   loop
-    select dest into v_ing from _copy_ing where src = extra.ingredient_id;
+    v_ing := nullif(v_ings ->> extra.ingredient_id::text, '')::uuid;
     if v_ing is null then
       select id into v_ing
       from public.ingredients
@@ -564,10 +560,9 @@ begin
         )
         returning id into v_ing;
       end if;
-      insert into _copy_ing (src, dest) values (extra.ingredient_id, v_ing)
-      on conflict (src) do nothing;
+      v_ings := v_ings || jsonb_build_object(extra.ingredient_id::text, v_ing);
     end if;
-    select dest into v_prod from _copy_prod where src = extra.product_id;
+    v_prod := nullif(v_prods ->> extra.product_id::text, '')::uuid;
     insert into public.product_extras (product_id, ingredient_id, qty, extra_price)
     values (v_prod, v_ing, extra.qty, extra.extra_price)
     on conflict (product_id, ingredient_id) do nothing;
@@ -577,9 +572,9 @@ begin
     select rl.product_id, rl.ingredient_id, rl.qty, i.name, i.unit, i.kind, i.is_extra, i.cost
     from public.recipe_lines rl
     join public.ingredients i on i.id = rl.ingredient_id
-    join _copy_prod map on map.src = rl.product_id
+    where (v_prods ? rl.product_id::text)
   loop
-    select dest into v_ing from _copy_ing where src = recipe.ingredient_id;
+    v_ing := nullif(v_ings ->> recipe.ingredient_id::text, '')::uuid;
     if v_ing is null then
       select id into v_ing
       from public.ingredients
@@ -592,21 +587,20 @@ begin
         )
         returning id into v_ing;
       end if;
-      insert into _copy_ing (src, dest) values (recipe.ingredient_id, v_ing)
-      on conflict (src) do nothing;
+      v_ings := v_ings || jsonb_build_object(recipe.ingredient_id::text, v_ing);
     end if;
-    select dest into v_prod from _copy_prod where src = recipe.product_id;
+    v_prod := nullif(v_prods ->> recipe.product_id::text, '')::uuid;
     insert into public.recipe_lines (product_id, ingredient_id, qty)
     values (v_prod, v_ing, recipe.qty)
-    on conflict do nothing;
+    on conflict (product_id, ingredient_id) do nothing;
   end loop;
 
   for pic in
     select pi.product_id, pi.path
     from public.product_images pi
-    join _copy_prod map on map.src = pi.product_id
+    where (v_prods ? pi.product_id::text)
   loop
-    select dest into v_prod from _copy_prod where src = pic.product_id;
+    v_prod := nullif(v_prods ->> pic.product_id::text, '')::uuid;
     insert into public.product_images (product_id, path) values (v_prod, pic.path);
   end loop;
 
@@ -621,7 +615,7 @@ begin
       from public.product_list_items pli
       where pli.list_id = lst.id
     loop
-      select dest into v_prod from _copy_prod where src = item.product_id;
+      v_prod := nullif(v_prods ->> item.product_id::text, '')::uuid;
       if v_prod is null then continue; end if;
       insert into public.product_list_items (list_id, product_id, sort_order)
       values (v_list, v_prod, item.sort_order);
