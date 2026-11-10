@@ -66,8 +66,22 @@ export async function mpFetch(path, { method = "GET", body } = {}) {
 }
 
 export function planAmount(planId, billing) {
-  const monthly = { ventas: 400, restaurante: 600, plus: 800 };
-  const yearly = { ventas: 4000, restaurante: 6000, plus: 8000 };
+  const monthly = {
+    ventas: 300,
+    restaurante: 500,
+    plus: 800,
+    ventas_multi: 500,
+    restaurante_multi: 800,
+    plus_multi: 1000,
+  };
+  const yearly = {
+    ventas: 3000,
+    restaurante: 5000,
+    plus: 8000,
+    ventas_multi: 5000,
+    restaurante_multi: 8000,
+    plus_multi: 10000,
+  };
   const map = billing === "anual" ? yearly : monthly;
   return map[planId] ?? null;
 }

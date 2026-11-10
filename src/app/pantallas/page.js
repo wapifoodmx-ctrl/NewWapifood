@@ -21,6 +21,14 @@ export default async function PantallasPage() {
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <Link
+          href="/pantallas/carrusel"
+          className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-6 hover:border-[var(--color-ember)]"
+        >
+          <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-ember)]">TV</p>
+          <h2 className="mt-2 text-2xl">Carrusel de pantallas</h2>
+          <p className="mt-2 text-sm text-[var(--color-muted)]">Rota cocina, POS, tickets y panel automáticamente.</p>
+        </Link>
+        <Link
           href="/cocina"
           className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-6 hover:border-[var(--color-ember)]"
         >

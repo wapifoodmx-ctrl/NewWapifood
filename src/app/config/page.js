@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { AppShell } from "@/components/AppShell";
 import { ConfigPanel } from "@/components/ConfigPanel";
 import { ThemePanel } from "@/components/ThemePanel";
+import { SucursalesManager } from "@/components/SucursalesManager";
 import { requireTenantSetup } from "@/lib/auth";
 
 export default async function ConfigPage() {
@@ -43,6 +44,7 @@ export default async function ConfigPage() {
         Datos del local, contacto, logo y colores del menú digital.
       </p>
       <ConfigPanel restaurant={restaurant} profile={profile} />
+      <SucursalesManager restaurantId={membership.restaurant_id} />
       <ThemePanel restaurantId={membership.restaurant_id} initial={theme} />
     </AppShell>
   );

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { money } from "@/lib/format";
 import { requireTenantSetup } from "@/lib/auth";
-import { planMeta } from "@/lib/plans";
+import { planMeta, hasAdvancedReports } from "@/lib/plans";
 import { DashboardInsights } from "@/components/DashboardInsights";
 import { RoleHome } from "@/components/RoleHome";
 
@@ -22,6 +22,9 @@ export default async function DashboardPage() {
   let series = [0, 0, 0, 0, 0, 0, 0];
   let salesSeries = [0, 0, 0, 0, 0, 0, 0];
   let byChannel = {};
+  let tipsCash = 0;
+  let tipsCard = 0;
+  let tipsTotal = 0;
   let topProducts = [];
   let pendingWeb = 0;
   let sub = null;
@@ -39,7 +42,7 @@ export default async function DashboardPage() {
         supabase
           .from("orders")
           .select(
-            "id,status,source,opened_at,closed_at,order_type,order_items(qty,unit_price,product_id)",
+            "id,status,source,method,tip_amount,tip_method,opened_at,closed_at,order_type,order_items(qty,unit_price,product_id)",
           )
           .eq("restaurant_id", restaurantId),
         supabase
@@ -52,7 +55,7 @@ export default async function DashboardPage() {
           .eq("restaurant_id", restaurantId)
           .order("created_at", { ascending: false })
           .limit(1),
-        supabase.from("products").select("id,name").eq("restaurant_id", restaurantId),
+        supabase.from("products").select("id,name,cost").eq("restaurant_id", restaurantId),
       ]);
 
     openTables = ot || 0;
@@ -66,6 +69,18 @@ export default async function DashboardPage() {
         s + (o.order_items || []).reduce((a, i) => a + Number(i.unit_price) * Number(i.qty), 0),
       0,
     );
+
+    tipsCash = paid.reduce(
+      (s, o) =>
+        s + ((o.tip_method || o.method) === "efectivo" ? Number(o.tip_amount || 0) : 0),
+      0,
+    );
+    tipsCard = paid.reduce(
+      (s, o) =>
+        s + ((o.tip_method || o.method) !== "efectivo" ? Number(o.tip_amount || 0) : 0),
+      0,
+    );
+    tipsTotal = tipsCash + tipsCard;
 
     byChannel = {};
     for (const o of paid) {
@@ -87,7 +102,12 @@ export default async function DashboardPage() {
       }
     }
     topProducts = Object.entries(qtyByProd)
-      .map(([id, qty]) => ({ name: prodMap[id] || "Producto", qty }))
+      .map(([id, qty]) => {
+        const p = (products || []).find((x) => x.id === id);
+        const price = Number(p?.price || 0);
+        const cost = Number(p?.cost || 0);
+        return { id, name: p?.name || prodMap[id] || "Producto", qty, price, cost };
+      })
       .sort((a, b) => b.qty - a.qty)
       .slice(0, 5);
 
@@ -148,12 +168,13 @@ export default async function DashboardPage() {
         </p>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {[
           { label: "Ventas cobradas", value: money(sales) },
           { label: "Tickets pagados", value: String(ticketCount) },
           { label: "Órdenes abiertas", value: String(openOrders) },
           { label: "Mesas ocupadas", value: String(openTables) },
+          { label: "Propinas", value: money(tipsTotal) },
         ].map((c) => (
           <div key={c.label} className="card p-4">
             <p className="text-base font-bold text-[var(--ink-soft)]">{c.label}</p>
@@ -161,6 +182,12 @@ export default async function DashboardPage() {
           </div>
         ))}
       </div>
+
+      {tipsTotal > 0 ? (
+        <p className="mt-2 text-xs text-[var(--color-muted)]">
+          Propinas: efectivo (cajón) {money(tipsCash)} · tarjeta (solo registro) {money(tipsCard)}
+        </p>
+      ) : null}
 
       {pendingWeb > 0 ? (
         <p className="mt-4 rounded-2xl bg-[var(--chip-warn-bg)] p-4 text-base text-[var(--chip-warn-fg)]">
@@ -202,37 +229,52 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <section className="card p-4">
-          <h2 className="text-xl font-normal">Más vendidos</h2>
-          <ul className="mt-3 space-y-2 text-sm">
-            {topProducts.length ? (
-              topProducts.map((p) => (
-                <li key={p.name} className="flex justify-between border-b border-[var(--color-warm-stone)] py-1">
-                  <span>{p.name}</span>
-                  <span className="font-semibold">{p.qty}</span>
-                </li>
-              ))
-            ) : (
-              <li className="text-base text-[var(--ink-soft)]">Aún no hay ventas cobradas. La primera aparece cuando cobres en la caja.</li>
-            )}
-          </ul>
-        </section>
+        {hasAdvancedReports(sub?.plan) ? (
+          <>
+            <section className="card p-4">
+              <h2 className="text-xl font-normal">Más vendidos</h2>
+              <ul className="mt-3 space-y-2 text-sm">
+                {topProducts.length ? (
+                  topProducts.map((p) => (
+                    <li key={p.id} className="flex justify-between border-b border-[var(--color-warm-stone)] py-1">
+                      <span>{p.name}</span>
+                      <span className="font-semibold">{p.qty}</span>{" "}
+                      <span className="text-xs text-[var(--ink-soft)]">margen {money(Number(p.price) - Number(p.cost))}</span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-base text-[var(--ink-soft)]">Aún no hay ventas cobradas. La primera aparece cuando cobres en la caja.</li>
+                )}
+              </ul>
+            </section>
 
-        <section className="card p-4">
-          <h2 className="text-xl font-normal">Ventas por canal</h2>
-          <ul className="mt-3 space-y-2 text-sm">
-            {channelEntries.length ? (
-              channelEntries.map(([k, v]) => (
-                <li key={k} className="flex justify-between border-b border-[var(--color-warm-stone)] py-1">
-                  <span className="uppercase">{k}</span>
-                  <span className="font-semibold">{money(v)}</span>
-                </li>
-              ))
-            ) : (
-              <li className="text-[var(--color-walnut)]">Sin datos de canal todavía.</li>
-            )}
-          </ul>
-        </section>
+            <section className="card p-4">
+              <h2 className="text-xl font-normal">Ventas por canal</h2>
+              <ul className="mt-3 space-y-2 text-sm">
+                {channelEntries.length ? (
+                  channelEntries.map(([k, v]) => (
+                    <li key={k} className="flex justify-between border-b border-[var(--color-warm-stone)] py-1">
+                      <span className="uppercase">{k}</span>
+                      <span className="font-semibold">{money(v)}</span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-[var(--color-walnut)]">Sin datos de canal todavía.</li>
+                )}
+              </ul>
+            </section>
+          </>
+        ) : (
+          <section className="card p-4">
+            <h2 className="text-xl font-normal">Más vendidos y canales</h2>
+            <p className="mt-2 text-base text-[var(--ink-soft)]">
+              Disponible en Plan Profesional o superior. Mejora tu plan para ver top productos y ventas por canal.
+            </p>
+            <Link href="/pagos" className="mt-3 inline-block text-sm font-semibold underline">
+              Ver planes
+            </Link>
+          </section>
+        )}
       </div>
 
       {(lowStock.length > 0 || expiring.length > 0) && (

@@ -1,0 +1,25 @@
+ID,Modulo,Caso de prueba,Pasos,Resultado esperado,Resultado real,Estado,Fecha,Observaciones
+TC-001,Plan,Landin pague ,Scrolleaar,Sin desfases,Desfase en los botons de pre-pago,Pendiente,1/11/2026,Resolver la alineación de botones en Plan
+TC-002,ConfigPanel,Foto ,Subir foto del restaurante,Archivo cargado y estable al recargar,Sube la foto pero no se guarda,Pendiente,1/11/2026,Resolver en supabase para memoria en storage
+TC-003,ConfigPanel,Datos del restaurante,Llenar los campos con información del restuarante,Campos llenos persitentes al recargar y salir,Se quedan los campos en el estado indicado,Listo,1/11/2026,Correcto sin observaciones
+TC-004,CartaManager,Nuevo producto,Llenar los campos con infromación del producto ,"Llenado correcto, actualizado y eliminado ",Se quedan los campos en el estado indicado,Listo ,1/11/2026,Correcto sin observaciones
+TC-005,CartaManager,Añadir imagen,Adjuntar imagen del producto,"Subir la imagen, recargar y que siga ahí ",No funciona arreglar en supabase,Pendiente,1/11/2026,Resolver en supabase para memoria en storage
+TC-006,CartaManager,Categoría ,"Cambiar categoria, renombrar, añadir. ","Si cambia la categoria, se puede renombrar y eliminar","Si cambia la categoria, se puede renombrar y eliminar",Listo,1/11/2026,Correcto sin observaciones
+TC-007,Insumos todos,Agregar a inventarios ,Llenar los campos,Añadir al inventario guardar y recargar,"Se crea el insumo, pero no se guarda. ",Pendiente,1/11/2026,Se puede crear pero no guarda el insumo
+TC-008,Insumos todos,Decripciones,Descripciones sencillas visualizar y sugerir ,Descripciones con detalle faciles de entender para el usuario,Descriciones pobres ,Pendiente,1/11/2026,"Mejorar las descripciones, no creo que entienda 
+el usuario final. "
+TC-009,Insumos pin,Bloquear el inventario ,Indicar un pin para bloquear ,"Que se bloque el inventario y que se indique cuando debe 
+bloquear el mismo. ","Se bloquea el inventario y se puede volver a bloquear 
+con el pin guardado. ",Listo,1/11/2026,"Poder actualizar el pin si se olvido del pin que 
+pasa? podemos cambiarlo en base al correo 
+registrado?"
+TC-010,Insumos todos/receta ,"Agregar una receta en base al
+producto ","En recetas llenar los campos en base a los insumos 
+agregados. ","Deben aparecer los insumos a acompletar con la receta
+igualmente la cantidad en stock y cuanto se usa para esa receta en cada ingrediente. ","Se pueden agregar las recetas y aparecen los insumos, 
+problema en insumos no se ven la cantidad registrada, 
+pero en recetas  aparece ese insumo. ",Pendiente,1/11/2026,"Arreglar insumos, se registra pero no aparece 
+al recargar, ya que en recetas aparece el insumo 
+registrado, revisar. "
+TC-011,Mesas/piso ,Agregar una mesa ,Ir a mesas generar una mesa. ,Que la mesa se genera ,,,,
+TC-012,,,,,,,,

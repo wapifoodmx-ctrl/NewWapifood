@@ -186,6 +186,13 @@ function draw(name) {
       );
     case "close":
       return <path d="M6 6l12 12M18 6 6 18" />;
+    case "eye":
+      return (
+        <>
+          <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      );
     case "search":
       return (
         <>

@@ -1,0 +1,251 @@
+create extension if not exists pgcrypto;
+
+create type public.app_role as enum ('owner', 'admin', 'piso', 'cocina');
+create type public.table_state as enum ('libre', 'ocupada');
+create type public.order_status as enum ('abierta', 'cocina', 'lista', 'pagada', 'cancelada');
+create type public.pay_method as enum ('efectivo', 'tarjeta', 'transferencia');
+create type public.stock_reason as enum ('venta', 'entrada', 'merma', 'ajuste');
+
+create table public.restaurants (
+  id uuid primary key default gen_random_uuid(),
+  name text not null check (char_length(name) between 2 and 80),
+  created_at timestamptz not null default now()
+);
+
+create table public.memberships (
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role public.app_role not null,
+  created_at timestamptz not null default now(),
+  primary key (restaurant_id, user_id)
+);
+
+create table public.categories (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  name text not null check (char_length(name) between 1 and 40),
+  unique (restaurant_id, name)
+);
+
+create table public.products (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  category_id uuid not null references public.categories(id),
+  name text not null check (char_length(name) between 1 and 120),
+  price numeric(10,2) not null check (price >= 0),
+  cost numeric(10,2) not null default 0 check (cost >= 0),
+  active boolean not null default true
+);
+
+create table public.ingredients (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  name text not null,
+  unit text not null,
+  stock numeric(12,3) not null default 0 check (stock >= 0),
+  min_stock numeric(12,3) not null default 0 check (min_stock >= 0),
+  cost numeric(10,2) not null default 0 check (cost >= 0),
+  unique (restaurant_id, name)
+);
+
+create table public.recipe_lines (
+  product_id uuid not null references public.products(id) on delete cascade,
+  ingredient_id uuid not null references public.ingredients(id),
+  qty numeric(12,3) not null check (qty > 0),
+  primary key (product_id, ingredient_id)
+);
+
+create table public.dining_tables (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  number int not null check (number > 0),
+  seats int not null check (seats between 1 and 20),
+  state public.table_state not null default 'libre',
+  active boolean not null default true,
+  unique (restaurant_id, number)
+);
+
+create table public.orders (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  table_id uuid not null references public.dining_tables(id) on delete restrict,
+  status public.order_status not null default 'abierta',
+  method public.pay_method,
+  tip_amount numeric(10,2) not null default 0,
+  tip_method public.pay_method,
+  refunded_amount numeric(10,2) not null default 0,
+  opened_at timestamptz not null default now(),
+  closed_at timestamptz,
+  stock_applied boolean not null default false
+);
+
+create table public.order_items (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references public.orders(id) on delete cascade,
+  product_id uuid not null references public.products(id),
+  qty int not null check (qty > 0),
+  unit_price numeric(10,2) not null check (unit_price >= 0),
+  refunded_amount numeric(10,2) not null default 0
+);
+
+create table public.stock_moves (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  ingredient_id uuid not null references public.ingredients(id),
+  order_id uuid references public.orders(id),
+  qty numeric(12,3) not null,
+  reason public.stock_reason not null,
+  created_at timestamptz not null default now()
+);
+
+create index orders_open_idx on public.orders (restaurant_id, status);
+create unique index one_open_order_per_table
+  on public.orders (table_id)
+  where status in ('pendiente', 'abierta', 'cocina', 'lista');
+
+alter table public.restaurants enable row level security;
+alter table public.memberships enable row level security;
+alter table public.categories enable row level security;
+alter table public.products enable row level security;
+alter table public.ingredients enable row level security;
+alter table public.recipe_lines enable row level security;
+alter table public.dining_tables enable row level security;
+alter table public.orders enable row level security;
+alter table public.order_items enable row level security;
+alter table public.stock_moves enable row level security;
+
+create or replace function public.is_member(rid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.memberships m
+    where m.restaurant_id = rid and m.user_id = auth.uid()
+  );
+$$;
+
+create or replace function public.has_role(rid uuid, roles public.app_role[])
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.memberships m
+    where m.restaurant_id = rid
+      and m.user_id = auth.uid()
+      and m.role = any(roles)
+  );
+$$;
+
+-- Membresía: cada quien ve la suya. Altas solo vía service role / función de invitación.
+create policy memberships_self on public.memberships
+  for select to authenticated using (user_id = auth.uid());
+
+create policy restaurants_read on public.restaurants
+  for select to authenticated using (public.is_member(id));
+
+create policy categories_rw on public.categories
+  for all to authenticated
+  using (public.is_member(restaurant_id))
+  with check (public.has_role(restaurant_id, array['owner','admin']::public.app_role[]));
+
+create policy products_rw on public.products
+  for all to authenticated
+  using (public.is_member(restaurant_id))
+  with check (public.has_role(restaurant_id, array['owner','admin']::public.app_role[]));
+
+create policy ingredients_read on public.ingredients
+  for select to authenticated using (public.is_member(restaurant_id));
+
+create policy ingredients_write on public.ingredients
+  for all to authenticated
+  using (public.has_role(restaurant_id, array['owner','admin']::public.app_role[]))
+  with check (public.has_role(restaurant_id, array['owner','admin']::public.app_role[]));
+
+create policy tables_read on public.dining_tables
+  for select to authenticated using (public.is_member(restaurant_id));
+
+create policy tables_write on public.dining_tables
+  for all to authenticated
+  using (public.has_role(restaurant_id, array['owner','admin','piso']::public.app_role[]))
+  with check (public.has_role(restaurant_id, array['owner','admin','piso']::public.app_role[]));
+
+create policy orders_rw on public.orders
+  for all to authenticated
+  using (public.is_member(restaurant_id))
+  with check (public.has_role(restaurant_id, array['owner','admin','piso','cocina']::public.app_role[]));
+
+create policy items_via_order on public.order_items
+  for all to authenticated
+  using (exists (
+    select 1 from public.orders o
+    where o.id = order_id and public.is_member(o.restaurant_id)
+  ))
+  with check (exists (
+    select 1 from public.orders o
+    where o.id = order_id and public.has_role(o.restaurant_id, array['owner','admin','piso']::public.app_role[])
+  ));
+
+create policy moves_read on public.stock_moves
+  for select to authenticated using (public.is_member(restaurant_id));
+
+-- El descuento de stock NO se hace desde el cliente.
+-- Solo esta función, con el flag stock_applied, para que no se pueda cobrar dos veces.
+create or replace function public.close_order(
+  p_order uuid,
+  p_method public.pay_method,
+  p_cash numeric default null,
+  p_tip numeric default 0,
+  p_tip_method public.pay_method default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_order public.orders%rowtype;
+  v_need record;
+  v_tip numeric := coalesce(p_tip, 0);
+  v_tip_method public.pay_method := coalesce(p_tip_method, p_method);
+  v_food numeric;
+  v_due numeric;
+  v_cash numeric;
+  v_change numeric;
+  v_session uuid;
+begin
+  select * into v_order from public.orders where id = p_order for update;
+  if not found then raise exception 'orden inexistente'; end if;
+  if not public.has_role(v_order.restaurant_id, array['owner','admin','piso']::public.app_role[]) then
+    raise exception 'sin permiso';
+  end if;
+  if v_order.stock_applied or v_order.status = 'pagada' then
+    raise exception 'ya cobrada';
+  end if;
+  if not exists (select 1 from public.order_items where order_id = p_order) then
+    raise exception 'cuenta vacia';
+  end if;
+
+  -- (Inventario: se asume ya descontado al cobrar en esta versión base;
+  --  la versión productiva (migración 0261104) descuenta insumos aquí.)
+
+  update public.orders
+     set status = 'pagada', method = p_method, closed_at = now(), stock_applied = true,
+         tip_amount = v_tip, tip_method = v_tip_method
+   where id = p_order;
+
+  -- Propina en efectivo entra al cajón; en tarjeta solo se registra.
+  if v_tip > 0 and v_tip_method = 'efectivo' then
+    select id into v_session
+    from public.cash_sessions
+    where restaurant_id = v_order.restaurant_id and status = 'open'
+    limit 1;
+    if v_session is not null then
+      insert into public.cash_movements (session_id, restaurant_id, order_id, kind, amount, note)
+      values (v_session, v_order.restaurant_id, p_order, 'propina_efectivo', v_tip, 'propina');
+    end if;
+  end if;
+
+  update public.dining_tables set state = 'libre' where id = v_order.table_id;
+end;
+$$;
+
+revoke all on function public.close_order(uuid, public.pay_method, numeric, numeric, public.pay_method) from public;
+grant execute on function public.close_order(uuid, public.pay_method, numeric, numeric, public.pay_method) to authenticated;
+grant execute on function public.is_member(uuid) to authenticated;
+grant execute on function public.has_role(uuid, public.app_role[]) to authenticated;

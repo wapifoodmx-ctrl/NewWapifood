@@ -32,7 +32,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
     const { data, error } = await supabase
       .from("orders")
       .select(
-        "id,status,source,order_type,customer_name,customer_phone,delivery_address,opened_at,needs_confirmation,public_code,table_id,order_items(product_id,qty,unit_price,notes,status),dining_tables(number,channel_type)",
+        "id,status,source,order_type,customer_name,customer_phone,delivery_address,opened_at,needs_confirmation,public_code,table_id,order_items(id,product_id,qty,unit_price,notes,status),dining_tables(number,channel_type)",
       )
       .eq("restaurant_id", restaurantId)
       .in("status", ["cocina", "lista", "pendiente", "abierta", "entregada"])
@@ -134,11 +134,11 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
     });
   }, [orders, queue]);
 
-  async function setItemStatus(orderId, productId, status) {
+  async function setItemStatus(orderId, lineId, status) {
     setLoading(true);
     const { error } = await supabase.rpc("set_order_item_status", {
       p_order: orderId,
-      p_product: productId,
+      p_line: lineId,
       p_status: status,
     });
     setLoading(false);
@@ -322,7 +322,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
                   const st = i.status || "pendiente";
                   const im = itemStatusMeta(st);
                   return (
-                    <li key={`${order.id}-${i.product_id}`}>
+                    <li key={`${order.id}-${i.id}`}>
                       <p className={`text-2xl font-extrabold leading-tight ${im.color}`}>
                         {i.qty}× {nameOf(i.product_id)}
                       </p>
@@ -332,15 +332,15 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
                         <div className="mt-2 flex flex-wrap gap-2">
                           {st === "pendiente" ? (
                             <>
-                              <button type="button" className="btn-primary px-4" onClick={() => setItemStatus(order.id, i.product_id, "preparado")}>
+                              <button type="button" className="btn-primary px-4" onClick={() => setItemStatus(order.id, i.id, "preparado")}>
                                 Listo
                               </button>
-                              <button type="button" className="btn-danger px-3" onClick={() => setItemStatus(order.id, i.product_id, "cancelado")}>
+                              <button type="button" className="btn-danger px-3" onClick={() => setItemStatus(order.id, i.id, "cancelado")}>
                                 Cancelar platillo
                               </button>
                             </>
                           ) : (
-                            <button type="button" className="btn-ghost px-4" onClick={() => setItemStatus(order.id, i.product_id, "pendiente")}>
+                            <button type="button" className="btn-ghost px-4" onClick={() => setItemStatus(order.id, i.id, "pendiente")}>
                               Regresar
                             </button>
                           )}
@@ -390,7 +390,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
             </div>
             <ul className="space-y-2 text-xl">
               {(detail.order_items || []).map((i) => (
-                <li key={`${detail.id}-${i.product_id}`} className={itemStatusMeta(i.status || "pendiente").color}>
+                <li key={`${detail.id}-${i.id}`} className={itemStatusMeta(i.status || "pendiente").color}>
                   {i.qty}× {nameOf(i.product_id)} · {itemStatusMeta(i.status || "pendiente").label}
                 </li>
               ))}

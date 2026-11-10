@@ -36,6 +36,8 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   const [splitIds, setSplitIds] = useState([]);
   const [orderDiscount, setOrderDiscount] = useState({ type: "", value: "" });
   const [tip, setTip] = useState("");
+  const [tipMethodOverride, setTipMethodOverride] = useState(null);
+  const tipMethod = tipMethodOverride ?? payMethod;
   const [guest, setGuest] = useState({ name: "", phone: "" });
   const [flashId, setFlashId] = useState(null);
 
@@ -49,7 +51,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       const { data } = await supabase
         .from("orders")
         .select(
-          "id,status,source,table_id,opened_at,public_code,order_items(product_id,qty,unit_price,notes,status,discount_type,discount_value),dining_tables(number,channel_type,state)",
+          "id,status,source,table_id,opened_at,public_code,order_items(id,product_id,qty,unit_price,notes,status,discount_type,discount_value,stock_resolution,refunded_amount),dining_tables(number,channel_type,state)",
         )
         .eq("restaurant_id", restaurantId)
         .neq("status", "pagada")
@@ -141,6 +143,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     setActiveTableId(tableId);
     setLastTicket(null);
     setTip("");
+    setTipMethodOverride(null);
     const existing = orders.find(
       (o) => o.table_id === tableId && o.status !== "pagada" && o.status !== "cancelada",
     );
@@ -198,13 +201,13 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       return;
     }
     setLoading(true);
-    const line = (order.order_items || []).find((i) => i.product_id === product.id);
+    const note = null; // notas se agregan después; línea base sin nota
+    const line = (order.order_items || []).find((i) => i.product_id === product.id && (i.notes || null) === note);
     if (line) {
       await supabase
         .from("order_items")
         .update({ qty: Number(line.qty) + 1 })
-        .eq("order_id", order.id)
-        .eq("product_id", product.id);
+        .eq("id", line.id);
     } else {
       const { error } = await supabase.from("order_items").insert({
         order_id: order.id,
@@ -261,9 +264,9 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     toast.success("Regresamos el platillo");
   }
 
-  async function changeQty(productId, delta) {
+  async function changeQty(lineId, delta) {
     if (!order) return;
-    const line = (order.order_items || []).find((i) => i.product_id === productId);
+    const line = (order.order_items || []).find((i) => i.id === lineId);
     if (!line) return;
     const next = Number(line.qty) + delta;
     setLoading(true);
@@ -272,14 +275,13 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         .from("order_item_extras")
         .select("ingredient_id,qty,extra_price")
         .eq("order_id", order.id)
-        .eq("product_id", productId);
+        .eq("product_id", line.product_id);
       await supabase
         .from("order_items")
         .delete()
-        .eq("order_id", order.id)
-        .eq("product_id", productId);
+        .eq("id", lineId);
       const snapshot = { ...line, extras: extras.error ? [] : extras.data || [] };
-      const name = productMap.get(productId)?.name || "Platillo";
+      const name = productMap.get(line.product_id)?.name || "Platillo";
       toast.warning(`Quitamos ${name}`, {
         action: {
           label: "Deshacer",
@@ -290,8 +292,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       await supabase
         .from("order_items")
         .update({ qty: next })
-        .eq("order_id", order.id)
-        .eq("product_id", productId);
+        .eq("id", lineId);
     }
     await refresh();
     setLoading(false);
@@ -303,8 +304,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     const { error } = await supabase
       .from("order_items")
       .update({ notes: noteEdit.notes?.trim() || null })
-      .eq("order_id", order.id)
-      .eq("product_id", noteEdit.productId);
+      .eq("id", noteEdit.lineId);
     setLoading(false);
     if (error) {
       toast.error(error.message + (error.message?.includes("notes") ? " — ¿SQL 021?" : ""));
@@ -419,7 +419,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   }
 
   const chargeItems = splitIds.length
-    ? (order?.order_items || []).filter((i) => splitIds.includes(i.product_id))
+    ? (order?.order_items || []).filter((i) => splitIds.includes(i.id))
     : null;
   const chargeTotal = chargeItems ? chargeItems.reduce((s, i) => s + lineAmount(i), 0) : total;
 
@@ -445,7 +445,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   }
 
   async function moveMarkedLines() {
-    const lines = (order.order_items || []).filter((i) => splitIds.includes(i.product_id));
+    const lines = (order.order_items || []).filter((i) => splitIds.includes(i.id));
     const { data: created, error } = await supabase
       .from("orders")
       .insert({
@@ -524,6 +524,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       total: due,
       food: chargeTotal,
       tip: tipAmount,
+      tipMethod: tipAmount > 0 ? tipMethod : null,
       method: payMethod,
       table: tableMap.get(order.table_id)?.number,
       cashGiven: payMethod === "efectivo" ? Number(cashGiven) || null : null,
@@ -534,6 +535,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       p_method: payMethod,
       p_cash: payMethod === "efectivo" && cashGiven !== "" ? Number(cashGiven) : null,
       p_tip: tipAmount,
+      p_tip_method: tipAmount > 0 ? tipMethod : null,
     });
     if (error && /close_order|schema cache|PGRST202|could not find/i.test(error.message)) {
       ({ error } = await supabase.rpc("close_order", {
@@ -552,6 +554,8 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     setLastTicket(snapshot);
     setPayOpen(false);
     setSplitIds([]);
+    setTip("");
+    setTipMethodOverride(null);
     if (!splitIds.length || emptied) {
       setCartOpen(false);
       setActiveTableId(null);
@@ -589,7 +593,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         {(order?.order_items || []).map((i) => {
           const p = productMap.get(i.product_id);
           return (
-            <li key={`${i.order_id}-${i.product_id}`} className="line">
+            <li key={i.id || `${i.order_id}-${i.product_id}`} className="line">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className={`text-lg font-extrabold ${itemStatusMeta(i.status).color}`}>{p?.name || "Producto"}</p>
@@ -603,28 +607,28 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 <label className="flex min-h-12 items-center gap-2 text-base font-bold">
                   <input
                     type="checkbox"
-                    checked={splitIds.includes(i.product_id)}
+                    checked={splitIds.includes(i.id)}
                     onChange={() =>
                       setSplitIds((ids) =>
-                        ids.includes(i.product_id) ? ids.filter((id) => id !== i.product_id) : [...ids, i.product_id],
+                        ids.includes(i.id) ? ids.filter((id) => id !== i.id) : [...ids, i.id],
                       )
                     }
                   />
                   Separar
                 </label>
                 <div className="qty">
-                  <button type="button" onClick={() => changeQty(i.product_id, -1)} aria-label={`Quitar uno de ${p?.name || "producto"}`}>
+                  <button type="button" onClick={() => changeQty(i.id, -1)} aria-label={`Quitar uno de ${p?.name || "producto"}`}>
                     −
                   </button>
                   <span>{i.qty}</span>
-                  <button type="button" onClick={() => changeQty(i.product_id, 1)} aria-label={`Agregar uno de ${p?.name || "producto"}`}>
+                  <button type="button" onClick={() => changeQty(i.id, 1)} aria-label={`Agregar uno de ${p?.name || "producto"}`}>
                     +
                   </button>
                 </div>
                 <button
                   type="button"
                   className="btn-ghost px-3"
-                  onClick={() => setNoteEdit({ productId: i.product_id, notes: i.notes || "" })}
+                  onClick={() => setNoteEdit({ lineId: i.id, productId: i.product_id, notes: i.notes || "" })}
                 >
                   Nota
                 </button>
@@ -961,6 +965,25 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 placeholder="0.00"
               />
             </label>
+            {tipAmount > 0 ? (
+              <div className="mt-2 flex gap-2 text-sm">
+                <span className="self-center text-[var(--color-muted)]">Propina en:</span>
+                {["efectivo", "tarjeta"].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setTipMethodOverride(m)}
+                    className={`rounded-full px-3 py-1 font-semibold ${
+                      tipMethod === m
+                        ? "bg-[var(--color-ink)] text-[var(--color-cream)]"
+                        : "border border-[var(--color-line)]"
+                    }`}
+                  >
+                    {m === "efectivo" ? "Efectivo (cajón)" : "Tarjeta (solo registro)"}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <div className="mt-4 grid grid-cols-3 gap-2">
               {PAY_METHODS.map((m) => (
                 <button

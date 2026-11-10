@@ -67,7 +67,7 @@ export function SubscriptionPanel({ restaurantId, initialSubs }) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        {PLANS.map((p) => {
+        {PLANS.filter((p) => !p.multi).map((p) => {
           const price = billing === "anual" ? p.yearly : p.monthly;
           const body = (
             <>

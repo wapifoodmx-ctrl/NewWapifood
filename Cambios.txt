@@ -1,0 +1,37 @@
+Antes de seguir necesito que me confirmes seis reglas de negocio:
+
+Mesas por plan. Un comentario viejo del código dice 1, 16 y 26, pero hoy se publican 3, 15 y 25. ¿Cuáles valen?
+Propina. Por defecto es 0 y no hay porcentaje automático. La propina en efectivo entra al cajón y la de tarjeta solo se registra. ¿Así está bien?
+Turno. Hoy se puede cobrar con el turno cerrado. ¿Debería bloquearse el cobro en efectivo si no hay turno abierto?
+Domicilio. El inventario se descuenta al cobrar, no al aceptar el pedido. ¿Te parece bien?
+Reembolsos. Anular un platillo ya cobrado regresa el inventario, pero no devuelve dinero. ¿Hace falta un reembolso parcial en caja o en Mercado Pago?
+Sucursales. Hoy cada cuenta tiene un solo restaurante. ¿Necesitas que un gerente vea varios locales?
+Quedan pendientes, porque cambian más cosas: que un mismo platillo con dos notas distintas salga en líneas separadas, el carrusel de pantallas, el recorte del dashboard según el plan y sacar el margen desde el costo de los insumos. Contéstame las seis, aunque sea con números, y el agente sigue con lo que falta. Cuando apruebes el #7, la migración se aplica sola en producción.
+
+1.-Las mesas por plan me gustaría actualizarlas (en el punto 6 te doy detalles)
+2.-La propina no se ha contemplado por que algunos la dejan en un bote o al final solo se reparte, en cambio creo que podría ser un buen objetivo para que la propina sea transparente apoyame a agregarlo
+3.-Lo del turno no entendí, te refieres a cuando el restaurante está por cerrar? o algo parecido? la realidad es que se puede cobrar a toda hora siempre y cuando lo permita el sistema (algo que no hemos agregado es el corte de caja etc... hay ciertas funcionalidades que faltan por agregar, por lo que necesito que me apoyes a revisar también funcionalidades que cualquier software de POS para restaurante tenga y el nuestro no y agregarlo)
+4.-Es correcto el inventario se debe descontar al cobrar y de hecho creo yo que por ejemplo:
+que tal si se hace una compra de: 3 tacos y 1 coca? si cancelan la orden?  (los tacos esta bien! por que se van a preparar) y en teoría se "descuentan del inventario"  pero la coca si no fue abierta tecnicamente la podemos regresar entonces el cliente debería de poder seleccionar que le gustaría regresar al inventario en caso de existir para que no se "descuadre"
+5.-Reembolsos Se tiene que manejar por confirmación todo (si se devuelve el dinero, si se devuelve el producto, insumo etc...) (esto trata de explicarlo de la manera más faácil posible porfa para que sea sencillo para el cliente de entender)
+6.-Del tema de sucursales es correcto justo se iba a implementar en wapifood esta parte de los restaurantes, apoyame a implementarlo de igual manera pero añadiendo otro paquete el cual cambiará los precios.
+
+Por cierto actualmente los planes van a cambiar por el tema de las sucursales, apoyame a:
+
+1.- Plan Ventas $300  (5 mesas 3 meseros)
+2.-Plan Restaurante $500 (15 mesas  7 meseros)
+3.-Plan Restaurante plus $800 (25 mesas 15 meseros)
+Los planes anuales van a ahorrar 2 meses
+Para planes con múltiples restaurantes va a cambiar lo siguiente:
+1.-Plan Ventas multi restaurante $500 (3 restaurantes)
+2.-Plan Restaurante $800 (5 restaurantes)
+3.-Plan Rstaurante plus $1000 ( 8 restaurantes)
+Ojo el nombre solo es provisional te pido por favor que tu le asignes nuevos y mejores nombres!
+Adicionalmente te pido que le integres mejoras visuales a todo esto porfa! es nuesra propaganda, es lo que vende el sistema tiene que ser Hecho con muchísimo amor y con muchisima especialidad piensa en eso porfa! y ayudame a mejorarlo.
+ya aprobé la PR #7 si tienes cualquier otra duda con gusto lo revisamos!
+te comparto un usuario por si quieres hacer pruebas visuales
+
+usuario: hugolkii@gmail.com
+password: 1234561!$
+
+No te preocupes por estos datos eventualmente los vamos a borrar
