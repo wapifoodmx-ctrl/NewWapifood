@@ -1,7 +1,13 @@
+"use client";
+
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PricingSection } from "@/components/PricingSection";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Icon } from "@/components/ui/Icon";
+import SplitText from "@/components/SplitText";
+import RotatingText from "@/components/RotatingText";
+import { OriginButton } from "@/components/OriginButton";
 
 const features = [
   { icon: "register", t: "Caja", d: "Mesas, cuenta, cobro y ticket. Tres toques para cobrar." },
@@ -19,40 +25,53 @@ const steps = [
 ];
 
 export default function LandingPage() {
+  const router = useRouter();
+
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--ink)]">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
-        <p className="brand text-3xl">Wapifood</p>
+        <div className="flex items-center gap-3">
+          <p className="brand text-3xl">Wapifood</p>
+          <RotatingText texts={["Fácil", "Restaurantes", "Negocios", "Emprende", "Te ayuda"]} mainClassName="text-3xl" />
+        </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <a href="#precios" className="btn-ghost hidden px-4 no-underline sm:inline-flex">
+          <OriginButton className="btn btn-ghost hidden items-center justify-center px-4 no-underline sm:inline-flex" onClick={() => document.getElementById("precios")?.scrollIntoView({ behavior: "smooth" })}>
             Precios
-          </a>
-          <Link href="/login" className="btn-ghost hidden px-4 no-underline sm:inline-flex">
+          </OriginButton>
+          <OriginButton
+            className="btn btn-ghost hidden items-center justify-center px-4 no-underline sm:inline-flex"
+            onClick={() => router.push("/login")}
+          >
             Entrar
-          </Link>
-          <Link href="/login" className="btn-primary inline-flex items-center px-4 no-underline">
+          </OriginButton>
+          <OriginButton className="btn btn-primary" onClick={() => router.push("/login")}>
             Crear cuenta
-          </Link>
+          </OriginButton>
         </div>
       </header>
 
       <section className="mx-auto grid max-w-6xl gap-8 px-4 pb-16 pt-4 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
         <div>
           <p className="text-base font-bold text-[var(--primary)]">Para restaurantes, fondas y cafeterías</p>
-          <h1 className="mt-2 text-5xl leading-[1.05] sm:text-6xl">
-            Caja, cocina y menú. Tan claro que cualquiera lo usa.
-          </h1>
+          <SplitText
+            tag="h1"
+            text="Caja, cocina y menú. Tan claro que cualquiera lo usa."
+            className="mt-2 text-5xl leading-[1.05] sm:text-6xl"
+            effect="blur"
+            splitType="words"
+            textAlign="left"
+          />
           <p className="mt-4 max-w-xl text-xl text-[var(--ink-soft)]">
             Wapifood es el sistema de tu restaurante: vender, ver las mesas, pasar comandas y controlar lo que hay en bodega. Sin instalar nada raro.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/login" className="btn-lg btn-primary inline-flex items-center px-6 no-underline">
+            <OriginButton className="btn-lg btn-primary w-full items-center justify-center sm:w-auto" onClick={() => router.push("/login")}>
               Empezar ahora
-            </Link>
-            <a href="#precios" className="btn-lg btn-ghost inline-flex items-center px-6 no-underline">
+            </OriginButton>
+            <OriginButton className="btn-lg btn-ghost w-full items-center justify-center sm:w-auto" onClick={() => document.getElementById("precios")?.scrollIntoView({ behavior: "smooth" })}>
               Ver precios
-            </a>
+            </OriginButton>
           </div>
         </div>
         <div className="card p-5">
@@ -74,7 +93,7 @@ export default function LandingPage() {
 
       <section className="border-t border-[var(--border)] bg-[var(--surface)] py-14">
         <div className="mx-auto max-w-6xl px-4">
-          <h2 className="text-4xl">Cómo se empieza</h2>
+          <SplitText tag="h2" text="Cómo se empieza" className="text-4xl" effect="blur" />
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {steps.map((s) => (
               <article key={s.n} className="rounded-3xl bg-[var(--bg)] p-5">
@@ -89,7 +108,7 @@ export default function LandingPage() {
 
       <section id="modulos" className="py-14">
         <div className="mx-auto max-w-6xl px-4">
-          <h2 className="text-4xl">Todo el piso, en un solo lugar</h2>
+          <SplitText tag="h2" text="Todo el piso, en un solo lugar" className="text-4xl" effect="blur" />
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((f) => (
               <article key={f.t} className="card p-5">

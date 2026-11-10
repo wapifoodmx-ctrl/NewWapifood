@@ -10,14 +10,17 @@ export async function requireUser() {
   return { supabase, user: data.user };
 }
 
-export async function getMembership(supabase, userId) {
+export async function getMemberships(supabase, userId) {
   const { data } = await supabase
     .from("memberships")
     .select("restaurant_id, role, restaurants(id, name)")
-    .eq("user_id", userId)
-    .limit(1)
-    .maybeSingle();
-  return data;
+    .eq("user_id", userId);
+  return data || [];
+}
+
+export async function getMembership(supabase, userId) {
+  const list = await getMemberships(supabase, userId);
+  return list[0] || null;
 }
 
 /** Última suscripción relevante (active o trialing vigente). */
@@ -45,11 +48,26 @@ export async function getActivePlan(supabase, restaurantId) {
 /** Usuario + restaurante (sin inventar datos de negocio). */
 export async function requireTenant() {
   const { supabase, user } = await requireUser();
-  let membership = await getMembership(supabase, user.id);
+  const memberships = await getMemberships(supabase, user.id);
+  let membership = memberships[0] || null;
+  // Restaurante activo seleccionado por el usuario (cookie).
+  try {
+    const { cookies } = await import("next/headers");
+    const store = await cookies();
+    const activeId = store.get("active_restaurant_id")?.value;
+    if (activeId) {
+      const found = memberships.find((m) => m.restaurant_id === activeId);
+      if (found) membership = found;
+    }
+  } catch {
+    /* cookies no disponibles (build estático) */
+  }
   if (!membership?.restaurant_id) {
     try {
       await ensureRestaurant(supabase, "Mi restaurante");
-      membership = await getMembership(supabase, user.id);
+      const refreshed = await getMemberships(supabase, user.id);
+      membership = refreshed[0] || null;
+      memberships.splice(0, memberships.length, ...refreshed);
     } catch {
       /* RPC ausente */
     }
@@ -61,6 +79,7 @@ export async function requireTenant() {
     supabase,
     user,
     membership,
+    memberships,
     plan,
     operational: isOperationalPlan(plan),
     setupOnly: !isOperationalPlan(plan),

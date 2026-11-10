@@ -127,6 +127,112 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
     onChanged?.();
   }
 
+  async function refundItem(item) {
+    const amount = Number(item.unit_price) * Number(item.qty);
+    const already = Number(item.refunded_amount || 0);
+    const remaining = Math.round((amount - already) * 100) / 100;
+    if (remaining <= 0) {
+      toast.info("Este platillo ya fue reembolsado");
+      return;
+    }
+    const ok = await confirmAsync(
+      `¿Reembolsar ${money(remaining)} al cliente? ${
+        order.method === "efectivo"
+          ? "Sale del cajón (si hay turno abierto)."
+          : "Se registra como pendiente de reembolso en la pasarela."
+      }`,
+      { title: "Reembolsar", confirmLabel: "Reembolsar", cancelLabel: "Cancelar" },
+    );
+    if (!ok) return;
+    const supabase = createClient();
+    // Efectivo: registra salida en el turno abierto (si existe).
+    if (order.method === "efectivo") {
+      const { data: sess } = await supabase
+        .from("cash_sessions")
+        .select("id")
+        .eq("restaurant_id", order.restaurant_id)
+        .eq("status", "open")
+        .limit(1)
+        .maybeSingle();
+      if (sess?.id) {
+        await supabase.from("cash_movements").insert({
+          session_id: sess.id,
+          restaurant_id: order.restaurant_id,
+          order_id: order.id,
+          kind: "salida",
+          amount: remaining,
+          note: `reembolso ${productName(item.product_id)}`,
+        });
+      }
+    }
+    const { error } = await supabase
+      .from("order_items")
+      .update({ refunded_amount: amount })
+      .eq("order_id", order.id)
+      .eq("product_id", item.product_id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Reembolso registrado");
+    onChanged?.();
+  }
+  async function refundFree() {
+    const already = Number(order.refunded_amount || 0);
+    const itemRefunded = (order.order_items || []).reduce((s, i) => s + Number(i.refunded_amount || 0), 0);
+    const maxRefund = Math.round((total - already - itemRefunded) * 100) / 100;
+    if (maxRefund <= 0) {
+      toast.info("Ya no hay monto por reembolsar");
+      return;
+    }
+    const raw = prompt(`Monto a reembolsar (máx. ${money(maxRefund)}):`, String(maxRefund));
+    if (raw == null) return;
+    const amount = Math.round(Number(raw) * 100) / 100;
+    if (!amount || amount <= 0 || amount > maxRefund + 0.001) {
+      toast.warning("Monto inválido");
+      return;
+    }
+    const ok = await confirmAsync(
+      `¿Reembolsar ${money(amount)} al cliente? ${
+        order.method === "efectivo"
+          ? "Sale del cajón (si hay turno abierto)."
+          : "Se registra como pendiente de reembolso en la pasarela."
+      }`,
+      { title: "Reembolso libre", confirmLabel: "Reembolsar", cancelLabel: "Cancelar" },
+    );
+    if (!ok) return;
+    const supabase = createClient();
+    if (order.method === "efectivo") {
+      const { data: sess } = await supabase
+        .from("cash_sessions")
+        .select("id")
+        .eq("restaurant_id", order.restaurant_id)
+        .eq("status", "open")
+        .limit(1)
+        .maybeSingle();
+      if (sess?.id) {
+        await supabase.from("cash_movements").insert({
+          session_id: sess.id,
+          restaurant_id: order.restaurant_id,
+          order_id: order.id,
+          kind: "salida",
+          amount,
+          note: "reembolso libre",
+        });
+      }
+    }
+    const { error } = await supabase
+      .from("orders")
+      .update({ refunded_amount: Math.round((already + amount) * 100) / 100 })
+      .eq("id", order.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Reembolso registrado");
+    onChanged?.();
+  }
+
   const canCancel = !["pagada", "cancelada"].includes(order.status);
   const beeperHref = `/t/${order.id}`;
 
@@ -160,19 +266,32 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
         </div>
         <p className="text-2xl font-semibold">{money(total)}</p>
       </div>
+      {order.status === "pagada" ? (
+        <p className="mt-2 text-xs text-[var(--color-muted)]">
+          Por platillo: &quot;Devolver inventario&quot; regresa insumos al stock, &quot;Merma&quot; los deja consumidos, &quot;Reembolsar&quot; devuelve el dinero al cliente. El dinero no se devuelve automáticamente al devolver inventario.
+        </p>
+      ) : null}
       <ul className="mt-3 space-y-1 text-sm text-[var(--color-espresso)]">
         {(order.order_items || []).map((i) => (
-          <li key={`${order.id}-${i.product_id}`} className="flex flex-wrap items-center justify-between gap-2">
+          <li key={i.id || `${order.id}-${i.product_id}`} className="flex flex-wrap items-center justify-between gap-2">
             <span>
               {i.qty} × {productName(i.product_id)} — {money(lineAmount(i))}
               {i.status === "cancelado" ? " · cancelado" : ""}
               {i.stock_resolution === "devuelto" ? " · inventario devuelto" : ""}
               {i.stock_resolution === "merma" ? " · merma" : ""}
+              {Number(i.refunded_amount || 0) > 0 ? ` · reembolsado ${money(i.refunded_amount)}` : ""}
             </span>
-            {order.status === "pagada" && i.status !== "cancelado" && !i.stock_resolution ? (
-              <span className="flex gap-2">
-                <button type="button" className="btn-ghost px-2" onClick={() => settleStock(i, false)}>Devolver inventario</button>
-                <button type="button" className="btn-ghost px-2" onClick={() => settleStock(i, true)}>Merma</button>
+            {order.status === "pagada" && i.status !== "cancelado" ? (
+              <span className="flex flex-wrap gap-2">
+                {!i.stock_resolution ? (
+                  <>
+                    <button type="button" className="btn-ghost px-2" onClick={() => settleStock(i, false)}>Devolver inventario</button>
+                    <button type="button" className="btn-ghost px-2" onClick={() => settleStock(i, true)}>Merma</button>
+                  </>
+                ) : null}
+                {Number(i.refunded_amount || 0) <= 0 ? (
+                  <button type="button" className="btn-ghost px-2" onClick={() => refundItem(i)}>Reembolsar</button>
+                ) : null}
               </span>
             ) : null}
           </li>
@@ -188,6 +307,16 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
         <Link href={beeperHref} className="wf-btn flex h-10 items-center border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-4">
           Ver beeper
         </Link>
+        {order.status === "pagada" ? (
+          <button type="button" onClick={refundFree} className="wf-btn h-10 px-4 text-[var(--color-wine)]">
+            Reembolsar monto libre
+          </button>
+        ) : null}
+        {Number(order.refunded_amount || 0) > 0 ? (
+          <span className="self-center text-xs text-[var(--color-muted)]">
+            Reembolsado: {money(order.refunded_amount)}
+          </span>
+        ) : null}
         {canCancel ? (
           <button type="button" onClick={cancel} className="wf-btn h-10 px-4 text-[var(--color-wine)]">
             Cancelar orden

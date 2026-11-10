@@ -76,7 +76,7 @@ export function WaiterApp({
     }
     const { data: act } = await supabase
       .from("orders")
-      .select("id,status,source,opened_at,waiter_id,order_items(product_id,qty,status),dining_tables(number)")
+      .select("id,status,source,opened_at,waiter_id,order_items(id,product_id,qty,status),dining_tables(number)")
       .eq("restaurant_id", restaurantId)
       .in("table_id", tableIds)
       .in("status", ["abierta", "cocina", "lista", "pendiente"])
@@ -85,7 +85,7 @@ export function WaiterApp({
 
     const { data: hist } = await supabase
       .from("orders")
-      .select("id,status,source,opened_at,closed_at,waiter_id,order_items(product_id,qty,unit_price),dining_tables(number)")
+      .select("id,status,source,opened_at,closed_at,waiter_id,order_items(id,product_id,qty,unit_price),dining_tables(number)")
       .eq("restaurant_id", restaurantId)
       .in("table_id", tableIds)
       .in("status", ["pagada", "entregada", "cancelada"])

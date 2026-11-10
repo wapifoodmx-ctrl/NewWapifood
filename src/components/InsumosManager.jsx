@@ -19,6 +19,7 @@ const empty = {
   unit: "pza",
   stock: "0",
   min_stock: "0",
+  cost: "0",
   kind: "no_perecedero",
   expires_on: "",
   notes: "",
@@ -96,6 +97,7 @@ export function InsumosManager({
       unit: stockDisp.unit,
       stock: String(stockDisp.qty),
       min_stock: String(minDisp.qty),
+      cost: String(i.cost ?? 0),
       kind: i.kind || "no_perecedero",
       expires_on: i.expires_on || "",
       notes: i.notes || "",
@@ -124,6 +126,7 @@ export function InsumosManager({
       unit: stockBase.unit,
       stock: stockBase.qty,
       min_stock: minBase.qty,
+      cost: Number(form.cost || 0),
       kind: form.kind || "no_perecedero",
       expires_on: form.kind === "perecedero" && form.expires_on ? form.expires_on : null,
       notes: form.notes?.trim() || null,
@@ -400,6 +403,9 @@ export function InsumosManager({
                   </label>
                   <label className="block text-xs font-semibold uppercase">Mínimo
                     <input className="mt-1 h-11 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-3 font-normal normal-case" value={form.min_stock} onChange={(e) => setForm((f) => ({ ...f, min_stock: e.target.value }))} />
+                  </label>
+                  <label className="block text-xs font-semibold uppercase">Costo
+                    <input type="number" min="0" step="0.01" className="mt-1 h-11 w-full border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-3 font-normal normal-case" value={form.cost} onChange={(e) => setForm((f) => ({ ...f, cost: e.target.value }))} />
                   </label>
                   {form.kind === "perecedero" ? (
                     <label className="block text-xs font-semibold uppercase">Caducidad

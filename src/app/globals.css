@@ -277,6 +277,17 @@ input[type="radio"] {
   color: var(--wine);
 }
 
+.btn,
+.btn-lg {
+  border-radius: 16px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+.btn:hover:not(:disabled),
+.btn-lg:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
 .wf-input {
   min-height: var(--touch);
   border: 1px solid var(--border);
@@ -1143,7 +1154,7 @@ button.cmdk-item[aria-selected="true"] {
   }
   .pos-tables-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr);
     overflow: visible;
   }
   .pos-summary,

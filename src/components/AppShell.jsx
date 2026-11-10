@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { homePath, primaryModules, roleLabel, sectionForPath } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/client";
 import ThemeToggle from "@/components/ThemeToggle";
+import { RestaurantSwitcher } from "@/components/RestaurantSwitcher";
 import { HelpChat } from "@/components/HelpChat";
 import { Icon } from "@/components/ui/Icon";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -24,6 +25,7 @@ export function AppShell({
   const router = useRouter();
   const [more, setMore] = useState(false);
   const [palette, setPalette] = useState(false);
+  const [toolbarHidden, setToolbarHidden] = useState(false);
   const { rail, open, toggleRail, toggleSection, ensureSection } = useNavPrefs();
   const primary = primaryModules(role);
   const home = homePath(role);
@@ -100,7 +102,7 @@ export function AppShell({
           </div>
         ) : null}
 
-        <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--bg)_90%,transparent)] px-4 py-3 backdrop-blur-md">
+        <header className={`sticky top-0 z-20 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--bg)_90%,transparent)] px-4 py-3 backdrop-blur-md ${toolbarHidden ? "hidden" : ""}`}>
           <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-sm text-[var(--ink-soft)] lg:hidden">
@@ -110,6 +112,10 @@ export function AppShell({
               <h1 className="truncate text-[1.7rem] leading-tight sm:text-[2rem]">{title}</h1>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              <button type="button" className="icon-btn" onClick={() => setToolbarHidden((h) => !h)} aria-label={toolbarHidden ? "Mostrar barra de herramientas" : "Ocultar barra de herramientas"}>
+                <Icon name="eye" size={20} />
+              </button>
+              <RestaurantSwitcher />
               <button type="button" className="icon-btn" onClick={openSearch} aria-label="Buscar pantalla" aria-keyshortcuts="Control+K">
                 <Icon name="search" size={20} />
               </button>
@@ -130,6 +136,12 @@ export function AppShell({
             </div>
           </div>
         </header>
+
+        {toolbarHidden ? (
+          <button type="button" className="icon-btn fixed right-4 top-4 z-50" onClick={() => setToolbarHidden(false)} aria-label="Mostrar barra de herramientas">
+            <Icon name="eye" size={20} />
+          </button>
+        ) : null}
 
         <main className={`mx-auto max-w-[1440px] px-4 py-5 ${focus ? "pb-8" : "pb-28 lg:pb-10"}`}>{children}</main>
       </div>

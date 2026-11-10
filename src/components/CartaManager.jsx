@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import { confirmAsync } from "@/components/ui/confirm";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
-import { money } from "@/lib/format";
+import { money, dishCost } from "@/lib/format";
 import { uploadPublicImage } from "@/lib/storage";
 import { isMissingRelation } from "@/lib/schema";
 
@@ -27,7 +27,7 @@ const emptyProduct = {
  * Carta admin — paridad gradual con pages/menu.js del WapifoodFront:
  * categorías de primera clase + productos + foto + atajo a recetas.
  */
-export function CartaManager({ restaurantId, initialProducts, initialCategories }) {
+export function CartaManager({ restaurantId, initialProducts, initialCategories, initialIngredients = [], initialRecipes = [] }) {
   const [tab, setTab] = useState("productos"); // productos | categorias
   const [products, setProducts] = useState(initialProducts);
   const [categories, setCategories] = useState(
@@ -609,7 +609,16 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories 
                       <h3 className="truncate text-lg font-normal">{p.name}</h3>
                       <p className="text-sm text-[var(--color-espresso)]">
                         {money(p.price)}
-                        {p.cost != null ? ` · costo ${money(p.cost)}` : ""}
+                        {(() => {
+                          const rc = dishCost(p.id, initialRecipes, initialIngredients);
+                          const cost = rc > 0 ? rc : Number(p.cost || 0);
+                          const mgn = Number(p.price || 0) - cost;
+                          return cost > 0
+                            ? ` · costo ${money(cost)} · margen ${money(mgn)}`
+                            : p.cost != null && Number(p.cost) > 0
+                              ? ` · costo ${money(p.cost)}`
+                              : "";
+                        })()}
                       </p>
                       {p.description ? (
                         <p className="mt-1 line-clamp-2 text-xs text-[var(--color-walnut)]">{p.description}</p>

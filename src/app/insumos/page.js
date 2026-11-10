@@ -23,7 +23,7 @@ export default async function InsumosPage() {
   {
     const full = await supabase
       .from("ingredients")
-      .select("id,name,unit,stock,min_stock,kind,expires_on,notes,is_extra,created_at,restaurant_id")
+      .select("id,name,unit,stock,min_stock,cost,kind,expires_on,notes,is_extra,created_at,restaurant_id")
       .eq("restaurant_id", rid)
       .order("name");
 
