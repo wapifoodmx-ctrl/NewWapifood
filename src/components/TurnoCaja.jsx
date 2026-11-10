@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
 import { toast } from "@/components/ui/Toast";
 import { confirmAsync } from "@/components/ui/confirm";
+import { Icon } from "@/components/ui/Icon";
 
 const KIND = {
   venta_efectivo: "Venta en efectivo",
@@ -13,7 +14,43 @@ const KIND = {
   salida: "Salida",
 };
 
-export function TurnoCaja({ restaurantId, initialSession, initialMoves, history }) {
+const BILLS = [1000, 500, 200, 100, 50, 20];
+const COINS = [20, 10, 5, 2, 1, 0.5];
+
+function moneyKey(prefix, value) {
+  return `${prefix}-${value}`;
+}
+
+function sumDrawer(counts) {
+  return Object.entries(counts).reduce((sum, [key, qty]) => {
+    const value = Number(key.split("-")[1]);
+    return sum + value * Number(qty || 0);
+  }, 0);
+}
+
+function printCut(title, report, counted, notes) {
+  const popup = window.open("", "_blank", "noopener,noreferrer");
+  if (!popup) return false;
+  const methods = (report?.by_method || []).map((row) => {
+    const typed = counted?.[row.method];
+    const diff = typed === "" || typed == null ? "sin contar" : (Number(typed) - Number(row.food || 0)).toFixed(2);
+    return `<tr><td>${row.method}</td><td>${row.tickets}</td><td>${row.food}</td><td>${row.tips}</td><td>${typed ?? ""}</td><td>${diff}</td></tr>`;
+  }).join("");
+  popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${title}</title>
+    <style>body{font-family:sans-serif;padding:24px;color:#2a2118} table{border-collapse:collapse;width:100%} td,th{border-bottom:1px solid #ddd;padding:6px;text-align:left} h1{font-size:22px}</style>
+    </head><body><h1>${title}</h1>
+    <p>Del ${report?.opened_at || ""} al ${report?.until || ""}</p>
+    <p>Fondo ${report?.opening_float ?? 0}. Efectivo esperado en el cajón ${report?.expected_cash ?? 0}. Contado ${counted?.efectivo ?? ""}.</p>
+    <p>Cuentas ${report?.tickets ?? 0}. Alimentos ${report?.food ?? 0}. Propinas ${report?.tips ?? 0}. Descuentos ${report?.discounts ?? 0}. Devoluciones ${report?.refunds ?? 0}. Cancelaciones ${report?.cancellations ?? 0}.</p>
+    <table><thead><tr><th>Método</th><th>Cuentas</th><th>Alimentos</th><th>Propinas</th><th>Contado</th><th>Diferencia de alimentos</th></tr></thead><tbody>${methods}</tbody></table>
+    <p>${notes || ""}</p></body></html>`);
+  popup.document.close();
+  popup.focus();
+  popup.print();
+  return true;
+}
+
+export function TurnoCaja({ restaurantId, initialSession, initialMoves, history, cuts = [] }) {
   const [session, setSession] = useState(initialSession);
   const [moves, setMoves] = useState(initialMoves || []);
   const [floatAmt, setFloatAmt] = useState("");
@@ -22,6 +59,11 @@ export function TurnoCaja({ restaurantId, initialSession, initialMoves, history 
   const [moveNote, setMoveNote] = useState("");
   const [counted, setCounted] = useState("");
   const [notes, setNotes] = useState("");
+  const [drawer, setDrawer] = useState({});
+  const [cardCounted, setCardCounted] = useState("");
+  const [transferCounted, setTransferCounted] = useState("");
+  const [report, setReport] = useState(null);
+  const [savedCuts, setSavedCuts] = useState(cuts);
   const [busy, setBusy] = useState(false);
   const [missing, setMissing] = useState(false);
 
@@ -87,34 +129,72 @@ export function TurnoCaja({ restaurantId, initialSession, initialMoves, history 
     toast.success(moveKind === "salida" ? "Salida registrada" : "Entrada registrada");
   }
 
-  async function closeShift(e) {
-    e.preventDefault();
-    if (!session) return;
-    const value = Number(counted);
-    if (Number.isNaN(value) || value < 0) {
-      toast.warning("Escribe cuánto hay en el cajón");
-      return;
+  function countedPayload(cash) {
+    const payload = { efectivo: Number(cash.toFixed(2)) };
+    if (cardCounted !== "") payload.tarjeta = Number(cardCounted);
+    if (transferCounted !== "") payload.transferencia = Number(transferCounted);
+    return payload;
+  }
+
+  async function loadReport() {
+    if (!session) return null;
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc("cash_session_report", { p_session: session.id });
+    if (error) {
+      toast.error(error.message);
+      return null;
     }
-    const ok = await confirmAsync("Al cerrar el turno se guarda el conteo y la diferencia. Las ventas de después no entran a este corte.", {
-      title: "Cerrar turno",
-      confirmLabel: "Cerrar turno",
-      cancelLabel: "Seguir abierto",
-    });
-    if (!ok) return;
+    setReport(data);
+    return data;
+  }
+
+  async function savePartial() {
+    if (!session) return;
+    const cash = counted === "" ? sumDrawer(drawer) : Number(counted);
     setBusy(true);
     const supabase = createClient();
-    const { data, error } = await supabase.rpc("close_cash_session", {
+    const { data, error } = await supabase.rpc("save_partial_cut", {
       p_session: session.id,
-      p_counted: value,
+      p_counted: countedPayload(cash),
       p_notes: notes || null,
     });
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success(`Turno cerrado. Diferencia ${money(data)}`);
+    const snap = await loadReport();
+    setSavedCuts((list) => [{ id: data, kind: "parcial", created_at: new Date().toISOString(), snapshot: snap }, ...list]);
+    toast.success("Corte parcial guardado. La caja sigue abierta.");
+  }
+
+  async function closeShift(e) {
+    e.preventDefault();
+    if (!session) return;
+    const value = counted === "" ? sumDrawer(drawer) : Number(counted);
+    if (Number.isNaN(value) || value < 0) {
+      toast.warning("Cuenta el efectivo del cajón");
+      return;
+    }
+    const ok = await confirmAsync("El corte del día cierra la caja. Puedes seguir cobrando después; esas ventas no entran a este corte.", {
+      title: "Corte del día",
+      confirmLabel: "Cerrar caja",
+      cancelLabel: "Seguir abierta",
+    });
+    if (!ok) return;
+    setBusy(true);
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc("close_cash_day", {
+      p_session: session.id,
+      p_counted_cash: value,
+      p_counted: countedPayload(value),
+      p_notes: notes || null,
+    });
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success(`Caja cerrada. Diferencia de efectivo ${money(data)}`);
     setSession(null);
     setMoves([]);
     setCounted("");
     setNotes("");
+    setReport(null);
   }
 
   if (missing) {
@@ -179,7 +259,9 @@ export function TurnoCaja({ restaurantId, initialSession, initialMoves, history 
               Fondo inicial
               <input className="mt-1 h-12 w-40 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 text-xl font-extrabold" inputMode="decimal" value={floatAmt} onChange={(e) => setFloatAmt(e.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" />
             </label>
-            <button type="submit" className="btn-lg btn-primary" disabled={busy}>Abrir turno</button>
+            <button type="submit" className="btn-lg btn-primary inline-flex items-center gap-2" disabled={busy}>
+              <Icon name="register" size={22} /> Abrir caja
+            </button>
           </form>
         )}
       </section>
@@ -187,33 +269,88 @@ export function TurnoCaja({ restaurantId, initialSession, initialMoves, history 
       <section className="grid gap-4">
         {session ? (
           <form onSubmit={closeShift} className="card p-5">
-            <h2 className="text-2xl">Cerrar y contar</h2>
+            <h2 className="text-2xl">Contar y cortar</h2>
+            <p className="mt-1 text-sm text-[var(--ink-soft)]">El corte parcial no cierra la caja. El corte del día sí.</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {BILLS.map((value) => (
+                <label key={moneyKey("billete", value)} className="text-sm font-bold">
+                  Billete de ${value}
+                  <input className="mt-1 h-12 w-full rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3" inputMode="numeric" value={drawer[moneyKey("billete", value)] || ""} onChange={(e) => setDrawer((prev) => ({ ...prev, [moneyKey("billete", value)]: e.target.value.replace(/\D/g, "") }))} />
+                </label>
+              ))}
+              {COINS.map((value) => (
+                <label key={moneyKey("moneda", value)} className="text-sm font-bold">
+                  Moneda de ${value}
+                  <input className="mt-1 h-12 w-full rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3" inputMode="numeric" value={drawer[moneyKey("moneda", value)] || ""} onChange={(e) => setDrawer((prev) => ({ ...prev, [moneyKey("moneda", value)]: e.target.value.replace(/\D/g, "") }))} />
+                </label>
+              ))}
+            </div>
+            <p className="mt-3 text-lg font-bold">Efectivo contado {money(counted === "" ? sumDrawer(drawer) : Number(counted))}</p>
+            <p className="text-base">Diferencia del cajón {money((counted === "" ? sumDrawer(drawer) : Number(counted)) - expected)}</p>
             <label className="mt-3 block text-sm font-bold">
-              Efectivo contado
-              <input className="mt-1 h-12 w-full rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 text-2xl font-extrabold" inputMode="decimal" value={counted} onChange={(e) => setCounted(e.target.value.replace(/[^\d.]/g, ""))} />
+              Si el conteo no coincide con los billetes, escríbelo
+              <input className="mt-1 h-12 w-full rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3" inputMode="decimal" value={counted} onChange={(e) => setCounted(e.target.value.replace(/[^\d.]/g, ""))} placeholder="Opcional" />
             </label>
-            {counted !== "" ? (
-              <p className="mt-2 text-lg font-bold">
-                Diferencia {money(Number(counted) - expected)}
-              </p>
-            ) : null}
+            <label className="mt-3 block text-sm font-bold">
+              Tarjeta contada en la terminal
+              <input className="mt-1 h-12 w-full rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3" inputMode="decimal" value={cardCounted} onChange={(e) => setCardCounted(e.target.value.replace(/[^\d.]/g, ""))} placeholder="Opcional" />
+            </label>
+            <label className="mt-3 block text-sm font-bold">
+              Transferencia contada
+              <input className="mt-1 h-12 w-full rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3" inputMode="decimal" value={transferCounted} onChange={(e) => setTransferCounted(e.target.value.replace(/[^\d.]/g, ""))} placeholder="Opcional" />
+            </label>
             <label className="mt-3 block text-sm font-bold">
               Nota del corte
               <textarea className="mt-1 min-h-20 w-full rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2" value={notes} onChange={(e) => setNotes(e.target.value)} />
             </label>
-            <button type="submit" className="btn-danger mt-3 w-full" disabled={busy}>Cerrar turno</button>
+            <div className="mt-3 grid gap-2">
+              <button type="button" className="btn-ghost h-12" disabled={busy} onClick={loadReport}>
+                <Icon name="receipt" size={20} /> Ver corte
+              </button>
+              <button type="button" className="btn-ghost h-12" disabled={busy} onClick={savePartial}>
+                Guardar corte parcial
+              </button>
+              <button type="button" className="btn-ghost h-12" disabled={busy} onClick={async () => {
+                const snap = report || await loadReport();
+                if (!snap) return;
+                const cash = counted === "" ? sumDrawer(drawer) : Number(counted);
+                if (!printCut("Corte parcial", snap, countedPayload(cash), notes)) toast.error("El navegador bloqueó la ventana de impresión");
+              }}>
+                Imprimir o guardar PDF
+              </button>
+              <button type="submit" className="btn-danger h-14" disabled={busy}>Corte del día</button>
+            </div>
+            {report ? (
+              <div className="mt-4 text-sm">
+                <p>Cuentas {report.tickets}. Alimentos {money(report.food)}. Propinas {money(report.tips)}.</p>
+                <p>Descuentos {money(report.discounts)}. Devoluciones {money(report.refunds)}. Cancelaciones {report.cancellations}.</p>
+                <ul className="mt-2 space-y-1">
+                  {(report.by_method || []).map((row) => (
+                    <li key={row.method}>{row.method}: {row.tickets} · {money(row.food)} · propina {money(row.tips)}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </form>
         ) : null}
         <div className="card p-5">
           <h2 className="text-2xl">Cortes anteriores</h2>
           <ul className="mt-3 divide-y divide-[var(--border)]">
-            {(history || []).length === 0 ? <li className="py-2 text-[var(--ink-soft)]">Aún no hay un corte guardado.</li> : null}
+            {(history || []).length === 0 && savedCuts.length === 0 ? <li className="py-2 text-[var(--ink-soft)]">Aún no hay un corte guardado.</li> : null}
             {(history || []).map((h) => (
               <li key={h.id} className="py-3">
                 <p className="font-bold">{h.closed_at ? new Date(h.closed_at).toLocaleString("es-MX") : "Abierto"}</p>
                 <p className="text-sm text-[var(--ink-soft)]">
                   Esperado {money(h.expected_cash)} · Contado {money(h.counted_cash)} · Diferencia {money(h.difference)}
                 </p>
+              </li>
+            ))}
+            {savedCuts.map((cut) => (
+              <li key={cut.id} className="py-3">
+                <p className="font-bold">{cut.kind === "dia" ? "Corte del día" : "Corte parcial"} · {cut.created_at ? new Date(cut.created_at).toLocaleString("es-MX") : ""}</p>
+                <button type="button" className="btn-ghost mt-1 h-12" onClick={() => printCut(cut.kind === "dia" ? "Corte del día" : "Corte parcial", cut.snapshot, cut.snapshot?.counted, cut.notes)}>
+                  Imprimir
+                </button>
               </li>
             ))}
           </ul>

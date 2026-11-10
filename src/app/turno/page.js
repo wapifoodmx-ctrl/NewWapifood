@@ -40,6 +40,14 @@ export default async function TurnoPage() {
         .eq("status", "closed")
         .order("closed_at", { ascending: false })
         .limit(12);
+  const cutsRes = missing
+    ? { data: [] }
+    : await supabase
+        .from("cash_cuts")
+        .select("id,kind,created_at,notes,snapshot")
+        .eq("restaurant_id", rid)
+        .order("created_at", { ascending: false })
+        .limit(12);
 
   return (
     <AppShell
@@ -62,6 +70,7 @@ export default async function TurnoPage() {
           initialSession={openRes.data}
           initialMoves={moves}
           history={historyRes.data || []}
+          cuts={cutsRes.error ? [] : cutsRes.data || []}
         />
       )}
     </AppShell>

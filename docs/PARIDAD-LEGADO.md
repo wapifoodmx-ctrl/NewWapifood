@@ -66,7 +66,7 @@ Flujos de esta matriz: **58**. Cada fila está en un solo grupo.
 | 41 | Activar plan sin pago | `POST /free/activate-plan` | no existe | distinto | distinto |
 | 42 | Equipo: ver, invitar, rol, quitar | no había equipo; un usuario | `EquipoPanel`, `list_team`, `invite_team_member` | parcial. Lista de UUID | completo para el panel. No se envía correo |
 | 43 | Clientes por teléfono | solo texto en la orden web | `customers` + trigger | ausente | completo |
-| 44 | Turno, fondo, entradas, salidas, corte | no existía | `/turno`, `cash_sessions` | ausente | distinto. Se agregó con las reglas de dinero de abajo. Cobrar no exige turno abierto |
+| 44 | Turno, fondo, entradas, salidas, corte | no existía | `/turno`, `cash_sessions`, `cash_cuts` | ausente | distinto. Abrir caja, corte parcial y corte del día. Cobrar no exige caja abierta. La diferencia de tarjeta es solo si la persona escribe lo que dice la terminal |
 | 45 | Roles owner, admin, piso, cocina | un rol de dueño | `memberships.role`, `has_role` | parcial | completo en invitaciones y en cerrar el turno |
 | 46 | Chatbot remoto | `POST /api/chatbot` | `helpAnswers.js` | distinto | distinto |
 | 47 | Masa | página «en desarrollo» | `/masa` | distinto | distinto |
