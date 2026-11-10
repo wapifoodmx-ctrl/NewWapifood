@@ -11,6 +11,7 @@ import {
   largeUnit,
   unitLabel,
 } from "@/lib/units";
+import { dishCost, margin, money } from "@/lib/format";
 
 /**
  * Recetas — qty siempre se guarda en unidad BASE del insumo (g/ml/pza),
@@ -233,6 +234,9 @@ export function RecetasManager({ products, ingredients, categories = [], initial
             }`}
           >
             <h3 className="text-xl font-normal">{p.name}</h3>
+            <p className="text-sm text-[var(--color-espresso)]">
+              Costo de receta {money(dishCost(p.id, p.lines, ingredients))} · margen {money(margin(p.price, dishCost(p.id, p.lines, ingredients)))}
+            </p>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-walnut)]">{catName(p.category_id)}
               {p.inventory_mode === "unitario" ? " · Unitario" : p.inventory_mode === "none" ? " · Sin stock" : " · Receta"}
             </p>

@@ -22,10 +22,10 @@ export default async function RecetasPage({ searchParams }) {
     await Promise.all([
       supabase
         .from("products")
-        .select("id,name,category_id,inventory_mode")
+        .select("id,name,price,category_id,inventory_mode")
         .eq("restaurant_id", rid)
         .order("name"),
-      supabase.from("ingredients").select("id,name,unit,is_extra").eq("restaurant_id", rid).order("name"),
+      supabase.from("ingredients").select("id,name,unit,cost,is_extra").eq("restaurant_id", rid).order("name"),
       supabase.from("recipe_lines").select("*"),
       supabase.from("product_extras").select("product_id,ingredient_id,qty,extra_price"),
       supabase.from("categories").select("id,name").eq("restaurant_id", rid).order("name"),

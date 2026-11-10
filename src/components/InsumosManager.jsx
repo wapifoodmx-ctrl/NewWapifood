@@ -305,6 +305,11 @@ export function InsumosManager({
           ) : (
             <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
               <div>
+                {items.some((ing) => !ing.is_extra && Number(ing.stock) <= Number(ing.min_stock)) ? (
+                  <p className="mb-3 border border-[var(--color-wine)] bg-[var(--color-paper)] p-3 text-sm text-[var(--color-wine)]">
+                    Hay insumos en o bajo el mínimo. Usa el filtro Stock bajo.
+                  </p>
+                ) : null}
                 <div className="mb-3 flex flex-wrap gap-1">
                   {filters.map((f) => (
                     <button

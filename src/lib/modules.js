@@ -15,6 +15,7 @@ export const MODULES = [
   { id: "pantallas", title: "Pantallas", href: "/pantallas", group: "ops", nav: "piso", icon: "screen", hint: "Cocina en una pantalla" },
   { id: "carta", title: "Platillos", href: "/carta", group: "setup", nav: "carta", icon: "dish", hint: "Precios y fotos" },
   { id: "insumos", title: "Insumos", href: "/insumos", group: "setup", nav: "carta", icon: "box", hint: "Lo que hay en bodega" },
+  { id: "compras", title: "Compras", href: "/compras", group: "setup", nav: "carta", icon: "box", hint: "Proveedores y costo" },
   { id: "recetas", title: "Recetas", href: "/recetas", group: "setup", nav: "carta", icon: "book", hint: "Qué lleva cada platillo" },
   { id: "listas", title: "Listas", href: "/listas", group: "setup", nav: "carta", icon: "list", hint: "Grupos de productos" },
   { id: "importar", title: "Importar", href: "/importar", group: "setup", nav: "carta", icon: "upload", hint: "Subir un archivo" },
@@ -38,7 +39,7 @@ export const NAV_SECTIONS = [
   { id: "hoy", label: "Hoy", icon: "home", items: ["tickets", "empezar"] },
   { id: "vender", label: "Vender", icon: "register", items: ["pos", "kiosko", "menu-cliente"] },
   { id: "piso", label: "Cocina y piso", icon: "flame", items: ["kitchen", "mesas", "meseros", "checador", "pantallas"] },
-  { id: "carta", label: "Tu carta e inventario", icon: "dish", items: ["carta", "insumos", "recetas", "listas"] },
+  { id: "carta", label: "Tu carta e inventario", icon: "dish", items: ["carta", "insumos", "compras", "recetas", "listas"] },
   { id: "reportes", label: "Reportes", icon: "chart", items: ["dashboard", "propinas", "turno"] },
   { id: "negocio", label: "Tu negocio", icon: "store", items: ["equipo", "config", "pagos"] },
 ];
