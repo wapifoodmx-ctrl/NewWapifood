@@ -103,7 +103,7 @@ export function WaitersPanel({ restaurantId, initialWaiters, tables, initialAssi
                   <p className="font-semibold">{w.name}</p>
                   <p className="text-sm text-[var(--color-muted)]">
                     código {w.access_code} · {w.active === false ? "inactivo" : "activo"} · {assignedFor(w.id).length} mesas
-                    {stats[w.id] ? ` · ${stats[w.id].tickets} tickets · ${money(stats[w.id].sales)}` : ""}
+                    {stats[w.id] ? ` · ${stats[w.id].tickets} tickets · cobrado ${money(stats[w.id].sales)} · margen ${money(stats[w.id].margin || 0)}` : ""}
                   </p>
                 </button>
                 <div className="flex flex-col gap-1 text-right text-sm font-semibold">

@@ -91,7 +91,7 @@ export function ComprasPanel({ restaurantId }) {
     if (error) return toast.error(error.message);
     setLines([emptyLine()]);
     setNote("");
-    toast.success("Compra registrada. El costo del insumo quedó como el de esta compra.");
+    toast.success("Compra registrada. El costo del insumo quedó como promedio de lo que había y lo que llegó.");
     await load();
   }
 
@@ -116,7 +116,7 @@ export function ComprasPanel({ restaurantId }) {
 
       <section className="card p-5">
         <h2 className="text-2xl">Registrar compra</h2>
-        <p className="mt-1 text-sm text-[var(--ink-soft)]">La cantidad y el costo van en la unidad del inventario. Esa compra pasa a ser el costo de la receta.</p>
+        <p className="mt-1 text-sm text-[var(--ink-soft)]">La cantidad y el costo van en la unidad del inventario. El costo nuevo es el promedio de lo que ya había y esta compra.</p>
         <form className="mt-3 grid gap-2" onSubmit={savePurchase}>
           <select className="h-12 border px-3" value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
             <option value="">Sin proveedor</option>

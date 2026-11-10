@@ -95,11 +95,11 @@ export function ReportesPanel({ restaurantId }) {
             <article className="card p-4"><p className="text-sm text-[var(--ink-soft)]">Descuentos</p><p className="text-3xl font-extrabold">{money(report.discounts)}</p></article>
           </div>
           <p className="text-base text-[var(--ink-soft)]">
-            Margen estimado {money(report.margin_estimate)}. Es precio de venta menos el costo capturado en el platillo, sin restar descuentos ni sumar propina. No usa el costo de la receta.
+            Margen {money(report.margin_estimate)}. Es lo cobrado, ya con descuentos, menos el costo de la receta. Si el platillo no tiene receta, se usa su costo. La propina no entra.
           </p>
           <div className="grid gap-4 lg:grid-cols-3">
             <List title="Por forma de pago" rows={(report.by_method || []).map((m) => `${payLabel(m.method)}: ${m.tickets} · ${money(m.food)}`)} />
-            <List title="Por mesero" rows={(report.by_waiter || []).map((m) => `${m.waiter}: ${m.tickets} · ${money(m.food)}`)} />
+            <List title="Por mesero" rows={(report.by_waiter || []).map((m) => `${m.waiter}: ${m.tickets} · cobrado ${money(m.food)} · margen ${money(m.margin || 0)}`)} />
             <List title="Platillos, antes de descuentos" rows={(report.top_products || []).map((m) => `${m.qty}× ${m.name} · ${money(m.food)}`)} />
           </div>
         </>
