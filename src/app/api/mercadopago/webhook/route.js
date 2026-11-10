@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { mpFetch, parseExternalReference, planAmount, verifyMercadoPagoWebhook } from "@/lib/mercadopago";
+import { canonicalPlanId, mpFetch, parseExternalReference, planAmount, verifyMercadoPagoWebhook } from "@/lib/mercadopago";
 
 /**
  * Webhook Mercado Pago (como ApiWapifood /payments/webhook):
@@ -15,13 +15,13 @@ async function activateFromPayment(paymentId) {
   const meta = payment.metadata || {};
 
   const restaurantId = external?.restaurantId || meta.restaurant_id;
-  const planId = external?.planId || meta.plan_id;
+  const planId = canonicalPlanId(external?.planId || meta.plan_id);
   const billing = external?.billing || meta.billing || "mensual";
 
   console.log("MP payment", paymentId, status, restaurantId, planId);
 
   if (!restaurantId || !planId) {
-    return { ok: false, reason: "sin external_reference" };
+    return { ok: false, reason: "sin external_reference o plan inválido" };
   }
 
   if (status !== "approved") {

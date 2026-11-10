@@ -28,7 +28,7 @@ export function PricingSection() {
           </p>
           <SplitText tag="h2" text="Elige el plan de tu restaurante" className="mt-2 text-4xl" effect="blur" />
           <p className="mt-3 text-[var(--color-muted)]">
-            Sin sorpresas: mesas, meseros y módulos incluidos según el plan. Anual ahorra 2 meses.
+            Sin sorpresas. El anual paga 10 meses. Si tienes varios locales, el precio es el total del grupo: cada local conserva sus mesas y meseros.
           </p>
 
           {/* Modo: un local vs varios locales */}
@@ -107,7 +107,7 @@ export function PricingSection() {
                 <p className="mt-1 text-sm text-[var(--color-muted)]">{plan.subtitle}</p>
                 {plan.multi ? (
                   <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-ember)]">
-                    Hasta {plan.restaurants} restaurantes
+                    Hasta {plan.restaurants} restaurantes · precio total
                   </p>
                 ) : null}
                 <p className="mt-5">
@@ -116,10 +116,10 @@ export function PricingSection() {
                 </p>
                 <div className="mt-4 flex gap-3 text-sm">
                   <span className="rounded-full bg-[var(--color-paper)] px-3 py-1 font-semibold">
-                    {plan.mesas} mesas
+                    {plan.mesas} mesas{plan.multi ? " por local" : ""}
                   </span>
                   <span className="rounded-full bg-[var(--color-paper)] px-3 py-1 font-semibold">
-                    {plan.meseros} meseros
+                    {plan.meseros} meseros{plan.multi ? " por local" : ""}
                   </span>
                 </div>
                 <ul className="mt-5 flex-1 space-y-2 text-sm text-[var(--color-muted)]">

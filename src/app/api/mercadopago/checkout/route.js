@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getSiteUrl, mpCurrency, mpFetch, planAmount } from "@/lib/mercadopago";
+import { getSiteUrl, mpCurrency, mpFetch } from "@/lib/mercadopago";
+import { canonicalPlanId, planAmount, planMeta } from "@/lib/plans";
 
 export async function POST(request) {
   try {
@@ -10,11 +11,12 @@ export async function POST(request) {
     const billing = body?.billing === "anual" ? "anual" : "mensual";
     const restaurantId = body?.restaurantId;
 
-    if (!planId || !restaurantId || !["ventas", "restaurante", "plus"].includes(planId)) {
+    const canon = canonicalPlanId(planId);
+    if (!canon || !restaurantId) {
       return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
     }
 
-    const amount = planAmount(planId, billing);
+    const amount = planAmount(canon, billing);
     if (amount == null) {
       return NextResponse.json({ error: "Plan inválido" }, { status: 400 });
     }
@@ -37,16 +39,12 @@ export async function POST(request) {
     }
 
     const origin = getSiteUrl(request);
-    const titles = {
-      ventas: "Plan Ventas",
-      restaurante: "Plan Restaurante",
-      plus: "Plan Restaurante Plus",
-    };
+    const title = planMeta(canon).title;
 
     // Igual que API vieja: preference + notification_url (webhook)
     const external_reference = JSON.stringify({
       restaurantId,
-      planId,
+      planId: canon,
       billing,
       userId: auth.user.id,
     });
@@ -56,7 +54,7 @@ export async function POST(request) {
       body: {
         items: [
           {
-            title: `Wapifood · ${titles[planId]} (${billing})`,
+            title: `Wapifood · ${title} (${billing})`,
             quantity: 1,
             unit_price: Number(amount),
             currency_id: mpCurrency(),
@@ -66,7 +64,7 @@ export async function POST(request) {
         external_reference,
         metadata: {
           restaurant_id: restaurantId,
-          plan_id: planId,
+          plan_id: canon,
           billing,
           user_id: auth.user.id,
         },
@@ -86,7 +84,7 @@ export async function POST(request) {
       const admin = createAdminClient();
       await admin.from("subscriptions").insert({
         restaurant_id: restaurantId,
-        plan: planId,
+        plan: canon,
         status: "pending",
         amount,
         billing,

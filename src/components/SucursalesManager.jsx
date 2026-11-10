@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import { confirmAsync } from "@/components/ui/confirm";
+import { planMeta } from "@/lib/plans";
 
 export function SucursalesManager({ restaurantId }) {
   const router = useRouter();
@@ -79,7 +80,7 @@ export function SucursalesManager({ restaurantId }) {
     <section className="mt-6 rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-5">
       <h2 className="text-xl font-semibold">Sucursales</h2>
       <p className="mt-1 text-sm text-[var(--color-muted)]">
-        {used} de {max} restaurante{max === 1 ? "" : "s"} del plan {caps?.plan || "—"}.
+        {used} de {max} restaurante{max === 1 ? "" : "s"} del plan {caps?.plan ? planMeta(caps.plan).title : "—"}.
       </p>
       <ul className="mt-3 space-y-2">
         {list.map((m) => (

@@ -52,7 +52,7 @@ El front descuenta al cerrar (`postMermas` → `POST /inventory/process-order/`)
 
 ### Planes
 
-`PLAN_WAITER_LIMITS` en `waiters.py`: básico/inauguración 2 meseros, profesional 5, empresarial 10. Sin pago vigente el tope es 0. Los montos de suscripción en `enums.py` son 400 / 600 / 800 mensuales y 4000 / 6000 / 8000 con impresora. El comentario viejo de mesas dice 1 / 16 / 26; New publica 3 / 15 / 25 en `src/lib/plans.js`. Esa diferencia queda como decisión de Hugo (sección final de `PARIDAD-LEGADO.md`).
+`PLAN_WAITER_LIMITS` en `waiters.py`: básico/inauguración 2 meseros, profesional 5, empresarial 10. Sin pago vigente el tope es 0. Los montos de suscripción en `enums.py` son 400 / 600 / 800 mensuales y 4000 / 6000 / 8000 con impresora. El comentario viejo de mesas dice 1 / 16 / 26. Los topes y precios vigentes de New están en `docs/PLANES.md`.
 
 ### Tiempo real
 

@@ -38,7 +38,7 @@ Flujos de esta matriz: **58**. Cada fila está en un solo grupo.
 | 13 | Mesas Libre / Ocupado / NoDisponible | `tablesStatus.js` | `dining_tables.state`, `MesasManager` | completo | completo |
 | 14 | Liberar mesas sin cuenta | `POST /tables/LiberarTodasLasMesas` | botón en `MesasManager.releaseIdle` | ausente | completo |
 | 15 | Áreas de mesa | no existían | `dining_areas`, selector en Mesas | ausente | distinto. Se agregaron porque el encargo las pidió. No cambian el cobro |
-| 16 | Tope de mesas y meseros en la base | `waiters.py` `PLAN_WAITER_LIMITS`, `POST /tables/generate` | trigger `enforce_plan_caps` | parcial. El tope de meseros solo estaba en la pantalla | completo. Usa 3/15/25 y 2/5/10 de `plans.js`, no el comentario viejo 1/16/26 |
+| 16 | Tope de mesas y meseros en la base | `waiters.py` `PLAN_WAITER_LIMITS`, `POST /tables/generate` | trigger `enforce_plan_caps` | parcial. El tope de meseros solo estaba en la pantalla | completo. Topes nuevos en `docs/PLANES.md`: 5/15/25 mesas y 3/7/15 meseros. El legado sigue en 2/5/10 meseros |
 | 17 | POS: abrir, sumar, nota, cocina | `Puntodeventa/` | `PosBoard.jsx`, `send_order_to_kitchen` | completo | completo |
 | 18 | Mismo producto en dos líneas | `orders_details` sin unicidad | PK `(order_id, product_id)` | parcial | parcial. Sigue una sola línea por producto |
 | 19 | Descuento de línea y luego de la orden | `crear_orden` en `orders.py` | `set_item_discount`, `set_order_discount`, `order_subtotal` | parcial. La orden sí; la línea solo tenía columna | completo en caja y en SQL |
@@ -98,7 +98,7 @@ Migración `supabase/migrations/20261104010000_paridad_caja_equipo_clientes.sql`
 
 ## Decisiones que Hugo tiene que tomar
 
-1. **Mesas por plan.** El comentario viejo del enum dice 1 / 16 / 26. La página de precios de New dice 3 / 15 / 25. El tope nuevo usa 3 / 15 / 25. Si el contrato con los clientes es el otro, hay que cambiar `plans.js` y `restaurant_caps` juntos.
+1. **Mesas por plan.** El comentario viejo del enum dice 1 / 16 / 26. Hugo fijó los topes nuevos en `docs/PLANES.md` (5 / 15 / 25 mesas y 3 / 7 / 15 meseros). `plans.js` y `restaurant_caps` usan esos números. Quien ya pagaba no pierde mesas ni meseros: los topes nuevos son iguales o más altos.
 2. **Propina.** El legado no la guardaba. Aquí es opcional y no entra al precio. Si debe ser un porcentaje sugerido, o si la propina con tarjeta también entra al cajón, hay que decirlo. Hoy la de tarjeta solo se registra.
 3. **Turno obligatorio.** Hoy se puede cobrar con el turno cerrado, porque el legado no tenía corte. Si el cajón debe rechazar el efectivo sin turno, es un cambio de una línea en `close_order`.
 4. **Una línea por producto.** Dos «tacos al pastor» con notas distintas se suman en la misma línea. Separarlos implica cambiar la llave de `order_items` y de `order_item_extras`. No se hizo para no romper las órdenes vivas.
