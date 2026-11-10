@@ -44,7 +44,7 @@ Flujos de esta matriz: **58**. Cada fila está en un solo grupo.
 | 19 | Descuento de línea y luego de la orden | `crear_orden` en `orders.py` | `set_item_discount`, `set_order_discount`, `order_subtotal` | parcial. La orden sí; la línea solo tenía columna | completo en caja y en SQL |
 | 20 | Cobro efectivo, tarjeta, transferencia | `cambio_estatus` + `metodo_pago` | `close_order` | completo | completo |
 | 21 | Efectivo recibido y cambio guardados | no se guardaban; la caja solo lo mostraba | `orders.cash_tendered`, `change_amount` | parcial | completo |
-| 22 | Propina | el PDF la imprime si viene; el API no la tiene | `tip_amount` en `close_order` | ausente | distinto. Se captura aparte, default 0, no cambia el precio. Ver decisiones |
+| 22 | Propina | el PDF la imprime si viene; el API no la tiene | `tip_amount`, `/propinas` | ausente | distinto. Sugerida 10/15/20, por método y por mesero. El reparto por horas falta porque no hay checador |
 | 23 | Separar cuenta | no estaba | `PosBoard.moveMarkedLines` | distinto (extra de New) | distinto. El descuento de toda la orden no se reparte |
 | 24 | Cancelar orden y liberar mesa | `cambio_estatus=Cancelado` | `cancel_order` | completo | completo |
 | 25 | Cocina por ítem: listo, regresar, cancelar | `modalCocina.jsx` | `KitchenBoard`, `set_order_item_status` | completo | completo |

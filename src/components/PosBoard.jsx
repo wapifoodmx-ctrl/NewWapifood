@@ -37,12 +37,32 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   const [splitIds, setSplitIds] = useState([]);
   const [orderDiscount, setOrderDiscount] = useState({ type: "", value: "" });
   const [tip, setTip] = useState("");
+  const [tipRates, setTipRates] = useState([10, 15, 20]);
+  const [tipsOn, setTipsOn] = useState(true);
   const [tipMethodOverride, setTipMethodOverride] = useState(null);
   const tipMethod = tipMethodOverride ?? payMethod;
   const [guest, setGuest] = useState({ name: "", phone: "" });
   const [flashId, setFlashId] = useState(null);
 
   const supabase = useMemo(() => createClient(), []);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+    supabase
+      .from("restaurant_profiles")
+      .select("tips_enabled,tip_rates")
+      .eq("restaurant_id", restaurantId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        if (data.tips_enabled === false) setTipsOn(false);
+        const rates = String(data.tip_rates || "")
+          .split(",")
+          .map((n) => Number(n.trim()))
+          .filter((n) => n > 0 && n < 100);
+        if (rates.length) setTipRates(rates);
+      });
+  }, [restaurantId, supabase]);
 
   // Realtime: órdenes + estados de mesa
   useEffect(() => {
@@ -956,6 +976,14 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
               {tipAmount ? ` · propina ${money(tipAmount)}` : ""}
             </p>
             {splitIds.length ? <p className="text-base text-[var(--ink-soft)]">Solo los platillos marcados para separar. El descuento de toda la cuenta no se parte.</p> : null}
+            {tipsOn ? <div className="mt-3 flex flex-wrap gap-2">
+              {tipRates.map((rate) => (
+                <button key={rate} type="button" className="h-12 rounded-[14px] border border-[var(--border)] px-3 font-bold" onClick={() => setTip(String(Math.round(chargeTotal * rate) / 100))}>
+                  {rate}%
+                </button>
+              ))}
+              <button type="button" className="h-12 rounded-[14px] border border-[var(--border)] px-3" onClick={() => setTip("")}>Sin propina</button>
+            </div> : null}
             <label className="mt-3 block text-base font-bold" htmlFor="pos-tip">
               Propina (no cambia el precio del platillo)
               <input
@@ -970,7 +998,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
             {tipAmount > 0 ? (
               <div className="mt-2 flex gap-2 text-sm">
                 <span className="self-center text-[var(--color-muted)]">Propina en:</span>
-                {["efectivo", "tarjeta"].map((m) => (
+                {["efectivo", "tarjeta", "transferencia"].map((m) => (
                   <button
                     key={m}
                     type="button"
@@ -981,7 +1009,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                         : "border border-[var(--color-line)]"
                     }`}
                   >
-                    {m === "efectivo" ? "Efectivo (cajón)" : "Tarjeta (solo registro)"}
+                    {m === "efectivo" ? "Efectivo" : m === "tarjeta" ? "Tarjeta" : "Mercado Pago"}
                   </button>
                 ))}
               </div>

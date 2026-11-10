@@ -29,6 +29,8 @@ export function ConfigPanel({ restaurant, profile }) {
     require_confirm_code: profile?.require_confirm_code !== false,
     delivery_enabled: !!profile?.delivery_enabled,
     manager_pin: profile?.manager_pin || "",
+    tips_enabled: profile?.tips_enabled !== false,
+    tip_rates: profile?.tip_rates || "10,15,20",
   });
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -144,6 +146,8 @@ export function ConfigPanel({ restaurant, profile }) {
         require_confirm_code: form.require_confirm_code,
         delivery_enabled: form.delivery_enabled,
         manager_pin: form.manager_pin ? String(form.manager_pin) : null,
+        tips_enabled: form.tips_enabled !== false,
+        tip_rates: form.tip_rates || "10,15,20",
       });
       if (e2) throw e2;
 
@@ -240,6 +244,17 @@ export function ConfigPanel({ restaurant, profile }) {
             placeholder="Sin PIN"
             aria-label="PIN de gerente"
           />
+        </div>
+        <div className="mt-6 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] p-4">
+          <h3 className="text-sm font-semibold uppercase tracking-wide">Propinas</h3>
+          <label className="mt-3 flex items-center gap-2 text-sm font-semibold">
+            <input type="checkbox" checked={form.tips_enabled !== false} onChange={(e) => set("tips_enabled", e.target.checked)} />
+            Mostrar propina sugerida al cobrar
+          </label>
+          <label className="mt-2 block text-sm font-semibold">
+            Porcentajes, separados por coma
+            <input value={form.tip_rates || "10,15,20"} onChange={(e) => set("tip_rates", e.target.value)} className="mt-1 h-12 w-full rounded-[14px] border border-[var(--border)] px-3" />
+          </label>
         </div>
         <div className="mt-6 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] p-4">
           <h3 className="text-sm font-semibold uppercase tracking-wide">Pedidos del menú digital</h3>

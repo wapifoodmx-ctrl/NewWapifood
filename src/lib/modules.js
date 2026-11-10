@@ -5,6 +5,7 @@ export const MODULES = [
   { id: "kitchen", title: "Cocina", href: "/cocina", group: "ops", nav: "hoy", icon: "flame", hint: "Comandas en vivo" },
   { id: "tickets", title: "Cuentas", href: "/tickets", group: "ops", nav: "hoy", icon: "receipt", hint: "Ver e imprimir" },
   { id: "turno", title: "Turno de caja", href: "/turno", group: "ops", nav: "hoy", icon: "cash", hint: "Fondo, corte y diferencia" },
+{ id: "propinas", title: "Propinas", href: "/propinas", group: "ops", nav: "hoy", icon: "users", hint: "Reparto del día" },
   { id: "reportes", title: "Reportes", href: "/reportes", group: "ops", nav: "hoy", icon: "list", hint: "Ventas del periodo" },
   { id: "mesas", title: "Mesas", href: "/mesas", group: "setup", nav: "piso", icon: "table", hint: "Mapa del salón" },
   { id: "meseros", title: "Meseros", href: "/meseros", group: "setup", nav: "piso", icon: "users", hint: "Códigos y mesas" },
@@ -37,7 +38,7 @@ export const NAV_SECTIONS = [
   { id: "vender", label: "Vender", icon: "register", items: ["pos", "kiosko", "menu-cliente"] },
   { id: "piso", label: "Cocina y piso", icon: "flame", items: ["kitchen", "mesas", "meseros", "pantallas"] },
   { id: "carta", label: "Tu carta e inventario", icon: "dish", items: ["carta", "insumos", "recetas", "listas"] },
-  { id: "reportes", label: "Reportes", icon: "chart", items: ["dashboard"] },
+  { id: "reportes", label: "Reportes", icon: "chart", items: ["dashboard", "propinas", "turno"] },
   { id: "negocio", label: "Tu negocio", icon: "store", items: ["equipo", "config", "pagos"] },
 ];
 
