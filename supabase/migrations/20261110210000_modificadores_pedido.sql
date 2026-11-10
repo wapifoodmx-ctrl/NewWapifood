@@ -57,7 +57,7 @@ begin
     join public.product_modifier_groups pg on pg.group_id = g.id
     where pg.product_id = v_product
   loop
-    if r.picked < case when r.required then greatest(r.min_select, 1) else r.min_select end then
+    if r.picked < (case when r.required then greatest(r.min_select, 1) else r.min_select end) then
       raise exception 'faltan opciones en %', r.name;
     end if;
     if r.picked > r.max_select then
