@@ -323,7 +323,7 @@ export function TurnoCaja({ restaurantId, initialSession, initialMoves, history,
             {report ? (
               <div className="mt-4 text-sm">
                 <p>Cuentas {report.tickets}. Alimentos {money(report.food)}. Propinas {money(report.tips)}.</p>
-                <p>Descuentos {money(report.discounts)}. Devoluciones {money(report.refunds)}. Cancelaciones {report.cancellations}.</p>
+                <p>Descuentos {money(report.discounts)}. Devoluciones de este turno {money(report.refunds)}, aunque la cuenta se haya cobrado antes. Cancelaciones {report.cancellations}.</p>
                 <ul className="mt-2 space-y-1">
                   {(report.by_method || []).map((row) => (
                     <li key={row.method}>{row.method}: {row.tickets} · {money(row.food)} · propina {money(row.tips)}</li>

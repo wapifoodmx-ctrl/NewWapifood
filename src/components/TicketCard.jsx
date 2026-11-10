@@ -279,7 +279,7 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
               {i.status === "cancelado" ? " · cancelado" : ""}
               {i.stock_resolution === "devuelto" ? " · inventario devuelto" : ""}
               {i.stock_resolution === "merma" ? " · merma" : ""}
-              {Number(i.refunded_amount || 0) > 0 ? ` · reembolsado ${money(i.refunded_amount)}` : ""}
+              {Number(i.refunded_amount || 0) > 0 ? ` · reembolsado ${money(i.refunded_amount)}${i.refunded_at ? ` el ${new Date(i.refunded_at).toLocaleString("es-MX")}` : ""}` : ""}
             </span>
             {order.status === "pagada" && i.status !== "cancelado" ? (
               <span className="flex flex-wrap gap-2">
@@ -315,6 +315,7 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
         {Number(order.refunded_amount || 0) > 0 ? (
           <span className="self-center text-xs text-[var(--color-muted)]">
             Reembolsado: {money(order.refunded_amount)}
+            {order.refunded_at ? ` el ${new Date(order.refunded_at).toLocaleString("es-MX")}` : ""}
           </span>
         ) : null}
         {canCancel ? (

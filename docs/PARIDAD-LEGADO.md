@@ -107,7 +107,7 @@ Migración `supabase/migrations/20261104010000_paridad_caja_equipo_clientes.sql`
 7. **Correo de invitación.** La invitación queda guardada y se acepta cuando esa persona entra con el mismo correo. No se manda mail. Hace falta un proveedor si Hugo quiere el correo.
 8. **Una cuenta, un restaurante.** Quien ya tiene restaurante no acepta la invitación de otro. El legado era igual (un usuario). Si un gerente debe ver dos locales, hay que diseñar sucursales.
 9. **Datos de envío a las 12 horas.** El legado dejaba de mostrarlos. New los conserva en la orden. Borrar la dirección a las 12 h es un cambio de privacidad, no se hizo solo.
-10. **Reembolso.** Devolver inventario no devuelve dinero. Un reembolso parcial contra Mercado Pago o contra el cajón no está modelado.
+10. **Reembolso.** Devolver inventario no devuelve dinero. Cada devolución de dinero guarda su fecha y entra al corte de ese turno. El efectivo sale del cajón solo si hay caja abierta. Mercado Pago sigue como pendiente: no hay reembolso por la API.
 11. **Comentarios de redes y modificadores con mínimo y máximo.** No están en el legado operativo (el extra sí). No se inventó el modelo.
 
 ## Qué sigue pendiente y por qué
