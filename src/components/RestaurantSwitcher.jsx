@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 
 // Permite cambiar de restaurante cuando el usuario pertenece a varios.
 // Guarda la selección en cookie y refresca para que el servidor la use.
-export function RestaurantSwitcher() {
+export function RestaurantSwitcher({ className = "" }) {
   const router = useRouter();
   const [memberships, setMemberships] = useState([]);
   const [current, setCurrent] = useState(null);
@@ -49,7 +49,7 @@ export function RestaurantSwitcher() {
     <select
       value={current || memberships[0]?.restaurant_id}
       onChange={onChange}
-      className="h-9 max-w-[10rem] truncate rounded-[3px] border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-2 text-xs font-semibold"
+      className={`h-12 min-h-12 w-full max-w-full truncate rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-2 text-base font-semibold ${className}`}
       aria-label="Cambiar restaurante"
     >
       {memberships.map((m) => (

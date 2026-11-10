@@ -13,7 +13,7 @@ const ANSWERS = [
   [/mesero/i, "Crea al mesero con un código de 4 a 8 dígitos y asígnale mesas. Entra en /mesero/id-del-restaurante."],
   [/cobr|pago|efectivo|tarjeta|descuento|propina/i, "En la caja elige la mesa, aplica descuento de platillo o de la cuenta y cobra. La propina se escribe aparte y no cambia el precio. El cambio sale del efectivo recibido."],
   [/turno|corte|caj[oó]n/i, "En Turno de caja anotas el fondo, las entradas y las salidas. Al cerrar, cuentas el efectivo. Tarjeta y transferencia no entran al cajón. Puedes cobrar aunque el turno no esté abierto."],
-  [/equipo|invit/i, "En Equipo invitas por correo con rol de administración, caja o cocina. La persona entra con ese correo. Una cuenta solo pertenece a un restaurante."],
+  [/equipo|invit/i, "En Equipo invitas por correo con rol de administración, caja o cocina. La persona entra con ese correo. Una persona puede entrar a varios locales del mismo grupo."],
   [/dividir|separar/i, "En la caja marca los platillos y cobra solo lo marcado. El descuento de toda la cuenta no se reparte entre las partes."],
   [/contraseña|password|sesión/i, "Cambia la contraseña en Recuperar. Cerrar sesión está en la barra del panel."],
   [/plan|suscrip/i, "Los planes se pagan con Mercado Pago en Pagos. El webhook activa el plan. No se puede activar sin pago."],

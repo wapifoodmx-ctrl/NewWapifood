@@ -13,9 +13,9 @@ Flujos de esta matriz: **58**. Cada fila está en un solo grupo.
 | | Antes (main, verificado en código) | Después de este cambio |
 |---|---|---|
 | Completo | 26 | 38 |
-| Parcial | 13 | 7 |
+| Parcial | 13 | 8 |
 | Ausente | 11 | 2 |
-| Distinto | 8 | 11 |
+| Distinto | 8 | 10 |
 
 12 flujos pasaron a completo (horario del menú, liberar mesas, tope en la base, descuento de línea, cambio guardado, merma o devolución, rechazar domicilio, dirección en cocina, total del ticket, equipo, clientes, roles). Tres capacidades que el legado no tenía quedaron operando con regla explícita: áreas, propina y turno. La utilidad exportable pasó de ausente a parcial. Siguen ausentes los comentarios de redes y los modificadores con mínimo y máximo.
 
@@ -72,7 +72,7 @@ Flujos de esta matriz: **58**. Cada fila está en un solo grupo.
 | 47 | Masa | página «en desarrollo» | `/masa` | distinto | distinto |
 | 48 | Comentarios de redes | `componenteComentario.jsx` | — | ausente | ausente |
 | 49 | Grupos de modificadores (mínimo, máximo, obligatorio) | no existían; solo extras | extras | ausente | ausente |
-| 50 | Sucursales | modelo comentado | un restaurante por cuenta | distinto | distinto |
+| 50 | Sucursales | modelo comentado | grupo, selector, copiar menú, reporte por local | distinto | parcial. Una suscripción cubre los locales del grupo. No se envía correo de invitación |
 | 51 | IVA desglosado | no se calcula | no se calcula | distinto | distinto |
 | 52 | WebSocket `/ws` | `websockets.py` | realtime de `orders`, `order_items`, `dining_tables` | distinto | distinto |
 | 53 | OTP de registro | `solicitarOTP.py` | Supabase Auth | distinto | distinto |

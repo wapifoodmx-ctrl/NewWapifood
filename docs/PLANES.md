@@ -41,13 +41,14 @@ Los cobros nuevos guardan el id nuevo (`brasa`, `comal`, `fogon`, `brasas`, `com
 - Cobro: checkout de Mercado Pago, mensual o anual
 - Activación: el webhook llama `activate_plan` con la service role. La firma no cambió
 - Topes: `restaurant_caps` y el trigger `enforce_plan_caps`
-- Migración: `supabase/migrations/20261110043000_planes_brasa.sql`
+- Migración de precios: `supabase/migrations/20261110043000_planes_brasa.sql`
+- Migración de sucursales: `supabase/migrations/20261110052000_sucursales.sql`
 
 ## Subir o bajar de plan
 
 Pagar otro plan deja una suscripción nueva y marca la anterior como `replaced`. No se borran mesas, meseros ni locales. Si ya hay más de los que permite el plan nuevo, no se pueden dar de alta más hasta quitar los que sobran.
 
-El tope de locales ya se aplica al crear una sucursal (`create_additional_restaurant`). El selector, el reporte por local y copiar el menú siguen en el bloque de sucursales.
+El tope de locales se cuenta por grupo, no por persona. La suscripción del local que cobra cubre a los demás. El selector está en el pie del menú. Copiar el menú y el reporte de todos los locales están en Configuración y Reportes.
 
 ## Qué no se tocó
 

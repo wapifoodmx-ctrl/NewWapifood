@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { navModel, roleLabel } from "@/lib/modules";
 import { Icon } from "@/components/ui/Icon";
 import ThemeToggle from "@/components/ThemeToggle";
+import { RestaurantSwitcher } from "@/components/RestaurantSwitcher";
 
 const RAIL_KEY = "wapifood-nav-rail";
 const OPEN_KEY = "wapifood-nav-open";
@@ -288,6 +289,8 @@ export function SideNav({
       ) : null}
 
       <div className="side-foot">
+        {compact ? null : <RestaurantSwitcher className="side-switcher" />}
+        <div className="side-foot-row">
         <button
           type="button"
           className="side-account"
@@ -307,9 +310,11 @@ export function SideNav({
           )}
         </button>
         <ThemeToggle />
+        </div>
         {account ? (
           <div className="side-pop side-account-pop" role="menu" aria-label="Cuenta">
             <p className="side-pop-title">Estás en {restaurantName || "tu restaurante"}</p>
+            {compact ? <RestaurantSwitcher /> : null}
             <button type="button" role="menuitem" className="side-link" onClick={onSignOut}>
               <Icon name="close" size={20} />
               <span className="side-label">Salir</span>
