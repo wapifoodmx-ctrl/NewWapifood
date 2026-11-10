@@ -15,20 +15,23 @@ export default async function PosPage() {
     );
   }
   const rid = membership.restaurant_id;
-  const [{ data: tables }, { data: products }, { data: categories }, { data: orders }, extrasResult] =
+  const [{ data: tables }, { data: products }, { data: categories }, { data: orders }, extrasResult, { data: modifierGroups }, { data: modifierOptions }, { data: modifierLinks }] =
     await Promise.all([
       supabase.from("dining_tables").select("*").eq("restaurant_id", rid).eq("active", true).order("number"),
       supabase.from("products").select("*").eq("restaurant_id", rid).eq("active", true).order("name"),
       supabase.from("categories").select("*").eq("restaurant_id", rid).order("name"),
       supabase
         .from("orders")
-        .select("*, order_items(*, order_item_extras(ingredient_id,qty,extra_price))")
+        .select("*, order_items(*, order_item_extras(ingredient_id,qty,extra_price), order_item_modifiers(id,name,extra_price))")
         .eq("restaurant_id", rid)
         .neq("status", "pagada")
         .neq("status", "cancelada"),
       supabase
         .from("product_extras")
         .select("product_id,ingredient_id,qty,extra_price,ingredients(name,unit)"),
+      supabase.from("modifier_groups").select("id,name,min_select,max_select,required").eq("restaurant_id", rid),
+      supabase.from("modifier_options").select("id,group_id,name,extra_price"),
+      supabase.from("product_modifier_groups").select("product_id,group_id"),
     ]);
 
   return (
@@ -39,6 +42,11 @@ export default async function PosPage() {
         products={products || []}
         categories={categories || []}
         initialOrders={orders || []}
+        modifierGroups={(modifierGroups || []).map((group) => ({
+          ...group,
+          options: (modifierOptions || []).filter((option) => option.group_id === group.id),
+        }))}
+        modifierLinks={modifierLinks || []}
         productExtras={
           extrasResult.error
             ? []

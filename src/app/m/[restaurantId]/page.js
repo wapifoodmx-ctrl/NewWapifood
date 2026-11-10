@@ -44,6 +44,8 @@ export default async function PublicMenuPage({ params }) {
       deliveryEnabled={!!data.profile?.delivery_enabled}
       orderSource="web_menu"
       productExtras={data.extras || []}
+      modifierGroups={data.modifierGroups || []}
+      modifierLinks={data.modifierLinks || []}
       schedule={data.profile?.schedule || ""}
     />
   );

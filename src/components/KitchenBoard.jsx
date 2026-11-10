@@ -32,7 +32,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
     const { data, error } = await supabase
       .from("orders")
       .select(
-        "id,status,source,order_type,customer_name,customer_phone,delivery_address,opened_at,needs_confirmation,public_code,table_id,order_items(id,product_id,qty,unit_price,notes,status),dining_tables(number,channel_type)",
+        "id,status,source,order_type,customer_name,customer_phone,delivery_address,opened_at,needs_confirmation,public_code,table_id,order_items(id,product_id,qty,unit_price,notes,status,order_item_modifiers(id,name)),dining_tables(number,channel_type)",
       )
       .eq("restaurant_id", restaurantId)
       .in("status", ["cocina", "lista", "pendiente", "abierta", "entregada"])
@@ -331,6 +331,9 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
                       </p>
                       <p className="text-base font-bold text-[var(--ink-soft)]">{im.label}</p>
                       {i.notes ? <p className="text-lg font-bold text-[var(--primary)]">Nota: {i.notes}</p> : null}
+                      {(i.order_item_modifiers || []).map((mod) => (
+                        <p key={mod.id || mod.name} className="text-lg font-bold">+ {mod.name}</p>
+                      ))}
                       {order.status !== "pendiente" && st !== "cancelado" ? (
                         <div className="mt-2 flex flex-wrap gap-2">
                           {st === "pendiente" ? (

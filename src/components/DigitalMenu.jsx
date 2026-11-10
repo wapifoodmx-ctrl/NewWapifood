@@ -7,7 +7,8 @@ import { extraPayload, extrasCharge, extrasForProduct } from "@/lib/extras";
 import { isOpenNow } from "@/lib/hours";
 import { toast } from "@/components/ui/Toast";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
-import { ExtrasLines, ExtrasPicker } from "@/components/ExtrasPicker";
+import { ExtrasLines, ExtrasPicker, ModifierGroups } from "@/components/ExtrasPicker";
+import { groupsForProduct, modifierError, toggleModifier } from "@/lib/modifiers";
 
 /**
  * Menú digital / kiosko — paridad Menucliente (ProductDetailModal, CartModal, etc.)
@@ -24,6 +25,8 @@ export function DigitalMenu({
   orderSource = "web_menu",
   fixedTableId = null,
   productExtras = [],
+  modifierGroups = [],
+  modifierLinks = [],
   schedule = "",
 }) {
   const primary = theme?.primary_color || "var(--color-saffron-glow)";
@@ -44,6 +47,7 @@ export function DigitalMenu({
   const [detailQty, setDetailQty] = useState(1);
   const [detailNote, setDetailNote] = useState("");
   const [detailExtras, setDetailExtras] = useState([]);
+  const [detailModifiers, setDetailModifiers] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const openNow = orderSource !== "web_menu" || isOpenNow(schedule);
@@ -60,6 +64,7 @@ export function DigitalMenu({
     setDetailQty(1);
     setDetailNote("");
     setDetailExtras([]);
+    setDetailModifiers([]);
   }
 
   function toggleDetailExtra(extra) {
@@ -72,10 +77,16 @@ export function DigitalMenu({
 
   function addFromDetail() {
     if (!detail) return;
+    const groupError = modifierError(groupsForProduct(modifierGroups, modifierLinks, detail.id), detailModifiers);
+    if (groupError) {
+      toast.error(groupError);
+      return;
+    }
     setCart((c) => {
       const key = detail.id;
       const extraKey = extraPayload(detailExtras).map((e) => e.ingredient_id).sort().join(",");
-      const f = c.find((x) => x.product_id === key && (x.note || "") === (detailNote || "") && extraPayload(x.extras).map((e) => e.ingredient_id).sort().join(",") === extraKey);
+      const modKey = (detailModifiers || []).map((item) => item.option_id).sort().join(",");
+      const f = c.find((x) => x.product_id === key && (x.note || "") === (detailNote || "") && extraPayload(x.extras).map((e) => e.ingredient_id).sort().join(",") === extraKey && (x.modifiers || []).map((item) => item.option_id).sort().join(",") === modKey);
       if (f) {
         return c.map((x) =>
           x === f ? { ...x, qty: x.qty + detailQty } : x,
@@ -90,6 +101,7 @@ export function DigitalMenu({
           qty: detailQty,
           note: detailNote.trim() || "",
           extras: detailExtras,
+          modifiers: detailModifiers,
         },
       ];
     });
@@ -98,7 +110,7 @@ export function DigitalMenu({
   }
 
   function addQuick(p) {
-    if (extrasForProduct(productExtras, p.id).length) {
+    if (extrasForProduct(productExtras, p.id).length || groupsForProduct(modifierGroups, modifierLinks, p.id).length) {
       openDetail(p);
       return;
     }
@@ -174,6 +186,7 @@ export function DigitalMenu({
           qty: i.qty,
           notes: i.note || null,
           extras: extraPayload(i.extras),
+          modifiers: (i.modifiers || []).map((item) => ({ option_id: item.option_id })),
         })),
         p_customer_name: name || null,
         p_notes: notesCombined || null,
@@ -343,8 +356,13 @@ export function DigitalMenu({
                 selected={detailExtras}
                 onToggle={toggleDetailExtra}
               />
+              <ModifierGroups
+                groups={groupsForProduct(modifierGroups, modifierLinks, detail.id)}
+                selected={detailModifiers}
+                onToggle={(option) => setDetailModifiers((list) => toggleModifier(groupsForProduct(modifierGroups, modifierLinks, detail.id), list, option))}
+              />
               <p className="mt-3 text-sm font-semibold">
-                {money((Number(detail.price) + extrasCharge(detailExtras)) * detailQty)}
+                {money((Number(detail.price) + extrasCharge(detailExtras) + extrasCharge(detailModifiers)) * detailQty)}
               </p>
               <label className="mt-3 block text-xs font-semibold uppercase">
                 Nota (opcional)

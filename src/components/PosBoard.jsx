@@ -15,12 +15,14 @@ import { Icon } from "@/components/ui/Icon";
 import { QuePaso } from "@/components/QuePaso";
 import { askManagerPin } from "@/lib/managerPin";
 import { MesaTools } from "@/components/MesaTools";
+import { ModifierGroups } from "@/components/ExtrasPicker";
+import { groupsForProduct, modifierError, toggleModifier } from "@/lib/modifiers";
 import { PAY_METHODS, cashSuggestions, categoryColor, haptic, payLabel, tableStateMeta } from "@/lib/brand";
 
 /**
  * POS — paridad gradual con Puntodeventa (CarritoModal + ModalsPago).
  */
-export function PosBoard({ restaurantId, tables: initialTables, products, categories, initialOrders, productExtras = [] }) {
+export function PosBoard({ restaurantId, tables: initialTables, products, categories, initialOrders, productExtras = [], modifierGroups = [], modifierLinks = [] }) {
   const [tables, setTables] = useState(initialTables || []);
   const [orders, setOrders] = useState(initialOrders);
   const [live, setLive] = useState(false);
@@ -78,7 +80,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       const { data } = await supabase
         .from("orders")
         .select(
-          "id,status,source,table_id,opened_at,public_code,order_items(id,product_id,qty,unit_price,notes,status,discount_type,discount_value,stock_resolution,refunded_amount,order_item_extras(ingredient_id,qty,extra_price)),dining_tables(number,channel_type,state)",
+          "id,status,source,table_id,opened_at,public_code,order_items(id,product_id,qty,unit_price,notes,status,discount_type,discount_value,stock_resolution,refunded_amount,order_item_extras(ingredient_id,qty,extra_price),order_item_modifiers(id,name,extra_price)),dining_tables(number,channel_type,state)",
         )
         .eq("restaurant_id", restaurantId)
         .neq("status", "pagada")
@@ -161,7 +163,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   async function refresh() {
     const { data } = await supabase
       .from("orders")
-      .select("*, order_items(*, order_item_extras(ingredient_id,qty,extra_price))")
+      .select("*, order_items(*, order_item_extras(ingredient_id,qty,extra_price),order_item_modifiers(id,name,extra_price))")
       .eq("restaurant_id", restaurantId)
       .neq("status", "pagada")
       .neq("status", "cancelada");
@@ -186,7 +188,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         status: "abierta",
         source: "pos",
       })
-      .select("*, order_items(*, order_item_extras(ingredient_id,qty,extra_price))")
+      .select("*, order_items(*, order_item_extras(ingredient_id,qty,extra_price),order_item_modifiers(id,name,extra_price))")
       .single();
     setLoading(false);
     if (error) {
@@ -200,8 +202,9 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
 
   function chooseProduct(product) {
     const extras = extrasForProduct(productExtras, product.id);
-    if (extras.length) {
-      setExtraPick({ product, selected: [] });
+    const groups = groupsForProduct(modifierGroups, modifierLinks, product.id);
+    if (extras.length || groups.length) {
+      setExtraPick({ product, selected: [], modifiers: [] });
       return;
     }
     addItem(product, []);
@@ -225,7 +228,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     }
   }
 
-  async function addItem(product, selected = []) {
+  async function addItem(product, selected = [], modifiers = []) {
     if (!order) {
       toast.warning("Elige una mesa primero");
       return;
@@ -255,6 +258,15 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       lineId = data.id;
     }
     await saveLineExtras(order.id, product.id, selected, lineId);
+    if (modifiers?.length && lineId) {
+      await supabase.from("order_item_modifiers").insert(modifiers.map((item) => ({
+        order_item_id: lineId,
+        order_id: order.id,
+        option_id: item.option_id,
+        name: item.name,
+        extra_price: Number(item.extra_price) || 0,
+      })));
+    }
     await refresh();
     setLoading(false);
     setFlashId(product.id);
@@ -660,6 +672,9 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                   <p className="text-sm font-bold text-[var(--ink-soft)]">{itemStatusMeta(i.status).label}</p>
                   {i.notes ? <p className="text-base text-[var(--primary)]">{i.notes}</p> : null}
                   <ExtrasLines extras={i.order_item_extras} />
+                  {(i.order_item_modifiers || []).map((mod) => (
+                    <p key={mod.id || mod.name} className="text-sm text-[var(--primary)]">+ {mod.name}</p>
+                  ))}
                 </div>
                 <span className="text-lg font-extrabold">{money(lineAmount(i))}</span>
               </div>
@@ -985,6 +1000,11 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 })
               }
             />
+            <ModifierGroups
+              groups={groupsForProduct(modifierGroups, modifierLinks, extraPick.product.id)}
+              selected={extraPick.modifiers || []}
+              onToggle={(option) => setExtraPick((pick) => pick ? { ...pick, modifiers: toggleModifier(groupsForProduct(modifierGroups, modifierLinks, pick.product.id), pick.modifiers || [], option) } : pick)}
+            />
             <div className="mt-5 flex gap-2">
               <button type="button" onClick={() => setExtraPick(null)} className="btn-ghost flex-1">
                 Cancelar
@@ -993,8 +1013,10 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 type="button"
                 onClick={() => {
                   const pick = extraPick;
+                  const groupError = modifierError(groupsForProduct(modifierGroups, modifierLinks, pick.product.id), pick.modifiers || []);
+                  if (groupError) return toast.error(groupError);
                   setExtraPick(null);
-                  addItem(pick.product, pick.selected);
+                  addItem(pick.product, pick.selected, pick.modifiers || []);
                 }}
                 className="btn-lg btn-primary flex-1"
               >

@@ -14,7 +14,17 @@ export async function loadPublicMenu(restaurantId) {
     p_restaurant: restaurantId,
   });
 
-  const [{ data: products }, { data: categories }, { data: tables }, { data: theme }, { data: profile }, extrasResult] =
+  const [
+    { data: products },
+    { data: categories },
+    { data: tables },
+    { data: theme },
+    { data: profile },
+    extrasResult,
+    { data: modifierGroups },
+    { data: modifierOptions },
+    { data: modifierLinks },
+  ] =
     await Promise.all([
       supabase
         .from("products")
@@ -43,6 +53,9 @@ export async function loadPublicMenu(restaurantId) {
         .from("product_extras")
         .select("product_id,ingredient_id,qty,extra_price,ingredients(name,unit)")
         .limit(500),
+      supabase.from("modifier_groups").select("id,name,min_select,max_select,required").eq("restaurant_id", restaurantId),
+      supabase.from("modifier_options").select("id,group_id,name,extra_price"),
+      supabase.from("product_modifier_groups").select("product_id,group_id"),
     ]);
 
   const extras = extrasResult.error
@@ -57,6 +70,11 @@ export async function loadPublicMenu(restaurantId) {
     theme: theme || null,
     profile: profile || null,
     extras,
+    modifierGroups: (modifierGroups || []).map((group) => ({
+      ...group,
+      options: (modifierOptions || []).filter((option) => option.group_id === group.id),
+    })),
+    modifierLinks: (modifierLinks || []).filter((link) => products?.some((product) => product.id === link.product_id)),
     canOperate: !!canOps,
   };
 }

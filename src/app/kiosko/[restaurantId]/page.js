@@ -45,6 +45,8 @@ export default async function KioskPage({ params }) {
       orderSource="kiosko"
       fixedTableId={kioskTable?.id || null}
       productExtras={data.extras || []}
+      modifierGroups={data.modifierGroups || []}
+      modifierLinks={data.modifierLinks || []}
     />
   );
 }

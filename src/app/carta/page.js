@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { AppShell } from "@/components/AppShell";
 import { CartaManager } from "@/components/CartaManager";
+import { ModificadoresPanel } from "@/components/ModificadoresPanel";
 import { requireTenantSetup } from "@/lib/auth";
 
 export default async function CartaPage() {
@@ -25,6 +26,7 @@ export default async function CartaPage() {
       <p className="mb-4 text-[var(--color-muted)]">
         Alta y edición de productos, categorías, precios, costos y fotos.
       </p>
+      <ModificadoresPanel restaurantId={rid} products={products || []} />
       <CartaManager
         restaurantId={rid}
         initialProducts={products || []}

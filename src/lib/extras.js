@@ -23,7 +23,8 @@ export function extrasCharge(extras) {
 export function lineAmount(item) {
   if ((item?.status || "pendiente") === "cancelado") return 0;
   const extras = item?.order_item_extras || item?.extras || [];
-  let line = (Number(item?.unit_price ?? item?.price) + extrasCharge(extras)) * Number(item?.qty || 0);
+  const mods = item?.order_item_modifiers || item?.modifiers || [];
+  let line = (Number(item?.unit_price ?? item?.price) + extrasCharge(extras) + extrasCharge(mods)) * Number(item?.qty || 0);
   if (item?.discount_type === "porcentaje") {
     line -= line * (Number(item.discount_value) || 0) / 100;
   }
