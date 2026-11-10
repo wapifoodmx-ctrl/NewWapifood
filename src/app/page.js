@@ -36,9 +36,9 @@ export default function LandingPage() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <OriginButton className="btn btn-ghost hidden items-center justify-center px-4 no-underline sm:inline-flex" onClick={() => document.getElementById("precios")?.scrollIntoView({ behavior: "smooth" })}>
+          <Link href="/precios" className="btn btn-ghost hidden items-center justify-center px-4 no-underline sm:inline-flex">
             Precios
-          </OriginButton>
+          </Link>
           <OriginButton
             className="btn btn-ghost hidden items-center justify-center px-4 no-underline sm:inline-flex"
             onClick={() => router.push("/login")}
@@ -124,6 +124,63 @@ export default function LandingPage() {
       </section>
 
       <PricingSection />
+
+      <section className="mx-auto max-w-6xl px-4 py-14">
+        <SplitText tag="h2" text="Así se ve el día a día" className="text-4xl" effect="blur" />
+        <p className="mt-2 max-w-2xl text-lg text-[var(--ink-soft)]">Estas son las pantallas reales del sistema, no fotos de otro producto.</p>
+        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+          {[
+            { t: "Caja", rows: ["Mesa 4 · abierta", "2 tacos · sin cebolla", "1 agua", "Cobrar"] },
+            { t: "Cocina", rows: ["Mesa 4 · 6 min", "2 tacos al pastor", "Nota: sin cebolla", "Listo"] },
+            { t: "Cuentas", rows: ["Ticket 1842", "Efectivo", "Total $186", "Imprimir"] },
+          ].map((shot) => (
+            <article key={shot.t} className="card p-4">
+              <p className="text-sm font-bold uppercase tracking-wide text-[var(--primary)]">{shot.t}</p>
+              <div className="mt-3 rounded-2xl bg-[var(--surface-2)] p-4">
+                {shot.rows.map((row) => (
+                  <p key={row} className="border-b border-[var(--border)] py-2 text-lg last:border-0">{row}</p>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="border-t border-[var(--border)] bg-[var(--surface)] py-14">
+        <div className="mx-auto max-w-6xl px-4">
+          <SplitText tag="h2" text="Preguntas frecuentes" className="text-4xl" effect="blur" />
+          <div className="mt-6 grid gap-3">
+            {[
+              ["¿El anual sale más barato?", "Sí. Pagas 10 meses y usas el plan 12. En cada tarjeta se ve cuánto ahorras."],
+              ["¿Varios locales se cobran aparte?", "No. El precio de Brasas, Comales o Fogones es el total del grupo. Cada local conserva sus mesas y meseros."],
+              ["¿Puedo bajar de plan?", "Sí. No se borran mesas, meseros ni locales. Si ya hay más de los que permite el plan nuevo, no se pueden dar de alta más hasta quitar los que sobran."],
+              ["¿Hay prueba?", "Una cuenta nueva tiene 14 días en Brasa, sin cobro. Para vender de verdad se elige un plan."],
+            ].map(([q, a]) => (
+              <details key={q} className="rounded-2xl bg-[var(--bg)] p-4">
+                <summary className="cursor-pointer text-xl">{q}</summary>
+                <p className="mt-2 text-lg text-[var(--ink-soft)]">{a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 py-14">
+        <SplitText tag="h2" text="Ejemplos de lo que diría alguien" className="text-4xl" effect="blur" />
+        <p className="mt-2 text-lg font-bold text-[var(--primary)]">Estos comentarios son ejemplos. No son de clientes reales.</p>
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          {[
+            ["Ana, fonda", "Cobré la primera cuenta sin que me explicaran la caja."],
+            ["Luis, cafetería", "La cocina ve la nota del platillo antes de que yo grite."],
+            ["Mara, dos locales", "Un solo pago cubre los dos. Cada uno tiene sus mesas."],
+          ].map(([who, quote]) => (
+            <blockquote key={who} className="card p-5">
+              <p className="text-lg">“{quote}”</p>
+              <footer className="mt-3 text-sm text-[var(--ink-soft)]">{who} · ejemplo</footer>
+            </blockquote>
+          ))}
+        </div>
+      </section>
 
       <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-8 text-base text-[var(--ink-soft)]">
         <p>Wapifood · el sistema de tu restaurante</p>

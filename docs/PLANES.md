@@ -38,6 +38,7 @@ Los cobros nuevos guardan el id nuevo (`brasa`, `comal`, `fogon`, `brasas`, `com
 ## Dónde vive
 
 - Precios y nombres: [src/lib/plans.js](../src/lib/plans.js)
+- Landing: [src/app/page.js](../src/app/page.js). Página de precios: [src/app/precios/page.js](../src/app/precios/page.js). El plan dentro de la app usa las mismas tarjetas.
 - Cobro: checkout de Mercado Pago, mensual o anual
 - Activación: el webhook llama `activate_plan` con la service role. La firma no cambió
 - Topes: `restaurant_caps` y el trigger `enforce_plan_caps`

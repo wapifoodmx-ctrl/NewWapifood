@@ -6,7 +6,7 @@ import { PLANS, moneyMX } from "@/lib/plans";
 import SplitText from "@/components/SplitText";
 import PixelCard from "@/components/PixelCard";
 
-export function PricingSection() {
+export function PricingSection({ onChoose, busy = false }) {
   const [billing, setBilling] = useState("mensual");
   const [mode, setMode] = useState("single");
   const appTheme = useSyncExternalStore(
@@ -114,6 +114,11 @@ export function PricingSection() {
                   <span className="text-4xl font-semibold tracking-tight">{moneyMX(price)}</span>
                   <span className="ml-2 text-sm text-[var(--color-muted)]">{period}</span>
                 </p>
+                <p className="mt-1 text-sm font-semibold text-[var(--color-sage)]">
+                  {billing === "anual"
+                    ? `Ahorras ${moneyMX(plan.monthly * 12 - plan.yearly)} frente a pagar mes a mes.`
+                    : `El anual sale en ${moneyMX(plan.yearly)}: dos meses no se cobran.`}
+                </p>
                 <div className="mt-4 flex gap-3 text-sm">
                   <span className="rounded-full bg-[var(--color-paper)] px-3 py-1 font-semibold">
                     {plan.mesas} mesas{plan.multi ? " por local" : ""}
@@ -130,16 +135,31 @@ export function PricingSection() {
                     </li>
                   ))}
                 </ul>
-                <Link
-                  href="/login"
-                  className={`mt-6 inline-flex h-12 w-full items-center justify-center rounded-2xl text-sm font-semibold ${
-                    plan.popular
-                      ? "bg-[var(--color-ember)] text-white"
-                      : "bg-[var(--color-ink)] text-[var(--color-cream)]"
-                  }`}
-                >
-                  Empezar con {plan.title.replace("Plan ", "")}
-                </Link>
+                {onChoose ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onChoose(plan, billing)}
+                    className={`mt-6 inline-flex h-12 w-full items-center justify-center rounded-2xl text-sm font-semibold disabled:opacity-60 ${
+                      plan.popular
+                        ? "bg-[var(--color-ember)] text-white"
+                        : "bg-[var(--color-ink)] text-[var(--color-cream)]"
+                    }`}
+                  >
+                    {busy ? "Redirigiendo…" : `Pagar ${plan.title}`}
+                  </button>
+                ) : (
+                  <Link
+                    href="/login"
+                    className={`mt-6 inline-flex h-12 w-full items-center justify-center rounded-2xl text-sm font-semibold ${
+                      plan.popular
+                        ? "bg-[var(--color-ember)] text-white"
+                        : "bg-[var(--color-ink)] text-[var(--color-cream)]"
+                    }`}
+                  >
+                    Empezar con {plan.title}
+                  </Link>
+                )}
               </>
             );
             return (
