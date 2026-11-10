@@ -10,7 +10,7 @@ returns void
 language plpgsql
 security definer
 set search_path = public
-as $mod$
+as $$
 declare
   v_order uuid;
   v_product uuid;
@@ -65,7 +65,7 @@ begin
     end if;
   end loop;
 end;
-$mod$;
+$$;
 
 revoke all on function public.save_line_modifiers(uuid, uuid, text, jsonb) from public;
 grant execute on function public.save_line_modifiers(uuid, uuid, text, jsonb) to anon, authenticated;

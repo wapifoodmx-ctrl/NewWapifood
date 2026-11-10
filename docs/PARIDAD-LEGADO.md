@@ -1,6 +1,6 @@
 # Paridad Wapifood legado → NewWapifood
 
-Fecha: 2026-11-04. El detalle de cada pantalla y endpoint está en `docs/LEGADO-INVENTARIO.md`. Esta matriz solo marca el estado en New, con la ruta de los dos lados. Nada queda en «completo» sin un camino de código de punta a punta.
+Fecha: 2026-11-10. El detalle de cada pantalla y endpoint está en `docs/LEGADO-INVENTARIO.md`. Esta matriz solo marca el estado en New, con la ruta de los dos lados. Nada queda en «completo» sin un camino de código de punta a punta.
 
 Leyenda: **completo**, **parcial** (se dice qué falta), **ausente**, **distinto** (a propósito o porque el legado tampoco lo tenía y aquí se tomó una regla explícita).
 
@@ -12,18 +12,18 @@ Flujos de esta matriz: **58**. Cada fila está en un solo grupo.
 
 | | Antes (main, verificado en código) | Después de este cambio |
 |---|---|---|
-| Completo | 26 | 38 |
-| Parcial | 13 | 8 |
-| Ausente | 11 | 2 |
-| Distinto | 8 | 10 |
+| Completo | 38 | 41 |
+| Parcial | 7 | 4 |
+| Ausente | 2 | 1 |
+| Distinto | 11 | 12 |
 
-12 flujos pasaron a completo (horario del menú, liberar mesas, tope en la base, descuento de línea, cambio guardado, merma o devolución, rechazar domicilio, dirección en cocina, total del ticket, equipo, clientes, roles). Tres capacidades que el legado no tenía quedaron operando con regla explícita: áreas, propina y turno. La utilidad exportable pasó de ausente a parcial. Siguen ausentes los comentarios de redes y los modificadores con mínimo y máximo.
+Pasaron a completo las dos líneas del mismo platillo, la ficha del mesero con descuento y el margen desde la receta. Los modificadores con mínimo y máximo ya operan; el legado no los tenía. Sigue ausente el comentario de redes.
 
 ## Matriz
 
 | # | Flujo legado | Legado | New | Antes | Ahora |
 |---|---|---|---|---|---|
-| 1 | Landing y precios | `pages/index.js` | `src/app/page.js` | completo | completo |
+| 1 | Landing y precios | `pages/index.js` | `src/app/page.js`, `/precios` | completo | completo. Misma tarjeta en Plan |
 | 2 | Login, recuperar, confirmar | `login`, `resetLink`, `resetpass` | `/login`, `/recuperar`, `/auth` | completo | completo |
 | 3 | Alta sin seed | `POST /user` | `create_my_restaurant` | completo | completo |
 | 4 | Perfil, logo, horario, código | `user/userpage.jsx`, `/user/me/info` | `ConfigPanel.jsx` | completo | completo |
@@ -40,7 +40,7 @@ Flujos de esta matriz: **58**. Cada fila está en un solo grupo.
 | 15 | Áreas de mesa | no existían | `dining_areas`, selector en Mesas | ausente | distinto. Se agregaron porque el encargo las pidió. No cambian el cobro |
 | 16 | Tope de mesas y meseros en la base | `waiters.py` `PLAN_WAITER_LIMITS`, `POST /tables/generate` | trigger `enforce_plan_caps` | parcial. El tope de meseros solo estaba en la pantalla | completo. Topes nuevos en `docs/PLANES.md`: 5/15/25 mesas y 3/7/15 meseros. El legado sigue en 2/5/10 meseros |
 | 17 | POS: abrir, sumar, nota, cocina | `Puntodeventa/` | `PosBoard.jsx`, `send_order_to_kitchen` | completo | completo |
-| 18 | Mismo producto en dos líneas | `orders_details` sin unicidad | PK `(order_id, product_id)` | parcial | parcial. Sigue una sola línea por producto |
+| 18 | Mismo producto en dos líneas | `orders_details` sin unicidad | `order_items_one_per_notes` | parcial | completo. La nota distingue la línea. El adicional queda en esa línea |
 | 19 | Descuento de línea y luego de la orden | `crear_orden` en `orders.py` | `set_item_discount`, `set_order_discount`, `order_subtotal` | parcial. La orden sí; la línea solo tenía columna | completo en caja y en SQL |
 | 20 | Cobro efectivo, tarjeta, transferencia | `cambio_estatus` + `metodo_pago` | `close_order` | completo | completo |
 | 21 | Efectivo recibido y cambio guardados | no se guardaban; la caja solo lo mostraba | `orders.cash_tendered`, `change_amount` | parcial | completo |
@@ -57,10 +57,10 @@ Flujos de esta matriz: **58**. Cada fila está en un solo grupo.
 | 32 | Menú QR, código, kiosko, tablet | `clientmenu`, `webmenu`, `kiosko`, mesero | `/m`, `/kiosko`, `/tablet`, `/mesero` | completo | completo |
 | 33 | Beeper `/t/{id}` | ticket externo | `get_public_ticket` | completo | completo |
 | 34 | Mesero por código y mesas | `/login/waiter`, assignments | `waiter_login`, `WaiterApp` | completo | completo |
-| 35 | Historial de venta del mesero | `orders-history` | conteo en `/meseros` | parcial. Suma precio × cantidad, sin descuento ni propina | parcial. El reporte nuevo sí resta descuentos; la ficha del mesero no |
+| 35 | Historial de venta del mesero | `orders-history` | `/meseros` | parcial. Suma precio × cantidad, sin descuento ni propina | completo. Usa lo cobrado, ya con descuentos, y muestra el margen de la receta |
 | 36 | Comentarios de orden | `/orders/{uuid}/comments` | `order_comments` | completo | completo |
 | 37 | Dashboard día, semana, mes, año | `analytics/*` | `DashboardInsights.jsx` | parcial. Sin utilidad ni CSV | parcial. Sigue el tablero. El CSV y el margen están en Reportes |
-| 38 | Utilidad y export | `get-utilidades` | `sales_report`, `/reportes` | ausente | parcial. El margen usa `products.cost`, no la receta, y no resta descuentos |
+| 38 | Utilidad y export | `get-utilidades` | `sales_report`, `/reportes` | ausente | completo. El margen es lo cobrado menos el costo de la receta. Si no hay receta, usa el costo del platillo |
 | 39 | Tickets, impresión, PDF | `Ticketview`, `pdfGenerator.js` | `TicketCard`, `ticketPdf.js` | parcial. El total ignoraba descuento | completo en el total (descuento de orden y de línea). El PDF sigue siendo texto, no el formato del legado |
 | 40 | Plan Mercado Pago | `payments.py` | `/pagos`, webhook | completo | completo. Sin Stripe |
 | 41 | Activar plan sin pago | `POST /free/activate-plan` | no existe | distinto | distinto |
@@ -71,9 +71,9 @@ Flujos de esta matriz: **58**. Cada fila está en un solo grupo.
 | 46 | Chatbot remoto | `POST /api/chatbot` | `helpAnswers.js` | distinto | distinto |
 | 47 | Masa | página «en desarrollo» | `/masa` | distinto | distinto |
 | 48 | Comentarios de redes | `componenteComentario.jsx` | — | ausente | ausente |
-| 49 | Grupos de modificadores (mínimo, máximo, obligatorio) | no existían; solo extras | extras | ausente | ausente |
+| 49 | Grupos de modificadores (mínimo, máximo, obligatorio) | no existían; solo extras | `modifier_groups`, caja, menú y cocina | ausente | distinto. Se eligen en caja y menú. Cocina los ve. El precio extra se suma por pieza |
 | 50 | Sucursales | modelo comentado | grupo, selector, copiar menú, reporte por local | distinto | parcial. Una suscripción cubre los locales del grupo. No se envía correo de invitación |
-| 51 | IVA desglosado | no se calcula | no se calcula | distinto | distinto |
+| 51 | IVA desglosado | no se calcula | opcional, incluido en el precio | distinto | distinto. 16% solo se muestra. No se suma. Apagado por defecto |
 | 52 | WebSocket `/ws` | `websockets.py` | realtime de `orders`, `order_items`, `dining_tables` | distinto | distinto |
 | 53 | OTP de registro | `solicitarOTP.py` | Supabase Auth | distinto | distinto |
 | 54 | Datos de envío caducan a las 12 h | `delivery-info` | la orden guarda la dirección sin caducidad | parcial | parcial |
@@ -82,13 +82,13 @@ Flujos de esta matriz: **58**. Cada fila está en un solo grupo.
 | 57 | Código de confirmación en mesa | `confirmation-code` | `place_public_order` | completo | completo |
 | 58 | Impresora de comandas en cocina | no hay servicio; imprime el navegador en tickets | igual en Cuentas | completo | completo |
 
-Grupos de después, sin repetir filas: completo 1–11, 13, 14, 16, 17, 19–21, 24–34, 36, 39, 40, 42, 43, 45, 56–58 (38). Parcial 12, 18, 35, 37, 38, 54, 55 (7). Ausente 48, 49 (2). Distinto 15, 22, 23, 41, 44, 46, 47, 50–53 (11).
+Grupos actuales: completo 1–11, 13, 14, 16–21, 24–36, 38–40, 42, 43, 45, 56–58 (41). Parcial 12, 37, 54, 55 (4). Ausente 48 (1). Distinto 15, 22, 23, 41, 44, 46, 47, 49–53 (12).
 
 ## Reglas de dinero que quedaron escritas
 
 Migración `supabase/migrations/20261104010000_paridad_caja_equipo_clientes.sql`.
 
-- El precio capturado es lo que se cobra. No hay IVA.
+- El precio capturado es lo que se cobra. El IVA 16% es opcional y solo se muestra como incluido. No se suma.
 - Descuento de línea primero. Descuento de la orden después, sobre ese subtotal. Igual que `crear_orden`.
 - Propina default 0. A cobrar = alimentos ya descontados + propina. No hay porcentaje automático.
 - Cambio = efectivo recibido − a cobrar, a centavos (`round` de Postgres, half away from zero).
@@ -101,23 +101,22 @@ Migración `supabase/migrations/20261104010000_paridad_caja_equipo_clientes.sql`
 1. **Mesas por plan.** El comentario viejo del enum dice 1 / 16 / 26. Hugo fijó los topes nuevos en `docs/PLANES.md` (5 / 15 / 25 mesas y 3 / 7 / 15 meseros). `plans.js` y `restaurant_caps` usan esos números. Quien ya pagaba no pierde mesas ni meseros: los topes nuevos son iguales o más altos.
 2. **Propina.** El legado no la guardaba. Aquí es opcional y no entra al precio. Si debe ser un porcentaje sugerido, o si la propina con tarjeta también entra al cajón, hay que decirlo. Hoy la de tarjeta solo se registra.
 3. **Turno obligatorio.** Hoy se puede cobrar con el turno cerrado, porque el legado no tenía corte. Si el cajón debe rechazar el efectivo sin turno, es un cambio de una línea en `close_order`.
-4. **Una línea por producto.** Dos «tacos al pastor» con notas distintas se suman en la misma línea. Separarlos implica cambiar la llave de `order_items` y de `order_item_extras`. No se hizo para no romper las órdenes vivas.
+4. **Una línea por producto y nota.** Dos «tacos al pastor» con notas distintas son dos líneas. Las órdenes vivas no se borraron. El adicional queda pegado a la línea.
 5. **Cuándo descuenta inventario el domicilio.** Al cobrar, no al aceptar. El API legado armaba la orden al aceptar y el micro (ausente en GitHub) descontaba en otro momento. Descontar al aceptar y otra vez al cobrar duplicaría la salida.
-6. **Margen.** Es precio de venta menos `products.cost`. No resta descuentos ni usa los gramos de la receta. Si el margen debe salir de la receta, hace falta definir de dónde sale el costo del insumo: la tabla `ingredients` no tiene costo.
+6. **Margen.** Es lo cobrado, ya con descuentos, menos el costo de la receta. Si el platillo no tiene receta, se usa `products.cost`. La compra deja el costo del insumo como promedio de lo que había y lo que llegó.
 7. **Correo de invitación.** La invitación queda guardada y se acepta cuando esa persona entra con el mismo correo. No se manda mail. Hace falta un proveedor si Hugo quiere el correo.
 8. **Una cuenta, un restaurante.** Quien ya tiene restaurante no acepta la invitación de otro. El legado era igual (un usuario). Si un gerente debe ver dos locales, hay que diseñar sucursales.
 9. **Datos de envío a las 12 horas.** El legado dejaba de mostrarlos. New los conserva en la orden. Borrar la dirección a las 12 h es un cambio de privacidad, no se hizo solo.
 10. **Reembolso.** El asistente pregunta qué pasó, inventario o merma, y si se devuelve dinero. El efectivo sale del cajón si hay caja abierta y entra al corte de ese momento. Tarjeta y Mercado Pago quedan pendientes: no hay reembolso por la API. El PIN de gerente es opcional. Todo queda en `action_log`.
-11. **Comentarios de redes y modificadores con mínimo y máximo.** No están en el legado operativo (el extra sí). No se inventó el modelo.
+11. **Modificadores.** El legado no tenía mínimo, máximo ni obligatorio. Aquí se arman en la carta y se eligen en caja y menú. Cocina ve el nombre. El precio extra se suma por pieza, como un adicional.
 
 ## Qué sigue pendiente y por qué
 
-- Dos líneas del mismo platillo (decisión 4).
 - Carrusel de pantallas como el legado.
-- Ficha del mesero sin descuento.
 - Caducidad de 12 h de la dirección (decisión 9).
 - Recorte del dashboard por plan.
-- Margen desde la receta (decisión 6).
 - Correo de invitación (decisión 7).
-- Comentarios sociales y modificadores avanzados (decisión 11).
+- Comentarios de redes.
+- CFDI, modo sin conexión y lealtad.
+- Reembolso de Mercado Pago por la API. El folio se guarda, pero el token de cobro es de producción y no se hizo un cargo real.
 - La migración `20261104010000` corre en el deploy a `main`, no en este preview. Hasta entonces Turno, Clientes, Equipo invitable, Reportes y la propina guardada muestran el aviso o caen al cobro anterior. La caja actual sigue cobrando.
