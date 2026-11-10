@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/ui/States";
 import { Icon } from "@/components/ui/Icon";
 import { QuePaso } from "@/components/QuePaso";
 import { askManagerPin } from "@/lib/managerPin";
+import { MesaTools } from "@/components/MesaTools";
 import { PAY_METHODS, cashSuggestions, categoryColor, haptic, tableStateMeta } from "@/lib/brand";
 
 /**
@@ -145,6 +146,8 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     } else if (order?.discount_type === "monto") {
       t = Math.max(0, t - (Number(order.discount_value) || 0));
     }
+    t = Math.max(0, t - Number(order?.covered_amount || 0));
+    if (Number(order?.portion_due) > 0) return Number(order.portion_due);
     return t;
   }, [order, subtotal]);
 
@@ -748,6 +751,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
           Cobrar solo lo marcado
         </button>
         <QuePaso order={order} onDone={refresh} />
+        <MesaTools order={order} tables={floorTables} orders={orders} marked={chargeItems || []} onDone={refresh} />
         <button type="button" className="btn-danger" onClick={cancelOrder}>
           Cancelar cuenta
         </button>
