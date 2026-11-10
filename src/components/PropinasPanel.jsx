@@ -71,7 +71,7 @@ export function PropinasPanel({ restaurantId }) {
         <label className="text-sm font-bold">Hasta<input type="date" className="mt-1 h-12 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3" value={to} onChange={(e) => setTo(e.target.value)} /></label>
         <button type="submit" className="btn-primary h-12" disabled={busy}>Ver propinas</button>
       </form>
-      <p className="text-base text-[var(--ink-soft)]">Por horas todavía no se puede: falta el checador de entrada y salida. El reparto igual es entre quienes recibieron propina en estas fechas.</p>
+      <p className="text-base text-[var(--ink-soft)]">Por horas usa el checador. Si nadie marcó entrada, no se reparte. El reparto igual es entre quienes recibieron propina en estas fechas.</p>
       {report ? (
         <section className="card p-5">
           <h2 className="text-2xl">Total {money(report.total)}</h2>
@@ -91,6 +91,7 @@ export function PropinasPanel({ restaurantId }) {
             <button type="button" className="h-12 rounded-[14px] border border-[var(--border)]" onClick={() => setMode("individual")}>{mode === "individual" ? "● " : ""}Cada quien la suya</button>
             <button type="button" className="h-12 rounded-[14px] border border-[var(--border)]" onClick={() => setMode("iguales")}>{mode === "iguales" ? "● " : ""}Bote, partes iguales</button>
             <button type="button" className="h-12 rounded-[14px] border border-[var(--border)]" onClick={() => setMode("porcentaje")}>{mode === "porcentaje" ? "● " : ""}Bote, por porcentaje</button>
+            <button type="button" className="h-12 rounded-[14px] border border-[var(--border)]" onClick={() => setMode("horas")}>{mode === "horas" ? "● " : ""}Bote, por horas</button>
           </div>
           <button type="button" className="btn-primary mt-4 h-14" disabled={busy} onClick={closePayout}>Cerrar reparto e imprimir</button>
         </section>
