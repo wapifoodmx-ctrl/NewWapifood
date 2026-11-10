@@ -34,6 +34,8 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   const [payOpen, setPayOpen] = useState(false);
   const [payMethod, setPayMethod] = useState("efectivo");
   const [cashGiven, setCashGiven] = useState("");
+  const [secondPay, setSecondPay] = useState("");
+  const [mpPaymentId, setMpPaymentId] = useState("");
   const [noteEdit, setNoteEdit] = useState(null); // { productId, notes }
   const [extraPick, setExtraPick] = useState(null);
   const [splitIds, setSplitIds] = useState([]);
@@ -582,6 +584,15 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       toast.error(error.message);
       return;
     }
+    const second = Number(secondPay) || 0;
+    const payments = [];
+    if (second > 0 && second < due) {
+      payments.push({ method: payMethod, amount: Math.round((due - second) * 100) / 100, mp_payment_id: mpPaymentId || null });
+      payments.push({ method: payMethod === "efectivo" ? "tarjeta" : "efectivo", amount: second, mp_payment_id: mpPaymentId || null });
+    } else {
+      payments.push({ method: payMethod, amount: due, mp_payment_id: mpPaymentId || null });
+    }
+    await supabase.rpc("attach_ticket_payments", { p_order: targetId, p_payments: payments });
     if (emptied) {
       const pin = askManagerPin();
       if (pin != null) {
@@ -1001,6 +1012,14 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
               ))}
               <button type="button" className="h-12 rounded-[14px] border border-[var(--border)] px-3" onClick={() => setTip("")}>Sin propina</button>
             </div> : null}
+            <label className="mt-3 block text-base font-bold">
+              Otra forma de pago, si la cuenta se parte
+              <input className="mt-1 h-12 w-full rounded-[14px] border border-[var(--border)] px-3" inputMode="decimal" value={secondPay} onChange={(e) => setSecondPay(e.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" />
+            </label>
+            <label className="mt-3 block text-base font-bold">
+              Id del pago de Mercado Pago
+              <input className="mt-1 h-12 w-full rounded-[14px] border border-[var(--border)] px-3" value={mpPaymentId} onChange={(e) => setMpPaymentId(e.target.value.trim())} placeholder="Opcional, para devolver después" />
+            </label>
             <label className="mt-3 block text-base font-bold" htmlFor="pos-tip">
               Propina (no cambia el precio del platillo)
               <input

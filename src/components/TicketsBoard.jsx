@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { TicketCard } from "@/components/TicketCard";
 
 const FILTERS = [
-  { id: "activas", label: "Activas" },
+  { id: "activas", label: "Abiertas" },
   { id: "pagada", label: "Pagadas" },
   { id: "cancelada", label: "Canceladas" },
   { id: "todas", label: "Todas" },

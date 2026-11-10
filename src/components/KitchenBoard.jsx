@@ -357,6 +357,14 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
                 <button type="button" onClick={() => setDetail(order)} className="btn-ghost">
                   Ver detalle
                 </button>
+                <button type="button" className="btn-ghost" onClick={() => {
+                  const popup = window.open("", "_blank", "noopener,noreferrer");
+                  if (!popup) return;
+                  const rows = (order.order_items || []).map((item) => `<li>${item.qty} × ${item.products?.name || "Platillo"} ${item.notes || ""}</li>`).join("");
+                  popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Comanda</title></head><body><h1>Comanda</h1><p>Mesa ${order.dining_tables?.number || ""}</p><ul>${rows}</ul></body></html>`);
+                  popup.document.close();
+                  popup.print();
+                }}>Reimprimir comanda</button>
                 {order.status === "pendiente" ? (
                   <>
                     <button type="button" onClick={() => confirmWeb(order.id)} className="btn-lg btn-primary">
