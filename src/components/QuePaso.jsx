@@ -61,7 +61,7 @@ export function QuePaso({ order, onDone }) {
       ? "No se devuelve dinero."
       : pay === "efectivo"
         ? `Se devuelven ${money(refundAmount)} en efectivo. Salen del cajón si la caja está abierta.`
-        : `Se anotan ${money(refundAmount)} como devolución pendiente de ${pay === "mercadopago" ? "Mercado Pago" : "tarjeta"}.`;
+        : `Se anotan ${money(refundAmount)} como devolución pendiente de ${pay === "mercadopago" ? "otro tipo de pago" : "tarjeta"}.`;
     return [...dishes, cash].filter(Boolean).join(" ");
   }
 
@@ -154,7 +154,7 @@ export function QuePaso({ order, onDone }) {
                     <p className="font-bold">¿Cómo se devuelve?</p>
                     <button type="button" className="h-12 rounded-[14px] border border-[var(--border)] text-left px-3" onClick={() => setPay("efectivo")}>{pay === "efectivo" ? "● " : ""}Efectivo, sale del cajón</button>
                     <button type="button" className="h-12 rounded-[14px] border border-[var(--border)] text-left px-3" onClick={() => setPay("tarjeta")}>{pay === "tarjeta" ? "● " : ""}Tarjeta, queda pendiente</button>
-                    <button type="button" className="h-12 rounded-[14px] border border-[var(--border)] text-left px-3" onClick={() => setPay("mercadopago")}>{pay === "mercadopago" ? "● " : ""}Mercado Pago, queda pendiente</button>
+                    <button type="button" className="h-12 rounded-[14px] border border-[var(--border)] text-left px-3" onClick={() => setPay("mercadopago")}>{pay === "mercadopago" ? "● " : ""}Otro tipo de pago, queda pendiente</button>
                   </div>
                 ) : null}
               </div>

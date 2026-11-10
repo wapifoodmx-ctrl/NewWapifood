@@ -13,6 +13,7 @@ import { downloadTicketPdf } from "@/lib/ticketPdf";
 import { QuePaso } from "@/components/QuePaso";
 import { askManagerPin } from "@/lib/managerPin";
 import { includedIva } from "@/lib/iva";
+import { payLabel } from "@/lib/brand";
 
 export function TicketCard({ order, productNames = {}, onChanged, ivaEnabled = false }) {
   const meta = statusMeta(order.status);
@@ -62,7 +63,8 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
 .total{display:flex;justify-content:space-between;font-weight:700;margin-top:12px;border-top:1px dashed #999;padding-top:8px}
 </style></head><body>
 <h1>Wapifood</h1><p style="margin:0 0 8px;font-size:13px">Mesa ${order.dining_tables?.number ?? "—"} · ${(order.source||"pos").toUpperCase()}</p>
-<p style="color:#555;font-size:11px">${meta.label} · ${order.method || ""} · ${whenLabel(order.closed_at || order.opened_at)}</p>
+<p style="color:#555;font-size:11px">${meta.label} · ${payLabel(order.method)} · ${whenLabel(order.closed_at || order.opened_at)}</p>
+${order.folio || order.mp_payment_id ? `<p style="font-size:11px">Folio: ${order.folio || order.mp_payment_id}</p>` : ""}
 <p style="font-size:11px">Código: ${code}</p>
 <table>${rows}</table>
 <div class="total"><span>Total</span><span>${money(total)}</span></div>
@@ -77,8 +79,9 @@ ${ivaEnabled ? `<p style="font-size:11px">IVA 16% incluido: ${money(includedIva(
     const lines = [
       "Wapifood",
       `Mesa ${order.dining_tables?.number ?? "-"}  ${order.source || "pos"}`,
-      `${meta.label}  ${order.method || ""}`,
+      `${meta.label}  ${payLabel(order.method)}`,
       `Codigo ${code}`,
+      ...(order.folio || order.mp_payment_id ? [`Folio ${order.folio || order.mp_payment_id}`] : []),
       "",
       ...(order.order_items || []).map(
         (i) => `${i.qty} x ${productName(i.product_id)}  ${money(Number(i.unit_price) * Number(i.qty))}`,
@@ -256,7 +259,7 @@ ${ivaEnabled ? `<p style="font-size:11px">IVA 16% incluido: ${money(includedIva(
           </div>
           <p className="text-sm text-[var(--color-espresso)]" suppressHydrationWarning>
             {order.source ? `${order.source} · ` : ""}
-            {order.method || "—"}
+            {payLabel(order.method)}{order.folio || order.mp_payment_id ? ` · folio ${order.folio || order.mp_payment_id}` : ""}
             {order.closed_at || order.opened_at ? ` · ${whenLabel(order.closed_at || order.opened_at)}` : ""}
           </p>
           <p className="mt-1 font-mono text-[11px] text-[var(--color-walnut)]">

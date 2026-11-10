@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
+import { payLabel } from "@/lib/brand";
 import { toast } from "@/components/ui/Toast";
 
 function todayISO() {
@@ -97,7 +98,7 @@ export function ReportesPanel({ restaurantId }) {
             Margen estimado {money(report.margin_estimate)}. Es precio de venta menos el costo capturado en el platillo, sin restar descuentos ni sumar propina. No usa el costo de la receta.
           </p>
           <div className="grid gap-4 lg:grid-cols-3">
-            <List title="Por forma de pago" rows={(report.by_method || []).map((m) => `${m.method}: ${m.tickets} · ${money(m.food)}`)} />
+            <List title="Por forma de pago" rows={(report.by_method || []).map((m) => `${payLabel(m.method)}: ${m.tickets} · ${money(m.food)}`)} />
             <List title="Por mesero" rows={(report.by_waiter || []).map((m) => `${m.waiter}: ${m.tickets} · ${money(m.food)}`)} />
             <List title="Platillos, antes de descuentos" rows={(report.top_products || []).map((m) => `${m.qty}× ${m.name} · ${money(m.food)}`)} />
           </div>

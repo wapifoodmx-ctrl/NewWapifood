@@ -15,7 +15,7 @@ import { Icon } from "@/components/ui/Icon";
 import { QuePaso } from "@/components/QuePaso";
 import { askManagerPin } from "@/lib/managerPin";
 import { MesaTools } from "@/components/MesaTools";
-import { PAY_METHODS, cashSuggestions, categoryColor, haptic, tableStateMeta } from "@/lib/brand";
+import { PAY_METHODS, cashSuggestions, categoryColor, haptic, payLabel, tableStateMeta } from "@/lib/brand";
 
 /**
  * POS — paridad gradual con Puntodeventa (CarritoModal + ModalsPago).
@@ -35,7 +35,9 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   const [payMethod, setPayMethod] = useState("efectivo");
   const [cashGiven, setCashGiven] = useState("");
   const [secondPay, setSecondPay] = useState("");
-  const [mpPaymentId, setMpPaymentId] = useState("");
+  const [splitPay, setSplitPay] = useState(false);
+  const [showTip, setShowTip] = useState(false);
+  const [folio, setFolio] = useState("");
   const [noteEdit, setNoteEdit] = useState(null); // { productId, notes }
   const [extraPick, setExtraPick] = useState(null);
   const [splitIds, setSplitIds] = useState([]);
@@ -473,6 +475,10 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     if (!onlyMarked) setSplitIds([]);
     setPayMethod("efectivo");
     setCashGiven("");
+    setSecondPay("");
+    setSplitPay(false);
+    setShowTip(false);
+    setFolio("");
     setPayOpen(true);
     setGuest({
       name: order.customer_name || "",
@@ -584,13 +590,13 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       toast.error(error.message);
       return;
     }
-    const second = Number(secondPay) || 0;
+    const second = splitPay ? Number(secondPay) || 0 : 0;
     const payments = [];
     if (second > 0 && second < due) {
-      payments.push({ method: payMethod, amount: Math.round((due - second) * 100) / 100, mp_payment_id: mpPaymentId || null });
-      payments.push({ method: payMethod === "efectivo" ? "tarjeta" : "efectivo", amount: second, mp_payment_id: mpPaymentId || null });
+      payments.push({ method: payMethod, amount: Math.round((due - second) * 100) / 100, folio: folio || null });
+      payments.push({ method: payMethod === "efectivo" ? "tarjeta" : "efectivo", amount: second, folio: folio || null });
     } else {
-      payments.push({ method: payMethod, amount: due, mp_payment_id: mpPaymentId || null });
+      payments.push({ method: payMethod, amount: due, folio: folio || null });
     }
     await supabase.rpc("attach_ticket_payments", { p_order: targetId, p_payments: payments });
     if (emptied) {
@@ -609,7 +615,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       setActiveTableId(null);
     }
     await refresh();
-    toast.success(splitIds.length ? `Parte cobrada con ${payMethod}` : `Cobrado con ${payMethod}`);
+    toast.success(splitIds.length ? `Parte cobrada con ${payLabel(payMethod)}` : `Cobrado con ${payLabel(payMethod)}`);
   }
 
   const dueNow = Math.round((chargeTotal + tipAmount) * 100) / 100;
@@ -1004,22 +1010,34 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
               {tipAmount ? ` · propina ${money(tipAmount)}` : ""}
             </p>
             {splitIds.length ? <p className="text-base text-[var(--ink-soft)]">Solo los platillos marcados para separar. El descuento de toda la cuenta no se parte.</p> : null}
-            {tipsOn ? <div className="mt-3 flex flex-wrap gap-2">
+            <label className="mt-3 block text-base font-bold">
+              Folio o comentario
+              <input className="mt-1 h-12 w-full rounded-[14px] border border-[var(--border)] px-3" value={folio} onChange={(e) => setFolio(e.target.value)} placeholder="Opcional. Referencia, vale o nota" />
+            </label>
+            <button type="button" className="btn-ghost mt-3" onClick={() => setSplitPay((on) => !on)}>
+              {splitPay ? "Ocultar otra forma de pago" : "Otra forma de pago, si la cuenta se parte"}
+            </button>
+            {splitPay ? (
+              <label className="mt-2 block text-base font-bold">
+                Cuánto va en la otra forma
+                <input className="mt-1 h-12 w-full rounded-[14px] border border-[var(--border)] px-3" inputMode="decimal" value={secondPay} onChange={(e) => setSecondPay(e.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" />
+              </label>
+            ) : null}
+            {tipsOn ? (
+              <button type="button" className="btn-ghost mt-2" onClick={() => setShowTip((on) => !on)}>
+                {showTip || tipAmount ? "Ocultar propina" : "Agregar propina"}
+              </button>
+            ) : null}
+            {tipsOn && (showTip || tipAmount) ? (
+            <>
+            <div className="mt-3 flex flex-wrap gap-2">
               {tipRates.map((rate) => (
                 <button key={rate} type="button" className="h-12 rounded-[14px] border border-[var(--border)] px-3 font-bold" onClick={() => setTip(String(Math.round(chargeTotal * rate) / 100))}>
                   {rate}%
                 </button>
               ))}
               <button type="button" className="h-12 rounded-[14px] border border-[var(--border)] px-3" onClick={() => setTip("")}>Sin propina</button>
-            </div> : null}
-            <label className="mt-3 block text-base font-bold">
-              Otra forma de pago, si la cuenta se parte
-              <input className="mt-1 h-12 w-full rounded-[14px] border border-[var(--border)] px-3" inputMode="decimal" value={secondPay} onChange={(e) => setSecondPay(e.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" />
-            </label>
-            <label className="mt-3 block text-base font-bold">
-              Id del pago de Mercado Pago
-              <input className="mt-1 h-12 w-full rounded-[14px] border border-[var(--border)] px-3" value={mpPaymentId} onChange={(e) => setMpPaymentId(e.target.value.trim())} placeholder="Opcional, para devolver después" />
-            </label>
+            </div>
             <label className="mt-3 block text-base font-bold" htmlFor="pos-tip">
               Propina (no cambia el precio del platillo)
               <input
@@ -1031,6 +1049,8 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 placeholder="0.00"
               />
             </label>
+            </>
+            ) : null}
             {tipAmount > 0 ? (
               <div className="mt-2 flex gap-2 text-sm">
                 <span className="self-center text-[var(--color-muted)]">Propina en:</span>
@@ -1045,7 +1065,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                         : "border border-[var(--color-line)]"
                     }`}
                   >
-                    {m === "efectivo" ? "Efectivo" : m === "tarjeta" ? "Tarjeta" : "Mercado Pago"}
+                    {payLabel(m)}
                   </button>
                 ))}
               </div>

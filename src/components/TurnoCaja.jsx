@@ -6,6 +6,7 @@ import { money } from "@/lib/format";
 import { toast } from "@/components/ui/Toast";
 import { confirmAsync } from "@/components/ui/confirm";
 import { Icon } from "@/components/ui/Icon";
+import { payLabel } from "@/lib/brand";
 
 const KIND = {
   venta_efectivo: "Venta en efectivo",
@@ -34,7 +35,7 @@ function printCut(title, report, counted, notes) {
   const methods = (report?.by_method || []).map((row) => {
     const typed = counted?.[row.method];
     const diff = typed === "" || typed == null ? "sin contar" : (Number(typed) - Number(row.food || 0)).toFixed(2);
-    return `<tr><td>${row.method}</td><td>${row.tickets}</td><td>${row.food}</td><td>${row.tips}</td><td>${typed ?? ""}</td><td>${diff}</td></tr>`;
+    return `<tr><td>${payLabel(row.method)}</td><td>${row.tickets}</td><td>${row.food}</td><td>${row.tips}</td><td>${typed ?? ""}</td><td>${diff}</td></tr>`;
   }).join("");
   popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${title}</title>
     <style>body{font-family:sans-serif;padding:24px;color:#2a2118} table{border-collapse:collapse;width:100%} td,th{border-bottom:1px solid #ddd;padding:6px;text-align:left} h1{font-size:22px}</style>
@@ -43,6 +44,7 @@ function printCut(title, report, counted, notes) {
     <p>Fondo ${report?.opening_float ?? 0}. Efectivo esperado en el cajón ${report?.expected_cash ?? 0}. Contado ${counted?.efectivo ?? ""}.</p>
     <p>Cuentas ${report?.tickets ?? 0}. Alimentos ${report?.food ?? 0}. Propinas ${report?.tips ?? 0}. Descuentos ${report?.discounts ?? 0}. Devoluciones ${report?.refunds ?? 0}. Cancelaciones ${report?.cancellations ?? 0}.</p>
     <table><thead><tr><th>Método</th><th>Cuentas</th><th>Alimentos</th><th>Propinas</th><th>Contado</th><th>Diferencia de alimentos</th></tr></thead><tbody>${methods}</tbody></table>
+    ${(report.folios || []).length ? `<h2>Folios</h2><ul>${report.folios.map((row) => `<li>${row.folio} · ${payLabel(row.method)} · ${row.amount}</li>`).join("")}</ul>` : ""}
     <p>${notes || ""}</p></body></html>`);
   popup.document.close();
   popup.focus();
@@ -144,8 +146,16 @@ export function TurnoCaja({ restaurantId, initialSession, initialMoves, history,
       toast.error(error.message);
       return null;
     }
-    setReport(data);
-    return data;
+    const { data: pays } = await supabase
+      .from("order_payments")
+      .select("folio,method,amount,created_at")
+      .eq("restaurant_id", restaurantId)
+      .gte("created_at", session.opened_at)
+      .not("folio", "is", null)
+      .limit(40);
+    const next = { ...data, folios: pays || [] };
+    setReport(next);
+    return next;
   }
 
   async function savePartial() {
@@ -213,7 +223,7 @@ export function TurnoCaja({ restaurantId, initialSession, initialMoves, history,
       <section className="card p-5">
         <h2 className="text-2xl">{session ? "Turno abierto" : "No hay turno abierto"}</h2>
         <p className="mt-1 text-base text-[var(--ink-soft)]">
-          El efectivo esperado es el fondo, más ventas y propinas en efectivo, más entradas, menos salidas. Tarjeta y transferencia no entran al cajón. Se puede cobrar aunque el turno no esté abierto.
+          El efectivo esperado es el fondo, más ventas y propinas en efectivo, más entradas, menos salidas. Tarjeta y otro tipo de pago no entran al cajón. Se puede cobrar aunque el turno no esté abierto.
         </p>
         {session ? (
           <>
@@ -296,7 +306,7 @@ export function TurnoCaja({ restaurantId, initialSession, initialMoves, history,
               <input className="mt-1 h-12 w-full rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3" inputMode="decimal" value={cardCounted} onChange={(e) => setCardCounted(e.target.value.replace(/[^\d.]/g, ""))} placeholder="Opcional" />
             </label>
             <label className="mt-3 block text-sm font-bold">
-              Transferencia contada
+              Otro tipo de pago contado
               <input className="mt-1 h-12 w-full rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3" inputMode="decimal" value={transferCounted} onChange={(e) => setTransferCounted(e.target.value.replace(/[^\d.]/g, ""))} placeholder="Opcional" />
             </label>
             <label className="mt-3 block text-sm font-bold">
@@ -326,9 +336,16 @@ export function TurnoCaja({ restaurantId, initialSession, initialMoves, history,
                 <p>Descuentos {money(report.discounts)}. Devoluciones de este turno {money(report.refunds)}, aunque la cuenta se haya cobrado antes. Cancelaciones {report.cancellations}.</p>
                 <ul className="mt-2 space-y-1">
                   {(report.by_method || []).map((row) => (
-                    <li key={row.method}>{row.method}: {row.tickets} · {money(row.food)} · propina {money(row.tips)}</li>
+                    <li key={row.method}>{payLabel(row.method)}: {row.tickets} · {money(row.food)} · propina {money(row.tips)}</li>
                   ))}
                 </ul>
+                {(report.folios || []).length ? (
+                  <ul className="mt-2 text-sm">
+                    {report.folios.map((row) => (
+                      <li key={`${row.created_at}-${row.folio}`}>Folio {row.folio} · {payLabel(row.method)} · {money(row.amount)}</li>
+                    ))}
+                  </ul>
+                ) : null}
               </div>
             ) : null}
           </form>

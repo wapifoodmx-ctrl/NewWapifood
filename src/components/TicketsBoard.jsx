@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TicketCard } from "@/components/TicketCard";
+import { payLabel } from "@/lib/brand";
 
 const FILTERS = [
   { id: "activas", label: "Abiertas" },
@@ -13,18 +14,29 @@ const FILTERS = [
 
 export function TicketsBoard({ orders, productNames, ivaEnabled = false }) {
   const [filter, setFilter] = useState("activas");
+  const [query, setQuery] = useState("");
   const router = useRouter();
 
   const list = useMemo(() => {
-    if (filter === "todas") return orders;
-    if (filter === "activas") {
-      return orders.filter((o) => !["pagada", "cancelada"].includes(o.status));
-    }
-    return orders.filter((o) => o.status === filter);
-  }, [orders, filter]);
+    const q = query.trim().toLowerCase();
+    const base = filter === "todas"
+      ? orders
+      : filter === "activas"
+        ? orders.filter((o) => !["pagada", "cancelada"].includes(o.status))
+        : orders.filter((o) => o.status === filter);
+    if (!q) return base;
+    return base.filter((order) => {
+      const folios = [order.folio, order.mp_payment_id, ...(order.order_payments || []).map((pay) => pay.folio || pay.mp_payment_id)].filter(Boolean).join(" ");
+      return [order.public_code, payLabel(order.method), folios].join(" ").toLowerCase().includes(q);
+    });
+  }, [orders, filter, query]);
 
   return (
     <div>
+      <label className="mb-3 block text-sm font-bold">
+        Buscar folio, código o forma de pago
+        <input className="mt-1 h-12 w-full max-w-md border px-3" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Ejemplo: vale, 1842, otro" />
+      </label>
       <div className="mb-4 flex flex-wrap gap-1">
         {FILTERS.map((f) => (
           <button

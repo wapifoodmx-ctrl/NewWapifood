@@ -5,8 +5,15 @@ const CATEGORY_COLORS = ["#B93815", "#0F6E56", "#1D4E89", "#9D174D", "#8A5A00", 
 export const PAY_METHODS = [
   { id: "efectivo", label: "Efectivo", hint: "Con cambio" },
   { id: "tarjeta", label: "Tarjeta", hint: "Terminal" },
-  { id: "transferencia", label: "Mercado Pago", hint: "Transferencia" },
+  { id: "transferencia", label: "Otro tipo de pago", hint: "Transferencia, vales u otro" },
 ];
+
+export function payLabel(method) {
+  if (method === "efectivo") return "Efectivo";
+  if (method === "tarjeta") return "Tarjeta";
+  if (!method) return "Sin forma de pago";
+  return "Otro tipo de pago";
+}
 
 export function categoryColor(key) {
   const text = String(key || "platillo");

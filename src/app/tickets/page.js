@@ -21,7 +21,7 @@ export default async function TicketsPage() {
     supabase
       .from("orders")
       .select(
-        "id,status,method,source,restaurant_id,tip_amount,tip_method,refunded_amount,refunded_at,opened_at,closed_at,table_id,public_code,cancel_reason,needs_confirmation,order_type,customer_phone,delivery_address,discount_amount,order_items(id,product_id,qty,unit_price,status,notes,discount_type,discount_value,stock_resolution,refunded_amount,refunded_at),dining_tables(number)",
+        "id,status,method,source,restaurant_id,tip_amount,tip_method,refunded_amount,refunded_at,opened_at,closed_at,table_id,public_code,folio,mp_payment_id,cancel_reason,needs_confirmation,order_type,customer_phone,delivery_address,discount_amount,order_items(id,product_id,qty,unit_price,status,notes,discount_type,discount_value,stock_resolution,refunded_amount,refunded_at),order_payments(method,amount,folio,mp_payment_id),dining_tables(number)",
       )
       .eq("restaurant_id", rid)
       .order("opened_at", { ascending: false })

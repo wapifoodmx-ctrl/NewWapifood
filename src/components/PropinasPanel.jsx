@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
+import { payLabel } from "@/lib/brand";
 import { toast } from "@/components/ui/Toast";
 
 function todayISO() {
@@ -75,6 +76,11 @@ export function PropinasPanel({ restaurantId }) {
       {report ? (
         <section className="card p-5">
           <h2 className="text-2xl">Total {money(report.total)}</h2>
+          <ul className="mt-2 text-sm">
+            {(report.by_method || []).map((row) => (
+              <li key={row.method}>{payLabel(row.method)}: {money(row.amount)}</li>
+            ))}
+          </ul>
           <ul className="mt-3 space-y-2">
             {(report.by_waiter || []).map((row) => (
               <li key={row.waiter_id || row.waiter} className="flex flex-wrap items-center justify-between gap-2">
