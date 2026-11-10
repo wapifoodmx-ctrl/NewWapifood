@@ -513,10 +513,22 @@ input[type="radio"] {
   position: relative;
   display: flex;
   flex: none;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 6px;
   border-top: 1px solid var(--border);
   padding-top: 8px;
+}
+
+.side-foot-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.side-switcher {
+  min-height: 48px;
 }
 
 button.side-link,
@@ -632,7 +644,8 @@ button.side-link {
   padding: 0;
 }
 
-.is-rail .side-foot {
+.is-rail .side-foot,
+.is-rail .side-foot-row {
   flex-direction: column;
 }
 

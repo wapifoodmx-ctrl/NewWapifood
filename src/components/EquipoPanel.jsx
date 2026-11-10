@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import { confirmAsync } from "@/components/ui/confirm";
@@ -18,6 +18,9 @@ export function EquipoPanel({ restaurantId, initial, currentUserId, canManage })
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("piso");
   const [busy, setBusy] = useState(false);
+  const [org, setOrg] = useState(null);
+  const [grantTo, setGrantTo] = useState("");
+  const [grantRole, setGrantRole] = useState("piso");
 
   async function reload() {
     const supabase = createClient();
@@ -25,6 +28,30 @@ export function EquipoPanel({ restaurantId, initial, currentUserId, canManage })
     if (error) return toast.error(error.message);
     setMembers(data?.members || []);
     setInvites(data?.invites || []);
+  }
+
+  useEffect(() => {
+    if (!canManage) return;
+    const supabase = createClient();
+    supabase.rpc("list_org_access", { p_restaurant: restaurantId }).then(({ data }) => {
+      if (data) setOrg(data);
+    });
+  }, [canManage, restaurantId, members, invites]);
+
+  async function grantAccess(userId) {
+    if (!grantTo) return toast.warning("Elige el local");
+    setBusy(true);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("grant_location_access", {
+      p_user: userId,
+      p_restaurant: grantTo,
+      p_role: grantRole,
+    });
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Ya puede entrar a ese local");
+    const { data } = await supabase.rpc("list_org_access", { p_restaurant: restaurantId });
+    if (data) setOrg(data);
   }
 
   async function invite(e) {
@@ -77,7 +104,7 @@ export function EquipoPanel({ restaurantId, initial, currentUserId, canManage })
       <section className="card p-5">
         <h2 className="text-2xl">Quién entra al panel</h2>
         <p className="mt-1 text-base text-[var(--ink-soft)]">
-          Los meseros de piso no usan esta lista: entran con su código en el menú de mesero. Una cuenta solo puede pertenecer a un restaurante.
+          Los meseros de piso no usan esta lista: entran con su código en el menú de mesero. Una persona puede entrar a varios locales del mismo grupo.
         </p>
         <ul className="mt-4 divide-y divide-[var(--border)]">
           {members.map((m) => (
@@ -109,6 +136,39 @@ export function EquipoPanel({ restaurantId, initial, currentUserId, canManage })
               ) : (
                 <span className="chip">{roleLabel(m.role) || m.role}</span>
               )}
+              {canManage && (org?.locations || []).length > 1 ? (
+                <div className="flex w-full flex-wrap items-center gap-2">
+                  <label className="text-sm font-bold">
+                    Dar acceso a otro local
+                    <select
+                      aria-label={`Local para ${m.email || "esta persona"}`}
+                      className="ml-2 h-12 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-2"
+                      value={grantTo}
+                      onChange={(e) => setGrantTo(e.target.value)}
+                    >
+                      <option value="">Elige local</option>
+                      {(org.locations || [])
+                        .filter((loc) => loc.id !== restaurantId)
+                        .map((loc) => (
+                          <option key={loc.id} value={loc.id}>{loc.name}</option>
+                        ))}
+                    </select>
+                  </label>
+                  <select
+                    aria-label="Rol en el otro local"
+                    className="h-12 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-2"
+                    value={grantRole}
+                    onChange={(e) => setGrantRole(e.target.value)}
+                  >
+                    {ROLES.map((r) => (
+                      <option key={r.id} value={r.id}>{r.label}</option>
+                    ))}
+                  </select>
+                  <button type="button" className="btn-ghost h-12" disabled={busy} onClick={() => grantAccess(m.user_id)}>
+                    Dar acceso
+                  </button>
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>

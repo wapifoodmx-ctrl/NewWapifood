@@ -115,7 +115,9 @@ export function AppShell({
               <button type="button" className="icon-btn" onClick={() => setToolbarHidden((h) => !h)} aria-label={toolbarHidden ? "Mostrar barra de herramientas" : "Ocultar barra de herramientas"}>
                 <Icon name="eye" size={20} />
               </button>
-              <RestaurantSwitcher />
+              <div className="lg:hidden">
+                <RestaurantSwitcher />
+              </div>
               <button type="button" className="icon-btn" onClick={openSearch} aria-label="Buscar pantalla" aria-keyshortcuts="Control+K">
                 <Icon name="search" size={20} />
               </button>

@@ -12,6 +12,7 @@ export function SucursalesManager({ restaurantId }) {
   const [list, setList] = useState([]);
   const [caps, setCaps] = useState(null);
   const [name, setName] = useState("");
+  const [dest, setDest] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -24,8 +25,9 @@ export function SucursalesManager({ restaurantId }) {
       .select("restaurant_id, role, restaurants(id, name)")
       .eq("user_id", u.user.id);
     setList(ms || []);
-    if (ms && ms.length) {
-      const { data: c } = await supabase.rpc("restaurant_caps", { p_restaurant: ms[0].restaurant_id });
+    const anchor = restaurantId || ms?.[0]?.restaurant_id;
+    if (anchor) {
+      const { data: c } = await supabase.rpc("restaurant_caps", { p_restaurant: anchor });
       if (c && c.length) setCaps(c[0]);
     }
     setLoading(false);
@@ -43,8 +45,9 @@ export function SucursalesManager({ restaurantId }) {
         .then(({ data: ms }) => {
           if (!active) return;
           setList(ms || []);
-          if (ms && ms.length) {
-            supabase.rpc("restaurant_caps", { p_restaurant: ms[0].restaurant_id }).then(({ data: c }) => {
+          const anchor = restaurantId || ms?.[0]?.restaurant_id;
+          if (anchor) {
+            supabase.rpc("restaurant_caps", { p_restaurant: anchor }).then(({ data: c }) => {
               if (!active) return;
               if (c && c.length) setCaps(c[0]);
             });
@@ -53,7 +56,7 @@ export function SucursalesManager({ restaurantId }) {
         });
     });
     return () => { active = false; };
-  }, []);
+  }, [restaurantId]);
 
   async function add() {
     if (!name.trim()) { toast.warning("Escribe un nombre para la sucursal"); return; }
@@ -61,13 +64,34 @@ export function SucursalesManager({ restaurantId }) {
     if (!ok) return;
     setBusy(true);
     const supabase = createClient();
-    const { data, error } = await supabase.rpc("create_additional_restaurant", { p_name: name.trim() });
+    const { error } = await supabase.rpc("create_additional_restaurant", {
+      p_name: name.trim(),
+      p_restaurant: restaurantId,
+    });
     setBusy(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Sucursal creada");
     setName("");
-    await load();
+    await refresh();
     router.refresh();
+  }
+
+  async function copyMenu() {
+    if (!dest) { toast.warning("Elige el local que va a recibir el menú"); return; }
+    const ok = await confirmAsync("Se copian platillos, extras y recetas. El inventario del otro local no se llena: los insumos nuevos quedan en cero.", {
+      title: "Copiar menú",
+      confirmLabel: "Copiar",
+    });
+    if (!ok) return;
+    setBusy(true);
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc("copy_restaurant_menu", {
+      p_from: restaurantId,
+      p_to: dest,
+    });
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(Number(data) > 0 ? `Se copiaron ${data} platillos` : "Este local no tiene platillos para copiar");
   }
 
   if (loading) return <p className="text-sm text-[var(--color-muted)]">Cargando sucursales…</p>;
@@ -107,6 +131,31 @@ export function SucursalesManager({ restaurantId }) {
           Llegaste al límite de restaurantes de tu plan. Mejora el plan para agregar más.
         </p>
       )}
+      {list.length > 1 ? (
+        <div className="mt-4 grid gap-2">
+          <p className="text-sm text-[var(--color-muted)]">
+            Copiar el menú de este local a otro. No borra lo que ya tiene el destino y no copia existencias.
+          </p>
+          <div className="flex gap-2">
+            <select
+              value={dest}
+              onChange={(e) => setDest(e.target.value)}
+              aria-label="Local que recibe el menú"
+              className="h-12 flex-1 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-parchment)] px-3 text-sm"
+            >
+              <option value="">Elige el otro local</option>
+              {list.filter((m) => m.restaurant_id !== restaurantId).map((m) => (
+                <option key={m.restaurant_id} value={m.restaurant_id}>
+                  {m.restaurants?.name || "Restaurante"}
+                </option>
+              ))}
+            </select>
+            <button type="button" onClick={copyMenu} disabled={busy} className="btn-primary h-12 px-4">
+              Copiar menú
+            </button>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
