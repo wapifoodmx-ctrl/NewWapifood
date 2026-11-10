@@ -193,10 +193,13 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
       cancelLabel: "Volver",
     });
     if (!ok) return;
+    const pin = window.prompt("PIN de gerente. Si tu local no usa PIN, déjalo vacío.");
+    if (pin == null) return;
     setLoading(true);
     const { error } = await supabase.rpc("cancel_order", {
       p_order: id,
       p_reason: "Domicilio rechazado",
+      p_pin: pin || null,
     });
     setLoading(false);
     if (error) return toast.error(error.message);

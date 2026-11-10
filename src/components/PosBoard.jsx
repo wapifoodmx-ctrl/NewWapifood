@@ -13,6 +13,7 @@ import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { EmptyState } from "@/components/ui/States";
 import { Icon } from "@/components/ui/Icon";
 import { QuePaso } from "@/components/QuePaso";
+import { askManagerPin } from "@/lib/managerPin";
 import { PAY_METHODS, cashSuggestions, categoryColor, haptic, tableStateMeta } from "@/lib/brand";
 
 /**
@@ -366,10 +367,13 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     ) {
       return;
     }
+    const pin = askManagerPin();
+    if (pin == null) return;
     setLoading(true);
     const { error } = await supabase.rpc("cancel_order", {
       p_order: order.id,
       p_reason: "Cancelada en punto de venta",
+      p_pin: pin || null,
     });
     setLoading(false);
     if (error) return toast.error(error.message);
@@ -383,11 +387,14 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     if (!order) return;
     const type = orderDiscount.type || null;
     const value = Number(orderDiscount.value || 0);
+    const pin = value > 0 ? askManagerPin() : "";
+    if (pin == null) return;
     setLoading(true);
     const { error } = await supabase.rpc("set_order_discount", {
       p_order: order.id,
       p_type: type || null,
       p_value: value,
+      p_pin: pin || null,
     });
     setLoading(false);
     if (error) return toast.error(error.message + (error.message?.includes("set_order_discount") ? " — ¿SQL 024?" : ""));
@@ -398,12 +405,15 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   async function applyLineDiscount(productId, type, value) {
     if (!order) return;
     const numeric = Number(value || 0);
+    const pin = numeric > 0 ? askManagerPin() : "";
+    if (pin == null) return;
     setLoading(true);
     const rpc = await supabase.rpc("set_item_discount", {
       p_order: order.id,
       p_product: productId,
       p_type: type || null,
       p_value: numeric,
+      p_pin: pin || null,
     });
     if (rpc.error && /set_item_discount|schema cache|PGRST202/i.test(rpc.error.message)) {
       const { error } = await supabase
@@ -570,7 +580,10 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       return;
     }
     if (emptied) {
-      await supabase.rpc("cancel_order", { p_order: order.id, p_reason: "Cuenta separada y cobrada" });
+      const pin = askManagerPin();
+      if (pin != null) {
+        await supabase.rpc("cancel_order", { p_order: order.id, p_reason: "Cuenta separada y cobrada", p_pin: pin || null });
+      }
     }
     setLastTicket(snapshot);
     setPayOpen(false);

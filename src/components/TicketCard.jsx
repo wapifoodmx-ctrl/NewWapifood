@@ -11,6 +11,7 @@ import { toast } from "@/components/ui/Toast";
 import { OrderComments } from "@/components/OrderComments";
 import { downloadTicketPdf } from "@/lib/ticketPdf";
 import { QuePaso } from "@/components/QuePaso";
+import { askManagerPin } from "@/lib/managerPin";
 
 export function TicketCard({ order, productNames = {}, onChanged }) {
   const meta = statusMeta(order.status);
@@ -90,10 +91,13 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
     if (order.status === "pagada" || order.status === "cancelada") return;
     const reason = prompt("Motivo de cancelación:", "Cancelada por el local");
     if (reason == null) return;
+    const pin = askManagerPin();
+    if (pin == null) return;
     const supabase = createClient();
     const { error } = await supabase.rpc("cancel_order", {
       p_order: order.id,
       p_reason: reason,
+      p_pin: pin || null,
     });
     if (error) {
       toast.error(error.message);
