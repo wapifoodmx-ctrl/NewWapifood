@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import { OrderComments } from "@/components/OrderComments";
 import { downloadTicketPdf } from "@/lib/ticketPdf";
+import { QuePaso } from "@/components/QuePaso";
 
 export function TicketCard({ order, productNames = {}, onChanged }) {
   const meta = statusMeta(order.status);
@@ -298,6 +299,7 @@ h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
         ))}
       </ul>
       <div className="mt-3 flex flex-wrap gap-2">
+        <QuePaso order={order} onDone={onChanged} />
         <button type="button" onClick={printTicket} className="wf-btn h-10 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-4">
           Imprimir
         </button>

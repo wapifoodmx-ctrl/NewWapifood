@@ -12,6 +12,7 @@ import { confirmAsync } from "@/components/ui/confirm";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { EmptyState } from "@/components/ui/States";
 import { Icon } from "@/components/ui/Icon";
+import { QuePaso } from "@/components/QuePaso";
 import { PAY_METHODS, cashSuggestions, categoryColor, haptic, tableStateMeta } from "@/lib/brand";
 
 /**
@@ -713,6 +714,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         <button type="button" className="btn-ghost" onClick={() => openPay(true)}>
           Cobrar solo lo marcado
         </button>
+        <QuePaso order={order} onDone={refresh} />
         <button type="button" className="btn-danger" onClick={cancelOrder}>
           Cancelar cuenta
         </button>

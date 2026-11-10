@@ -28,6 +28,7 @@ export function ConfigPanel({ restaurant, profile }) {
     confirmation_code: profile?.confirmation_code || "",
     require_confirm_code: profile?.require_confirm_code !== false,
     delivery_enabled: !!profile?.delivery_enabled,
+    manager_pin: profile?.manager_pin || "",
   });
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -142,6 +143,7 @@ export function ConfigPanel({ restaurant, profile }) {
         confirmation_code: form.confirmation_code || null,
         require_confirm_code: form.require_confirm_code,
         delivery_enabled: form.delivery_enabled,
+        manager_pin: form.manager_pin ? String(form.manager_pin) : null,
       });
       if (e2) throw e2;
 
@@ -227,6 +229,18 @@ export function ConfigPanel({ restaurant, profile }) {
           />
         </div>
 
+        <div className="mt-6 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] p-4">
+          <h3 className="text-sm font-semibold uppercase tracking-wide">PIN de gerente</h3>
+          <p className="mt-1 text-sm text-[var(--ink-soft)]">Opcional. Si lo escribes, el asistente de cancelaciones lo pide. Si lo dejas vacío, no se pide.</p>
+          <input
+            value={form.manager_pin || ""}
+            onChange={(e) => set("manager_pin", e.target.value.replace(/\D/g, "").slice(0, 6))}
+            inputMode="numeric"
+            className="mt-2 h-12 w-40 rounded-[14px] border border-[var(--border)] px-3"
+            placeholder="Sin PIN"
+            aria-label="PIN de gerente"
+          />
+        </div>
         <div className="mt-6 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] p-4">
           <h3 className="text-sm font-semibold uppercase tracking-wide">Pedidos del menú digital</h3>
           <label className="mt-3 flex items-center gap-2 text-sm font-semibold">
