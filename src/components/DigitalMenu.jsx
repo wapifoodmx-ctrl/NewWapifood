@@ -184,9 +184,8 @@ export function DigitalMenu({
         p_items: cart.map((i) => ({
           product_id: i.product_id,
           qty: i.qty,
-          notes: i.note || null,
+          notes: [i.note, (i.modifiers || []).map((item) => item.name).join(", ")].filter(Boolean).join(" · ") || null,
           extras: extraPayload(i.extras),
-          modifiers: (i.modifiers || []).map((item) => ({ option_id: item.option_id })),
         })),
         p_customer_name: name || null,
         p_notes: notesCombined || null,
@@ -198,6 +197,17 @@ export function DigitalMenu({
         p_delivery_address: orderType === "domicilio" ? address.trim() : null,
       });
       if (error) throw error;
+      for (const item of cart) {
+        if (!item.modifiers?.length) continue;
+        const note = [item.note, item.modifiers.map((mod) => mod.name).join(", ")].filter(Boolean).join(" · ");
+        const saved = await supabase.rpc("save_line_modifiers", {
+          p_order: data,
+          p_product: item.product_id,
+          p_notes: note,
+          p_options: item.modifiers.map((mod) => ({ option_id: mod.option_id })),
+        });
+        if (saved.error) throw saved.error;
+      }
       setDoneId(data);
       setCart([]);
       setCheckoutOpen(false);
