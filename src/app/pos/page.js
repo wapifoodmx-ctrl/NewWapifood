@@ -22,7 +22,7 @@ export default async function PosPage() {
       supabase.from("categories").select("*").eq("restaurant_id", rid).order("name"),
       supabase
         .from("orders")
-        .select("*, order_items(*)")
+        .select("*, order_items(*, order_item_extras(ingredient_id,qty,extra_price))")
         .eq("restaurant_id", rid)
         .neq("status", "pagada")
         .neq("status", "cancelada"),

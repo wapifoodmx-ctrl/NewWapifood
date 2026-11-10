@@ -78,7 +78,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       const { data } = await supabase
         .from("orders")
         .select(
-          "id,status,source,table_id,opened_at,public_code,order_items(id,product_id,qty,unit_price,notes,status,discount_type,discount_value,stock_resolution,refunded_amount),dining_tables(number,channel_type,state)",
+          "id,status,source,table_id,opened_at,public_code,order_items(id,product_id,qty,unit_price,notes,status,discount_type,discount_value,stock_resolution,refunded_amount,order_item_extras(ingredient_id,qty,extra_price)),dining_tables(number,channel_type,state)",
         )
         .eq("restaurant_id", restaurantId)
         .neq("status", "pagada")
@@ -161,7 +161,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   async function refresh() {
     const { data } = await supabase
       .from("orders")
-      .select("*, order_items(*)")
+      .select("*, order_items(*, order_item_extras(ingredient_id,qty,extra_price))")
       .eq("restaurant_id", restaurantId)
       .neq("status", "pagada")
       .neq("status", "cancelada");
@@ -186,7 +186,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         status: "abierta",
         source: "pos",
       })
-      .select("*, order_items(*)")
+      .select("*, order_items(*, order_item_extras(ingredient_id,qty,extra_price))")
       .single();
     setLoading(false);
     if (error) {
@@ -207,17 +207,18 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     addItem(product, []);
   }
 
-  async function saveLineExtras(orderId, productId, selected) {
-    if (!selected?.length) return;
+  async function saveLineExtras(orderId, productId, selected, lineId) {
+    if (!selected?.length || !lineId) return;
     const rows = selected.map((extra) => ({
       order_id: orderId,
       product_id: productId,
+      order_item_id: lineId,
       ingredient_id: extra.ingredient_id,
       qty: Number(extra.qty) || 1,
       extra_price: Number(extra.extra_price) || 0,
     }));
     const { error } = await supabase.from("order_item_extras").upsert(rows, {
-      onConflict: "order_id,product_id,ingredient_id",
+      onConflict: "order_item_id,ingredient_id",
     });
     if (error && !isMissingRelation(error)) {
       toast.error(error.message);
@@ -230,28 +231,30 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       return;
     }
     setLoading(true);
-    const note = null; // notas se agregan después; línea base sin nota
+    const note = null;
     const line = (order.order_items || []).find((i) => i.product_id === product.id && (i.notes || null) === note);
+    let lineId = line?.id;
     if (line) {
       await supabase
         .from("order_items")
         .update({ qty: Number(line.qty) + 1 })
         .eq("id", line.id);
     } else {
-      const { error } = await supabase.from("order_items").insert({
+      const { data, error } = await supabase.from("order_items").insert({
         order_id: order.id,
         product_id: product.id,
         qty: 1,
         unit_price: product.price,
         notes: null,
-      });
+      }).select("id").single();
       if (error) {
         setLoading(false);
         toast.error(error.message);
         return;
       }
+      lineId = data.id;
     }
-    await saveLineExtras(order.id, product.id, selected);
+    await saveLineExtras(order.id, product.id, selected, lineId);
     await refresh();
     setLoading(false);
     setFlashId(product.id);
@@ -264,24 +267,25 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     const orderId = snapshot.order_id || order?.id;
     if (!orderId) return;
     setLoading(true);
-    const { error } = await supabase.from("order_items").insert({
+    const { data: restored, error } = await supabase.from("order_items").insert({
       order_id: orderId,
       product_id: snapshot.product_id,
       qty: snapshot.qty,
       unit_price: snapshot.unit_price,
       notes: snapshot.notes || null,
       status: snapshot.status || "pendiente",
-    });
-    if (!error && snapshot.extras?.length) {
+    }).select("id").single();
+    if (!error && snapshot.extras?.length && restored?.id) {
       await supabase.from("order_item_extras").upsert(
         snapshot.extras.map((extra) => ({
+          order_item_id: restored.id,
           order_id: orderId,
           product_id: snapshot.product_id,
           ingredient_id: extra.ingredient_id,
           qty: extra.qty,
           extra_price: extra.extra_price,
         })),
-        { onConflict: "order_id,product_id,ingredient_id" },
+        { onConflict: "order_item_id,ingredient_id" },
       );
     }
     setLoading(false);
@@ -409,7 +413,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     toast.success("Descuento aplicado");
   }
 
-  async function applyLineDiscount(productId, type, value) {
+  async function applyLineDiscount(lineId, productId, type, value) {
     if (!order) return;
     const numeric = Number(value || 0);
     const pin = numeric > 0 ? askManagerPin() : "";
@@ -421,6 +425,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       p_type: type || null,
       p_value: numeric,
       p_pin: pin || null,
+      p_item: lineId,
     });
     if (rpc.error && /set_item_discount|schema cache|PGRST202/i.test(rpc.error.message)) {
       const { error } = await supabase
@@ -429,8 +434,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
           discount_type: type || null,
           discount_value: type ? numeric : 0,
         })
-        .eq("order_id", order.id)
-        .eq("product_id", productId);
+        .eq("id", lineId);
       setLoading(false);
       if (error) return toast.error(error.message);
     } else if (rpc.error) {
@@ -500,7 +504,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       .single();
     if (error) throw error;
     for (const line of lines) {
-      const { error: insErr } = await supabase.from("order_items").insert({
+      const { data: moved, error: insErr } = await supabase.from("order_items").insert({
         order_id: created.id,
         product_id: line.product_id,
         qty: line.qty,
@@ -509,25 +513,27 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         status: line.status || "pendiente",
         discount_type: line.discount_type || null,
         discount_value: line.discount_value || 0,
-      });
+      }).select("id").single();
       if (insErr) throw insErr;
-      const extras = await supabase
-        .from("order_item_extras")
-        .select("ingredient_id,qty,extra_price")
-        .eq("order_id", order.id)
-        .eq("product_id", line.product_id);
+      const extras = line.order_item_extras?.length
+        ? { data: line.order_item_extras, error: null }
+        : await supabase
+          .from("order_item_extras")
+          .select("ingredient_id,qty,extra_price")
+          .eq("order_item_id", line.id);
       if (!extras.error && extras.data?.length) {
         await supabase.from("order_item_extras").insert(
           extras.data.map((x) => ({
             order_id: created.id,
             product_id: line.product_id,
+            order_item_id: moved.id,
             ingredient_id: x.ingredient_id,
             qty: x.qty,
             extra_price: x.extra_price,
           })),
         );
       }
-      await supabase.from("order_items").delete().eq("order_id", order.id).eq("product_id", line.product_id);
+      await supabase.from("order_items").delete().eq("id", line.id);
     }
     return { id: created.id, emptied: lines.length === (order.order_items || []).length };
   }
@@ -690,7 +696,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 <select
                   id={`line-discount-${i.product_id}`}
                   value={i.discount_type || ""}
-                  onChange={(e) => applyLineDiscount(i.product_id, e.target.value, i.discount_value || 0)}
+                  onChange={(e) => applyLineDiscount(i.id, i.product_id, e.target.value, i.discount_value || 0)}
                 >
                   <option value="">Sin desc.</option>
                   <option value="porcentaje">%</option>
@@ -703,7 +709,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                     inputMode="decimal"
                     defaultValue={i.discount_value || ""}
                     key={`${i.product_id}-${i.discount_type}-${i.discount_value}`}
-                    onBlur={(e) => applyLineDiscount(i.product_id, i.discount_type, e.target.value)}
+                    onBlur={(e) => applyLineDiscount(i.id, i.product_id, i.discount_type, e.target.value)}
                   />
                 ) : null}
               </div>
