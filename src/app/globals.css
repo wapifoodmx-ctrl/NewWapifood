@@ -431,6 +431,10 @@ input[type="radio"] {
   width: 76px;
 }
 
+.app-side.is-rail .side-frame {
+  padding-inline: 0;
+}
+
 .side-frame {
   display: flex;
   min-height: 0;
