@@ -66,12 +66,18 @@ export const TOURS = {
   },
 };
 
+export function homeTour(pathname, role) {
+  const key = role || "owner";
+  const home = key === "cocina" ? "/cocina" : key === "piso" ? "/pos" : "/dashboard";
+  return pathname === home && TOURS.bienvenida.roles.includes(key) ? "bienvenida" : null;
+}
+
 export function tourForPath(pathname, role) {
   const key = role || "owner";
-  return Object.entries(TOURS).find(([, tour]) => {
-    if (!tour.roles.includes(key)) return false;
+  return Object.entries(TOURS).find(([id, tour]) => {
+    if (id === "bienvenida" || !tour.roles.includes(key)) return false;
     return tour.paths.some((path) => pathname === path);
-  })?.[0] || null;
+  })?.[0] || homeTour(pathname, key);
 }
 
 export function toursForRole(role) {

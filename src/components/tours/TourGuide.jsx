@@ -5,12 +5,17 @@ import { usePathname } from "next/navigation";
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import { createClient } from "@/lib/supabase/client";
-import { TOURS, tourForPath } from "@/lib/tours";
+import { TOURS, homeTour, tourForPath } from "@/lib/tours";
 
 function visible(selector) {
   return [...document.querySelectorAll(`[data-tour="${selector}"]`)].find((node) => {
     const box = node.getBoundingClientRect();
-    return box.width > 0 && box.height > 0;
+    if (box.width < 8 || box.height < 8) return false;
+    const style = getComputedStyle(node);
+    if (style.display === "none" || style.visibility === "hidden") return false;
+    if (box.bottom < 0 || box.top > window.innerHeight) return true;
+        const hit = document.elementFromPoint(box.left + Math.min(box.width / 2, 24), box.top + Math.min(box.height / 2, 24));
+        return Boolean(hit && (node === hit || node.contains(hit)));
   });
 }
 
@@ -116,10 +121,15 @@ export function TourGuide({ role }) {
       if (tourId) run(tourId, Boolean(event.detail?.force));
     }
 
-    const timer = window.setTimeout(() => {
-      const tourId = tourForPath(pathname, role);
-      if (tourId) run(tourId, false);
-    }, 700);
+    const timer = window.setTimeout(async () => {
+          const hello = homeTour(pathname, role);
+          if (hello && !(await alreadySeen(hello))) {
+            run(hello, false);
+            return;
+          }
+          const tourId = tourForPath(pathname, role);
+          if (tourId && tourId !== hello) run(tourId, false);
+        }, 700);
     window.addEventListener("wapifood-tour", onAsk);
     return () => {
       cancelled = true;

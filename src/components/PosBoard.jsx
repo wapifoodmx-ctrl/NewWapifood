@@ -840,12 +840,16 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
 
         <section aria-label="Platillos" data-tour="pos-platillos">
           {!activeTableId ? (
-            <EmptyState
-              icon="table"
-              title="Elige una mesa para empezar"
-              text="Toca Caja o una mesa libre. Después, un toque en el platillo lo agrega."
-            />
-          ) : (
+                      <div>
+                        <EmptyState
+                          icon="table"
+                          title="Elige una mesa para empezar"
+                          text="Toca Caja o una mesa libre. Después, un toque en el platillo lo agrega."
+                        />
+                        <p data-tour="pos-cocina" className="mt-3 text-lg">Enviar a cocina aparece cuando la mesa ya tiene platillos.</p>
+                        <p data-tour="pos-cobrar" className="mt-2 text-lg">Cobrar aparece en la cuenta, abajo, cuando ya elegiste la mesa.</p>
+                      </div>
+                    ) : (
             <>
               <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
                 <div>
