@@ -315,7 +315,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
                 </p>
               ) : null}
               <p className="text-base text-[var(--ink-soft)]">
-                Llegó de {order.source || "caja"}
+                Llegó de {{ pos: "caja", web: "menú web", kiosko: "kiosko" }[order.source] || "caja"}
                 {order.opened_at
                   ? ` · ${new Date(order.opened_at).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}`
                   : ""}
