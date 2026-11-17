@@ -53,6 +53,15 @@ export const TOURS = {
       { tour: "que-paso-dinero", title: "El dinero", text: "Nada, una parte o todo. En efectivo sale del cajón. Con tarjeta queda pendiente." },
     ],
   },
+  "mesa-qr": {
+    title: "Abrir mesa y QR",
+    roles: ["owner", "admin", "piso"],
+    paths: ["/mesas"],
+    steps: [
+      { tour: "qr-abrir", title: "Abre la mesa", text: "Sin esto, el celular no puede pedir." },
+      { tour: "qr-imprimir", title: "Imprime el QR", text: "Se imprime una vez. No cambia. Escanea para pedir." },
+    ],
+  },
   negocio: {
     title: "Configura el local",
     roles: ["owner", "admin"],

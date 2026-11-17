@@ -15,7 +15,7 @@ const CHANNELS = [
   { id: "kiosko", label: "Kiosko" },
 ];
 
-export function MesasManager({ restaurantId, initialTables, tableLimit = null }) {
+export function MesasManager({ restaurantId, initialTables, tableLimit = null, slug = "" }) {
   const [tables, setTables] = useState(initialTables);
   const [areas, setAreas] = useState([]);
   const [areasReady, setAreasReady] = useState(false);
@@ -224,8 +224,29 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null })
     setTables((xs) => xs.filter((x) => x.id !== id));
   }
 
-  return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+  async function openQr(table) {
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("open_table_session", { p_table: table.id });
+      if (error) return toast.error(error.message);
+      toast.success(data?.already ? "La mesa ya estaba abierta" : "Mesa abierta para pedir desde el celular");
+    }
+
+    async function printQr(list) {
+      const QR = (await import("qrcode")).default;
+      const origin = window.location.origin;
+      const cards = await Promise.all(list.filter((table) => table.channel_type !== "caja").map(async (table) => {
+        const url = `${origin}/${slug}/mesa/${table.number}`;
+        const image = await QR.toDataURL(url, { margin: 1, width: 280 });
+        return `<section style="break-inside:avoid;padding:24px;text-align:center;font-family:Georgia,serif"><p>Wapifood</p><h1>Mesa ${table.number}</h1><img alt="" src="${image}" width="220" height="220" /><p>Escanea para pedir</p></section>`;
+      }));
+      const popup = window.open("", "_blank", "noopener,noreferrer");
+      if (!popup) return toast.error("El navegador bloqueó la ventana");
+      popup.document.write(`<!doctype html><html lang="es"><body>${cards.join("")}<script>print()<\/script></body></html>`);
+      popup.document.close();
+    }
+
+    return (
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <div>
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <button
@@ -234,6 +255,9 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null })
             className="h-10 rounded-full bg-[var(--color-cream)] px-4 text-sm font-semibold"
           >
             Crear caja + kiosko base
+          </button>
+          <button type="button" data-tour="qr-imprimir" onClick={() => printQr(tables)} className="h-12 rounded-full bg-[var(--color-cream)] px-4 text-sm font-semibold">
+            Imprimir todos
           </button>
           <button type="button" onClick={releaseIdle} className="h-10 rounded-full bg-[var(--color-cream)] px-4 text-sm font-semibold">
             Liberar mesas vacías
@@ -263,6 +287,10 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null })
               <p className="text-base font-bold">
                 {meta.label} · {t.seats} lugares
               </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button type="button" data-tour="qr-abrir" className="h-12 rounded-full bg-[var(--primary-solid)] px-3 text-sm font-bold text-[var(--on-solid)]" onClick={() => openQr(t)}>Abrir mesa</button>
+                <button type="button" className="h-12 rounded-full border border-[var(--border)] px-3 text-sm font-bold" onClick={() => printQr([t])}>Imprimir QR</button>
+              </div>
               <p className="text-base text-[var(--ink-soft)]">
                 {t.channel_type === "caja" ? "Caja" : t.channel_type === "kiosko" ? "Kiosko" : t.channel_type === "tablet" ? "Tablet" : "Piso"}
                 {t.active ? "" : " · pausada"}

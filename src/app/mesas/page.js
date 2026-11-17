@@ -10,11 +10,14 @@ export default async function MesasPage() {
   if (!membership?.restaurant_id) {
     return <AppShell title="Mesas" operational={operational} setupOnly={setupOnly}><p>Sin restaurante.</p></AppShell>;
   }
-  const { data: tables } = await supabase
+  const [{ data: tables }, { data: restaurant }] = await Promise.all([
+    supabase
     .from("dining_tables")
     .select("*")
     .eq("restaurant_id", membership.restaurant_id)
-    .order("number");
+    .order("number"),
+    supabase.from("restaurants").select("slug").eq("id", membership.restaurant_id).maybeSingle(),
+  ]);
 
   return (
     <AppShell title="Mesas" restaurantName={membership.restaurants?.name} role={membership.role} operational={operational} setupOnly={setupOnly}>
@@ -25,6 +28,7 @@ export default async function MesasPage() {
         restaurantId={membership.restaurant_id}
         initialTables={tables || []}
         tableLimit={plan?.plan ? planMeta(plan.plan).mesas : null}
+        slug={restaurant?.slug || ""}
       />
     </AppShell>
   );

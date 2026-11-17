@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
@@ -26,6 +27,8 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   const [tables, setTables] = useState(initialTables || []);
   const [orders, setOrders] = useState(initialOrders);
   const [live, setLive] = useState(false);
+  const [tableAlerts, setTableAlerts] = useState([]);
+  const [qrAutoOpen, setQrAutoOpen] = useState(false);
   const [activeTableId, setActiveTableId] = useState(null);
   const [catFilter, setCatFilter] = useState("");
   const [loading, setLoading] = useState(false);
@@ -58,12 +61,13 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     if (!restaurantId) return;
     supabase
       .from("restaurant_profiles")
-      .select("tips_enabled,tip_rates")
+      .select("tips_enabled,tip_rates,qr_auto_open")
       .eq("restaurant_id", restaurantId)
       .maybeSingle()
       .then(({ data }) => {
         if (!data) return;
         if (data.tips_enabled === false) setTipsOn(false);
+        if (data.qr_auto_open) setQrAutoOpen(true);
         const rates = String(data.tip_rates || "")
           .split(",")
           .map((n) => Number(n.trim()))
@@ -71,6 +75,43 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         if (rates.length) setTipRates(rates);
       });
   }, [restaurantId, supabase]);
+
+  useEffect(() => {
+    if (!restaurantId) return undefined;
+    let last = 0;
+    async function pull() {
+      const { data } = await supabase
+        .from("table_requests")
+        .select("id,kind,items,table_id,created_at")
+        .eq("restaurant_id", restaurantId)
+        .eq("status", "pendiente")
+        .order("created_at");
+      const rows = data || [];
+      if (rows.length > last) {
+        try {
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          osc.frequency.value = 880;
+          osc.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.12);
+        } catch { /* sin audio */ }
+      }
+      last = rows.length;
+      setTableAlerts(rows);
+    }
+    pull();
+    const timer = setInterval(pull, 5000);
+    return () => clearInterval(timer);
+  }, [restaurantId, supabase]);
+
+  async function reviewAlert(id, accept) {
+    const reason = accept ? null : window.prompt("¿Por qué no se acepta?") || "No se pudo";
+    const { error } = await supabase.rpc("review_table_request", { p_id: id, p_accept: accept, p_reason: reason });
+    if (error) toast.error(error.message);
+    else toast.success(accept ? "Pedido aceptado" : "Pedido rechazado");
+    setTableAlerts((list) => list.filter((row) => row.id !== id));
+  }
 
   // Realtime: órdenes + estados de mesa
   useEffect(() => {
@@ -178,7 +219,10 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     const existing = orders.find(
       (o) => o.table_id === tableId && o.status !== "pagada" && o.status !== "cancelada",
     );
-    if (existing) return;
+    if (existing) {
+      if (qrAutoOpen) await supabase.rpc("open_table_session", { p_table: tableId });
+      return;
+    }
     setLoading(true);
     const { data: created, error } = await supabase
       .from("orders")
@@ -197,7 +241,8 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     }
     await supabase.from("dining_tables").update({ state: "ocupada" }).eq("id", tableId);
     setOrders((prev) => [created, ...prev]);
-    toast.success("Mesa abierta");
+        if (qrAutoOpen) await supabase.rpc("open_table_session", { p_table: tableId });
+        toast.success("Mesa abierta");
   }
 
   function chooseProduct(product) {
@@ -804,6 +849,19 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       </p>
       <LoadingOverlay visible={loading} message="Guardando la cuenta…" />
 
+      {tableAlerts.length ? (
+        <div className="mb-3 grid gap-2" data-tour="qr-avisos">
+          {tableAlerts.map((alert) => (
+            <div key={alert.id} className="rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-3">
+              <p className="text-lg font-bold">{alert.kind === "mesero" ? "El cliente llama al mesero" : alert.kind === "cuenta" ? "Piden la cuenta" : "Pedido del celular por aceptar"}</p>
+              <div className="mt-2 flex gap-2">
+                <button type="button" className="btn-primary h-12 px-4" onClick={() => reviewAlert(alert.id, true)}>Aceptar</button>
+                <button type="button" className="btn-ghost h-12 px-4" onClick={() => reviewAlert(alert.id, false)}>Rechazar</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <div className="pos-layout">
         <aside aria-label="Mesas" data-tour="pos-mesas">
           <h2 className="mb-2 text-xl">Mesas</h2>
@@ -834,7 +892,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
             })}
           </div>
           {!sortedTables.length ? (
-            <EmptyState icon="table" title="Aún no hay mesas" text="Crea la caja o una mesa. Sin eso no se puede vender." action={<a className="btn-primary mt-2 inline-flex items-center px-4 no-underline" href="/mesas">Crear mesa</a>} />
+            <EmptyState icon="table" title="Aún no hay mesas" text="Crea la caja o una mesa. Sin eso no se puede vender." action={<Link className="btn-primary mt-2 inline-flex items-center px-4 no-underline" href="/mesas">Crear mesa</Link>} />
           ) : null}
         </aside>
 
@@ -906,7 +964,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 })}
               </div>
               {!productList.length ? (
-                <EmptyState icon="dish" title="No hay platillos en esta lista" text="Prueba otra categoría o agrega platillos en la carta." action={<a className="btn-primary mt-2 inline-flex items-center px-4 no-underline" href="/carta">Ir a platillos</a>} />
+                <EmptyState icon="dish" title="No hay platillos en esta lista" text="Prueba otra categoría o agrega platillos en la carta." action={<Link className="btn-primary mt-2 inline-flex items-center px-4 no-underline" href="/carta">Ir a platillos</Link>} />
               ) : null}
             </>
           )}

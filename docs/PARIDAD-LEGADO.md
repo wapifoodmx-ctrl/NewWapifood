@@ -120,3 +120,8 @@ Migración `supabase/migrations/20261104010000_paridad_caja_equipo_clientes.sql`
 - CFDI, modo sin conexión y lealtad.
 - Reembolso de Mercado Pago por la API. El folio se guarda, pero el token de cobro es de producción y no se hizo un cargo real.
 - La migración `20261104010000` corre en el deploy a `main`, no en este preview. Hasta entonces Turno, Clientes, Equipo invitable, Reportes y la propina guardada muestran el aviso o caen al cobro anterior. La caja actual sigue cobrando.
+
+## Pedido desde la mesa con QR
+
+El QR impreso no cambia: `/{slug}/mesa/{numero}`. Caja abre una sesion con token. Al cobrar, el token deja de servir. `docs/PLANES.md` no dice si esto entra en Brasa o solo en un plan mayor. Queda disponible en todos los planes hasta que Hugo lo decida.
+

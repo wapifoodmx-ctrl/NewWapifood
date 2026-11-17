@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { OnboardingWizard } from "@/components/OnboardingWizard";
 import { requireTenantSetup } from "@/lib/auth";
@@ -68,10 +69,10 @@ export default async function EmpezarPage() {
       setupOnly={setupOnly}
     >
       <nav className="mb-4 grid gap-2 sm:grid-cols-2" aria-label="Para dejar el local listo">
-        <a data-tour="nav-carta" className="btn-ghost inline-flex h-12 items-center px-4" href="/carta">Platillos</a>
-        <a data-tour="nav-mesas" className="btn-ghost inline-flex h-12 items-center px-4" href="/mesas">Mesas</a>
-        <a data-tour="nav-equipo" className="btn-ghost inline-flex h-12 items-center px-4" href="/equipo">Equipo</a>
-        <a data-tour="nav-insumos" className="btn-ghost inline-flex h-12 items-center px-4" href="/insumos">Inventario</a>
+        <Link data-tour="nav-carta" className="btn-ghost inline-flex h-12 items-center px-4" href="/carta">Platillos</Link>
+                <Link data-tour="nav-mesas" className="btn-ghost inline-flex h-12 items-center px-4" href="/mesas">Mesas</Link>
+                <Link data-tour="nav-equipo" className="btn-ghost inline-flex h-12 items-center px-4" href="/equipo">Equipo</Link>
+                <Link data-tour="nav-insumos" className="btn-ghost inline-flex h-12 items-center px-4" href="/insumos">Inventario</Link>
       </nav>
       <OnboardingWizard steps={steps} canSell={operational} />
     </AppShell>

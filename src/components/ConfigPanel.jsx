@@ -32,6 +32,8 @@ export function ConfigPanel({ restaurant, profile }) {
     tips_enabled: profile?.tips_enabled !== false,
     tip_rates: profile?.tip_rates || "10,15,20",
     iva_enabled: !!profile?.iva_enabled,
+    qr_auto_open: !!profile?.qr_auto_open,
+    qr_auto_accept: !!profile?.qr_auto_accept,
   });
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -150,6 +152,8 @@ export function ConfigPanel({ restaurant, profile }) {
         tips_enabled: form.tips_enabled !== false,
         tip_rates: form.tip_rates || "10,15,20",
         iva_enabled: !!form.iva_enabled,
+        qr_auto_open: !!form.qr_auto_open,
+        qr_auto_accept: !!form.qr_auto_accept,
       });
       if (e2) throw e2;
 
@@ -298,6 +302,14 @@ export function ConfigPanel({ restaurant, profile }) {
               onChange={(e) => set("delivery_enabled", e.target.checked)}
             />
             Delivery activo (pedidos a domicilio en menú público)
+          </label>
+          <label className="mt-3 flex items-center gap-2 text-sm font-semibold">
+            <input type="checkbox" checked={!!form.qr_auto_open} onChange={(e) => set("qr_auto_open", e.target.checked)} />
+            Al abrir una cuenta, la mesa queda lista para pedir desde el celular
+          </label>
+          <label className="mt-3 flex items-center gap-2 text-sm font-semibold">
+            <input type="checkbox" checked={!!form.qr_auto_accept} onChange={(e) => set("qr_auto_accept", e.target.checked)} />
+            Aceptar solos los pedidos del celular mientras la mesa esté abierta
           </label>
         </div>
 
