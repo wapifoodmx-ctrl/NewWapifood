@@ -241,7 +241,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
         <p className="text-base text-[var(--ink-soft)]" role="status">
           {live ? "En vivo. Un toque avanza la comanda." : "Sincronizando…"}
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" data-tour="cocina-listas">
           {[
             { id: "pendientes", label: "Por preparar" },
             { id: "domicilio", label: "Domicilio" },
@@ -279,14 +279,16 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
       ) : null}
 
       {!loading && !filtered.length ? (
-        <EmptyState
-          icon="flame"
-          title="No hay pedidos en esta lista"
-          text="Cuando la caja o un mesero envíen algo, la comanda aparece aquí en grande."
-        />
+        <div data-tour="cocina-listo">
+                  <EmptyState
+                    icon="flame"
+                    title="No hay pedidos en esta lista"
+                    text="Cuando la caja o un mesero envíen algo, la comanda aparece aquí en grande."
+                  />
+                </div>
       ) : null}
 
-      <div className="kds-grid">
+      <div className="kds-grid" data-tour="cocina-comandas">
         {filtered.map((order) => {
           const meta = statusMeta(order.status);
           const wait = waitMeta(order.opened_at, now);
@@ -338,7 +340,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
                         <div className="mt-2 flex flex-wrap gap-2">
                           {st === "pendiente" ? (
                             <>
-                              <button type="button" className="btn-primary px-4" onClick={() => setItemStatus(order.id, i.id, "preparado")}>
+                              <button type="button" data-tour="cocina-listo" className="btn-primary px-4" onClick={() => setItemStatus(order.id, i.id, "preparado")}>
                                 Listo
                               </button>
                               <button type="button" className="btn-danger px-3" onClick={() => setItemStatus(order.id, i.id, "cancelado")}>

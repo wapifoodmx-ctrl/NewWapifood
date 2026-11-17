@@ -1221,6 +1221,57 @@ button.cmdk-item[aria-selected="true"] {
   .tap-flash { outline: 3px solid var(--primary-solid); }
 }
 
+.wf-tour.driver-popover {
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 18px;
+  max-width: min(22rem, calc(100vw - 1.5rem));
+  font-size: 1.15rem;
+}
+
+.wf-tour .driver-popover-title {
+  font-size: 1.45rem;
+  color: var(--ink);
+}
+
+.wf-tour .driver-popover-description {
+  color: var(--ink-soft);
+  font-size: 1.1rem;
+}
+
+.wf-tour .driver-popover-progress-text {
+  color: var(--ink-soft);
+  font-size: 1rem;
+}
+
+.wf-tour .driver-popover-footer button {
+  min-height: 48px;
+  min-width: 48px;
+  border-radius: 14px;
+  padding: 0 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  text-shadow: none;
+  background: var(--surface-2);
+  color: var(--ink);
+  border: 1px solid var(--border);
+}
+
+.wf-tour .driver-popover-next-btn {
+  background: var(--primary-solid);
+  color: var(--on-solid);
+  border-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .driver-overlay,
+  .driver-popover,
+  .driver-active-element {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
 @media print {
   .app-side,
   .app-tabbar,

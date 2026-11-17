@@ -67,6 +67,12 @@ export default async function EmpezarPage() {
       operational={operational}
       setupOnly={setupOnly}
     >
+      <nav className="mb-4 grid gap-2 sm:grid-cols-2" aria-label="Para dejar el local listo">
+        <a data-tour="nav-carta" className="btn-ghost inline-flex h-12 items-center px-4" href="/carta">Platillos</a>
+        <a data-tour="nav-mesas" className="btn-ghost inline-flex h-12 items-center px-4" href="/mesas">Mesas</a>
+        <a data-tour="nav-equipo" className="btn-ghost inline-flex h-12 items-center px-4" href="/equipo">Equipo</a>
+        <a data-tour="nav-insumos" className="btn-ghost inline-flex h-12 items-center px-4" href="/insumos">Inventario</a>
+      </nav>
       <OnboardingWizard steps={steps} canSell={operational} />
     </AppShell>
   );

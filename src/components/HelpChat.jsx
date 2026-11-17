@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AIChatCard } from "@/components/AIChatCard";
+import { startTour } from "@/components/tours/TourGuide";
 import { HELP_SUGGESTIONS, answerHelp } from "@/lib/helpAnswers";
 
 export function HelpChat({ lift = "" }) {
@@ -32,13 +33,23 @@ export function HelpChat({ lift = "" }) {
           />
         </div>
       ) : null}
-      <button
-        type="button"
-        className="h-12 rounded-[3px] bg-[var(--color-onyx-warm)] px-4 text-xs font-semibold uppercase text-[var(--color-parchment)]"
-        onClick={() => setOpen((v) => !v)}
-      >
-        Ayuda
-      </button>
-    </div>
+      <div className="flex gap-2">
+              <button
+                type="button"
+                data-tour="ayuda"
+                className="h-12 rounded-[3px] bg-[var(--color-onyx-warm)] px-4 text-xs font-semibold uppercase text-[var(--color-parchment)]"
+                onClick={() => setOpen((v) => !v)}
+              >
+                Ayuda
+              </button>
+              <button
+                type="button"
+                className="h-12 rounded-[3px] border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-bold text-[var(--ink)]"
+                onClick={() => startTour(undefined, { force: true })}
+              >
+                Ver guía
+              </button>
+            </div>
+                    </div>
   );
 }

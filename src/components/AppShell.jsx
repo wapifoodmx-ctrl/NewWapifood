@@ -12,6 +12,7 @@ import { Icon } from "@/components/ui/Icon";
 import { CommandPalette } from "@/components/CommandPalette";
 import { SideNav, useNavPrefs } from "@/components/SideNav";
 import { OriginButton } from "@/components/OriginButton";
+import { TourGuide, startTour } from "@/components/tours/TourGuide";
 
 export function AppShell({
   children,
@@ -71,7 +72,7 @@ export function AppShell({
   return (
     <div className={`app-frame min-h-screen bg-[var(--bg)] text-[var(--ink)] ${focus ? "focus" : "lg:flex"}`}>
       {focus ? null : (
-        <aside className={`app-side hidden lg:flex lg:flex-col ${rail ? "is-rail" : ""}`} aria-label="Navegación">
+        <aside data-tour="menu" className={`app-side hidden lg:flex lg:flex-col ${rail ? "is-rail" : ""}`} aria-label="Navegación">
           <SideNav
             role={role}
             restaurantName={restaurantName}
@@ -105,7 +106,7 @@ export function AppShell({
         <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--bg)_90%,transparent)] px-4 py-3 backdrop-blur-md">
           <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="truncate text-sm text-[var(--ink-soft)] lg:hidden">
+              <p data-tour="local" className="truncate text-sm text-[var(--ink-soft)] lg:hidden">
                 {restaurantName || "Wapifood"}
                 {role ? ` · ${roleLabel(role)}` : ""}
               </p>
@@ -115,7 +116,7 @@ export function AppShell({
               <div className="lg:hidden">
                 <RestaurantSwitcher />
               </div>
-              <button type="button" className="icon-btn" onClick={openSearch} aria-label="Buscar pantalla" aria-keyshortcuts="Control+K">
+              <button type="button" data-tour="buscar" className="icon-btn" onClick={openSearch} aria-label="Buscar pantalla" aria-keyshortcuts="Control+K">
                 <Icon name="search" size={20} />
               </button>
               {focus ? (
@@ -126,9 +127,12 @@ export function AppShell({
                               </div>
                             ) : null}
               <ThemeToggle className={focus ? "" : "lg:hidden"} />
-              <button type="button" onClick={signOut} className="btn-ghost px-4 lg:hidden">
-                Salir
+              <button type="button" className="btn-ghost hidden h-12 px-3 sm:inline-flex" onClick={() => startTour(undefined, { force: true })}>
+                              Ver guía
               </button>
+                            <button type="button" onClick={signOut} className="btn-ghost px-4 lg:hidden">
+                              Salir
+                            </button>
               {focus ? (
                               <div className="hidden lg:block">
                                 <OriginButton className="btn-ghost" onClick={signOut}>
@@ -141,10 +145,11 @@ export function AppShell({
         </header>
 
         <main className={`mx-auto max-w-[1440px] px-4 py-5 ${focus ? "pb-8" : "pb-28 lg:pb-10"}`}>{children}</main>
+        <TourGuide role={role} />
       </div>
 
       {focus ? null : (
-        <nav className="app-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-[var(--border)] bg-[var(--surface)] px-1 py-1 lg:hidden" aria-label="Accesos rápidos">
+        <nav data-tour="menu" className="app-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-[var(--border)] bg-[var(--surface)] px-1 py-1 lg:hidden" aria-label="Accesos rápidos">
           <div className="mx-auto flex max-w-3xl gap-1">
             {primary.map((item) => (
               <Link key={item.id} href={item.href} aria-current={current(item.href) ? "page" : undefined} className="tab-link">

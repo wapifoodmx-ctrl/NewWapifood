@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
 import { toast } from "@/components/ui/Toast";
 import { Icon } from "@/components/ui/Icon";
+import { startTour } from "@/components/tours/TourGuide";
 
 const STEPS = ["Qué pasó", "Platillos", "Dinero", "Revisar"];
 
@@ -17,6 +18,12 @@ export function QuePaso({ order, onDone }) {
   const [amount, setAmount] = useState("");
   const [pay, setPay] = useState(order?.method === "tarjeta" ? "tarjeta" : order?.method === "transferencia" ? "mercadopago" : "efectivo");
   const [pin, setPin] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    const timer = window.setTimeout(() => startTour("que-paso"), 400);
+    return () => window.clearTimeout(timer);
+  }, [open]);
   const [busy, setBusy] = useState(false);
   const paid = order?.status === "pagada";
 
@@ -98,7 +105,7 @@ export function QuePaso({ order, onDone }) {
 
   return (
     <div>
-      <button type="button" className="btn-primary inline-flex h-14 items-center gap-2 px-4" onClick={() => { setLines([]); setOpen(true); setStep(0); }}>
+      <button type="button" data-tour="que-paso" className="btn-primary inline-flex h-14 items-center gap-2 px-4" onClick={() => { setLines([]); setOpen(true); setStep(0); }}>
         <Icon name="receipt" size={22} /> ¿Qué pasó?
       </button>
       {open ? (
@@ -108,7 +115,7 @@ export function QuePaso({ order, onDone }) {
             <h2 id="que-paso-title" className="mt-1 text-2xl">Vamos paso a paso</h2>
 
             {step === 0 ? (
-              <div className="mt-4 grid gap-2">
+                          <div className="mt-4 grid gap-2" data-tour="que-paso-opciones">
                 <Choice icon="close" title="Cancelar toda la cuenta" text={paid ? "Ya está cobrada. Luego vemos el inventario y el dinero." : "Se cancela y se libera la mesa. Todavía no hay dinero que devolver."} onClick={() => { setWhat("cancelar"); setStep(paid ? 1 : 3); }} />
                 <Choice icon="dish" title="Quitar algunos platillos" text="Elige cuántos y si regresan al inventario o se pierden." onClick={() => { setWhat("quitar"); setStep(1); }} />
                 <Choice icon="register" title="Devolver dinero" text={paid ? "La cuenta ya se cobró. Puedes devolver una parte o todo." : "Todavía no se ha cobrado, así que no hay dinero que devolver."} disabled={!paid} onClick={() => { setWhat("dinero"); setMoneyChoice("parcial"); setStep(2); }} />
@@ -139,7 +146,7 @@ export function QuePaso({ order, onDone }) {
             ) : null}
 
             {step === 2 ? (
-              <div className="mt-4 grid gap-2">
+                          <div className="mt-4 grid gap-2" data-tour="que-paso-dinero">
                 <Choice title="No devolver dinero" text="Solo se mueve el inventario, si elegiste platillos." onClick={() => setMoneyChoice("nada")} />
                 <Choice title="Devolver una parte" text={`Máximo ${money(maxRefund)}.`} onClick={() => setMoneyChoice("parcial")} />
                 <Choice title="Devolver todo" text={money(maxRefund)} onClick={() => setMoneyChoice("total")} />

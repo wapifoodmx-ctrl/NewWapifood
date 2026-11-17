@@ -780,9 +780,9 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       </p>
       <div className="mt-3 grid gap-2">
         <button type="button" className="btn-lg btn-accent" onClick={sendKitchen}>
-          Enviar a cocina
+          <span data-tour="pos-cocina">Enviar a cocina</span>
         </button>
-        <button type="button" className="btn-lg btn-primary" onClick={() => openPay(false)}>
+        <button type="button" data-tour="pos-cobrar" className="btn-lg btn-primary" onClick={() => openPay(false)}>
           Cobrar {money(total)}
         </button>
         <button type="button" className="btn-ghost" onClick={() => openPay(true)}>
@@ -805,7 +805,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       <LoadingOverlay visible={loading} message="Guardando la cuenta…" />
 
       <div className="pos-layout">
-        <aside aria-label="Mesas">
+        <aside aria-label="Mesas" data-tour="pos-mesas">
           <h2 className="mb-2 text-xl">Mesas</h2>
           <div className="pos-tables-grid">
             {sortedTables.map((t) => {
@@ -838,7 +838,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
           ) : null}
         </aside>
 
-        <section aria-label="Platillos">
+        <section aria-label="Platillos" data-tour="pos-platillos">
           {!activeTableId ? (
             <EmptyState
               icon="table"
@@ -942,7 +942,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
           <button type="button" className="btn-ghost flex-1" onClick={() => setCartOpen(true)}>
             Cuenta · {itemCount}
           </button>
-          <button type="button" className="btn-lg btn-primary flex-[1.4]" onClick={() => openPay(false)}>
+          <button type="button" data-tour="pos-cobrar" className="btn-lg btn-primary flex-[1.4]" onClick={() => openPay(false)}>
             Cobrar {money(total)}
           </button>
         </div>

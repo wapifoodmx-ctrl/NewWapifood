@@ -220,11 +220,17 @@ export function TurnoCaja({ restaurantId, initialSession, initialMoves, history,
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-      <section className="card p-5">
+      <section className="card p-5" data-tour="turno-abrir">
         <h2 className="text-2xl">{session ? "Turno abierto" : "No hay turno abierto"}</h2>
         <p className="mt-1 text-base text-[var(--ink-soft)]">
           El efectivo esperado es el fondo, más ventas y propinas en efectivo, más entradas, menos salidas. Tarjeta y otro tipo de pago no entran al cajón. Se puede cobrar aunque el turno no esté abierto.
         </p>
+                  {!session ? (
+                    <div className="mt-4 grid gap-2">
+                      <p data-tour="turno-parcial" className="rounded-[14px] border border-[var(--border)] p-3 text-lg">Corte parcial: cuentas el cajón y la caja sigue abierta.</p>
+                      <p data-tour="turno-dia" className="rounded-[14px] border border-[var(--border)] p-3 text-lg">Corte del día: este sí cierra la caja.</p>
+                    </div>
+                  ) : null}
         {session ? (
           <>
             <p className="mt-4 text-lg">Fondo {money(session.opening_float)}</p>
@@ -317,7 +323,7 @@ export function TurnoCaja({ restaurantId, initialSession, initialMoves, history,
               <button type="button" className="btn-ghost h-12" disabled={busy} onClick={loadReport}>
                 <Icon name="receipt" size={20} /> Ver corte
               </button>
-              <button type="button" className="btn-ghost h-12" disabled={busy} onClick={savePartial}>
+              <button type="button" data-tour="turno-parcial" className="btn-ghost h-12" disabled={busy} onClick={savePartial}>
                 Guardar corte parcial
               </button>
               <button type="button" className="btn-ghost h-12" disabled={busy} onClick={async () => {
@@ -328,7 +334,7 @@ export function TurnoCaja({ restaurantId, initialSession, initialMoves, history,
               }}>
                 Imprimir o guardar PDF
               </button>
-              <button type="submit" className="btn-danger h-14" disabled={busy}>Corte del día</button>
+              <button type="submit" data-tour="turno-dia" className="btn-danger h-14" disabled={busy}>Corte del día</button>
             </div>
             {report ? (
               <div className="mt-4 text-sm">

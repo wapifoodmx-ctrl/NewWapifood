@@ -184,7 +184,8 @@ export function SideNav({
         aria-current={on ? "page" : undefined}
         aria-label={compact ? item.title : undefined}
         title={compact ? item.title : undefined}
-        className="side-link"
+                data-tour={`nav-${item.id}`}
+                className="side-link"
         onClick={() => {
           setFly(null);
           onNavigate?.();
@@ -294,6 +295,7 @@ export function SideNav({
         <button
           type="button"
           className="side-account"
+          data-tour="local"
           aria-expanded={account}
           aria-haspopup="menu"
           aria-label={`${restaurantName || "Tu restaurante"}. Abrir cuenta`}
