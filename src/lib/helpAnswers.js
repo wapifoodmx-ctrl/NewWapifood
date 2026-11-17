@@ -24,7 +24,7 @@ export function answerHelp(question) {
   const text = String(question || "").trim();
   if (!text) return "Escribe una pregunta sobre caja, cocina, carta o inventario.";
   const hit = ANSWERS.find(([re]) => re.test(text));
-  return hit ? hit[1] : "No tengo esa respuesta todavía. Revisa Carta, Insumos, Recetas, Caja o Cocina en el menú.";
+  return hit ? hit[1] : "No tengo una respuesta automática para eso todavía. Puedes preguntar por caja, cocina, carta, inventario, turno, equipo o pagos.";
 }
 
 export const HELP_SUGGESTIONS = [

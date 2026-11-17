@@ -11,6 +11,7 @@ import { HelpChat } from "@/components/HelpChat";
 import { Icon } from "@/components/ui/Icon";
 import { CommandPalette } from "@/components/CommandPalette";
 import { SideNav, useNavPrefs } from "@/components/SideNav";
+import { OriginButton } from "@/components/OriginButton";
 
 export function AppShell({
   children,
@@ -25,7 +26,6 @@ export function AppShell({
   const router = useRouter();
   const [more, setMore] = useState(false);
   const [palette, setPalette] = useState(false);
-  const [toolbarHidden, setToolbarHidden] = useState(false);
   const { rail, open, toggleRail, toggleSection, ensureSection } = useNavPrefs();
   const primary = primaryModules(role);
   const home = homePath(role);
@@ -102,7 +102,7 @@ export function AppShell({
           </div>
         ) : null}
 
-        <header className={`sticky top-0 z-20 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--bg)_90%,transparent)] px-4 py-3 backdrop-blur-md ${toolbarHidden ? "hidden" : ""}`}>
+        <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--bg)_90%,transparent)] px-4 py-3 backdrop-blur-md">
           <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-sm text-[var(--ink-soft)] lg:hidden">
@@ -112,9 +112,6 @@ export function AppShell({
               <h1 className="truncate text-[1.7rem] leading-tight sm:text-[2rem]">{title}</h1>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <button type="button" className="icon-btn" onClick={() => setToolbarHidden((h) => !h)} aria-label={toolbarHidden ? "Mostrar barra de herramientas" : "Ocultar barra de herramientas"}>
-                <Icon name="eye" size={20} />
-              </button>
               <div className="lg:hidden">
                 <RestaurantSwitcher />
               </div>
@@ -122,28 +119,22 @@ export function AppShell({
                 <Icon name="search" size={20} />
               </button>
               {focus ? (
-                <Link href={home} className="btn-ghost inline-flex items-center px-3 no-underline">
+                <OriginButton className="btn-ghost" onClick={() => router.push(home)}>
                   Inicio
-                </Link>
+                </OriginButton>
               ) : null}
               <ThemeToggle className={focus ? "" : "lg:hidden"} />
               <button type="button" onClick={signOut} className="btn-ghost px-4 lg:hidden">
                 Salir
               </button>
               {focus ? (
-                <button type="button" onClick={signOut} className="btn-ghost hidden px-4 lg:inline-flex">
+                <OriginButton className="btn-ghost" onClick={signOut}>
                   Salir
-                </button>
+                </OriginButton>
               ) : null}
             </div>
           </div>
         </header>
-
-        {toolbarHidden ? (
-          <button type="button" className="icon-btn fixed right-4 top-4 z-50" onClick={() => setToolbarHidden(false)} aria-label="Mostrar barra de herramientas">
-            <Icon name="eye" size={20} />
-          </button>
-        ) : null}
 
         <main className={`mx-auto max-w-[1440px] px-4 py-5 ${focus ? "pb-8" : "pb-28 lg:pb-10"}`}>{children}</main>
       </div>
