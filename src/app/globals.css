@@ -167,6 +167,17 @@ button.icon-btn {
   border-radius: 999px;
 }
 
+.app-frame,
+.app-frame main {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+input[type="file"] {
+  max-width: 100%;
+}
+
 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]):not([type="range"]),
 select,
 textarea {
@@ -539,7 +550,7 @@ button.side-link,
 a.side-link,
 button.side-icon-btn,
 button.side-account {
-  min-height: 36px;
+  min-height: 48px;
   min-width: 0;
   width: 100%;
   justify-content: flex-start;
@@ -555,8 +566,9 @@ button.side-account {
 }
 
 button.side-icon-btn {
-  width: 36px;
-  min-width: 36px;
+  width: 48px;
+  min-width: 48px;
+  min-height: 48px;
   padding: 0;
   justify-content: center;
 }
@@ -918,11 +930,17 @@ button.cmdk-item[aria-selected="true"] {
 
 .pos-layout {
   display: grid;
+  min-width: 0;
   gap: 12px;
+}
+
+.pos-layout > * {
+  min-width: 0;
 }
 
 .pos-tables-grid {
   display: flex;
+  max-width: 100%;
   gap: 8px;
   overflow-x: auto;
   padding-bottom: 4px;

@@ -122,7 +122,7 @@ export default function ImportarPage() {
   return (
     <AppShell title="Importar">
       <p className="mb-4 text-sm text-[var(--color-espresso)]">
-        CSV del legado (insumos y productos). La primera fila son los títulos. Kg y litros se guardan en g y ml.
+        Archivo separado por comas, de insumos o platillos. La primera fila son los títulos. Kilos y litros se guardan en gramos y mililitros.
       </p>
       <div className="grid gap-4 md:grid-cols-2">
         <label className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4">

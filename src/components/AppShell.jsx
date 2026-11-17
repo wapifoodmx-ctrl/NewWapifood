@@ -119,19 +119,23 @@ export function AppShell({
                 <Icon name="search" size={20} />
               </button>
               {focus ? (
-                <OriginButton className="btn-ghost" onClick={() => router.push(home)}>
-                  Inicio
-                </OriginButton>
-              ) : null}
+                              <div className="hidden lg:block">
+                                <OriginButton className="btn-ghost" onClick={() => router.push(home)}>
+                                  Inicio
+                                </OriginButton>
+                              </div>
+                            ) : null}
               <ThemeToggle className={focus ? "" : "lg:hidden"} />
               <button type="button" onClick={signOut} className="btn-ghost px-4 lg:hidden">
                 Salir
               </button>
               {focus ? (
-                <OriginButton className="btn-ghost" onClick={signOut}>
-                  Salir
-                </OriginButton>
-              ) : null}
+                              <div className="hidden lg:block">
+                                <OriginButton className="btn-ghost" onClick={signOut}>
+                                  Salir
+                                </OriginButton>
+                              </div>
+                            ) : null}
             </div>
           </div>
         </header>
