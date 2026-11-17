@@ -29,7 +29,7 @@ export default async function ConfirmadoPage({ searchParams }) {
                 Iniciar sesión
               </Link>
               <Link href="/dashboard" className="inline-flex h-12 items-center justify-center rounded-full border border-[var(--color-line)] bg-[var(--color-cream)] px-6 font-semibold">
-                Ir al panel
+                Entrar a mi restaurante
               </Link>
             </div>
           </>

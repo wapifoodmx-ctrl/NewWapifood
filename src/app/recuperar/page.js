@@ -54,7 +54,7 @@ export default function RecuperarPage() {
           {loading ? "Enviando…" : "Enviar enlace"}
         </button>
         <Link href="/login" className="mt-4 block text-center text-sm font-semibold text-[var(--color-muted)]">
-          Volver al login
+          Volver a entrar
         </Link>
       </form>
     </div>

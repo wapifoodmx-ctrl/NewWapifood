@@ -21,7 +21,7 @@ const features = [
 const steps = [
   { n: "1", t: "Crea tu cuenta", d: "Con tu correo. Te llega un enlace para confirmar." },
   { n: "2", t: "Arma la carta", d: "Platillos, una mesa y los datos del local." },
-  { n: "3", t: "Cobra la primera", d: "Elige un plan y vende en efectivo, tarjeta o Mercado Pago." },
+  { n: "3", t: "Cobra la primera", d: "Elige un plan y vende en efectivo, tarjeta u otro tipo de pago." },
 ];
 
 export default function LandingPage() {
@@ -29,10 +29,10 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--ink)]">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
-        <div className="flex items-center gap-3">
-          <p className="brand text-3xl">Wapifood</p>
-          <RotatingText texts={["Fácil", "Restaurantes", "Negocios", "Emprende", "Te ayuda"]} mainClassName="text-3xl" />
+      <header className="relative z-20 mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-5">
+              <div className="flex min-w-0 items-center gap-3 overflow-hidden">
+                <p className="brand shrink-0 text-3xl">Wapifood</p>
+                <RotatingText texts={["Fácil", "Restaurantes", "Negocios", "Emprende", "Te ayuda"]} mainClassName="pointer-events-none hidden text-3xl sm:inline-flex" />
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />

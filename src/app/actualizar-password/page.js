@@ -55,7 +55,7 @@ export default function ActualizarPasswordPage() {
         <button type="submit" disabled={loading} className="mt-5 h-12 w-full rounded-full bg-[var(--color-ink)] font-semibold text-[var(--color-cream)] disabled:opacity-60">
           {loading ? "Guardando…" : "Guardar y entrar"}
         </button>
-        <Link href="/login" className="mt-4 block text-center text-sm text-[var(--color-muted)]">Volver al login</Link>
+        <Link href="/login" className="mt-4 block text-center text-sm text-[var(--color-muted)]">Volver a entrar</Link>
       </form>
     </div>
   );
