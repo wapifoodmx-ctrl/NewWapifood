@@ -40,6 +40,7 @@ export const PLANS = [
       "Punto de venta completo",
       "Cómo va el día y reportes",
       "Menú digital con QR",
+          "Pedir desde la mesa con QR",
       "Tickets digitales",
       "Cocina",
       "Inventario",

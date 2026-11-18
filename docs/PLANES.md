@@ -4,6 +4,8 @@ Fecha: 10 de noviembre de 2026. Hugo aprobó estos nombres y que el precio de va
 
 El anual paga 10 meses (2 meses gratis) y dura 365 días. Precios en MXN.
 
+Pedir desde la mesa con QR entra en todos los planes que tienen mesas. Hoy son todos: Brasa, Comal, Fogón, Brasas, Comales y Fogones. El QR impreso no lleva token. Solo se puede pedir si caja abrió esa mesa.
+
 ## Un local
 
 | Nombre | Id | Al mes | Al año | Mesas | Meseros | Locales |
