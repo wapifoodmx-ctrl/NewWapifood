@@ -10,7 +10,7 @@ export default async function ConfigPage() {
   const { supabase, membership, operational, setupOnly } = await requireTenantSetup();
   if (!membership?.restaurant_id) {
     return (
-      <AppShell title="Restaurante" operational={operational} setupOnly={setupOnly}>
+      <AppShell title="Mi perfil" operational={operational} setupOnly={setupOnly}>
         <p>Sin restaurante. Recarga o vuelve a iniciar sesión.</p>
       </AppShell>
     );
@@ -34,7 +34,7 @@ export default async function ConfigPage() {
 
   return (
     <AppShell
-      title="Restaurante"
+      title="Mi perfil"
       restaurantName={displayName}
       role={membership.role}
       operational={operational}

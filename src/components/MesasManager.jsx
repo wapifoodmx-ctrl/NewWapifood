@@ -7,9 +7,10 @@ import { Icon } from "@/components/ui/Icon";
 import { EmptyState } from "@/components/ui/States";
 import { tableStateMeta } from "@/lib/brand";
 import { confirmAsync } from "@/components/ui/confirm";
+import { openPrintWindow } from "@/lib/printDocument";
 
 const CHANNELS = [
-  { id: "caja", label: "Caja (POS)" },
+  { id: "caja", label: "Punto de venta" },
   { id: "piso", label: "Piso" },
   { id: "tablet", label: "Tablet de mesa" },
   { id: "kiosko", label: "Kiosko" },
@@ -239,10 +240,8 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null, s
         const image = await QR.toDataURL(url, { margin: 1, width: 280 });
         return `<section style="break-inside:avoid;padding:24px;text-align:center;font-family:Georgia,serif"><p>Wapifood</p><h1>Mesa ${table.number}</h1><img alt="" src="${image}" width="220" height="220" /><p>Escanea para pedir</p></section>`;
       }));
-      const popup = window.open("", "_blank", "noopener,noreferrer");
-      if (!popup) return toast.error("El navegador bloqueó la ventana");
-      popup.document.write(`<!doctype html><html lang="es"><body>${cards.join("")}<script>print()<\/script></body></html>`);
-      popup.document.close();
+      const popup = openPrintWindow(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>QR de mesas</title></head><body>${cards.join("")}<script>window.addEventListener("load",function(){window.print()})<\/script></body></html>`);
+      if (!popup) return toast.error("Permite ventanas emergentes para ver el QR.");
     }
 
     return (
@@ -292,7 +291,7 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null, s
                 <button type="button" className="h-12 rounded-full border border-[var(--border)] px-3 text-sm font-bold" onClick={() => printQr([t])}>Imprimir QR</button>
               </div>
               <p className="text-base text-[var(--ink-soft)]">
-                {t.channel_type === "caja" ? "Caja" : t.channel_type === "kiosko" ? "Kiosko" : t.channel_type === "tablet" ? "Tablet" : "Piso"}
+                {t.channel_type === "caja" ? "Punto de venta" : t.channel_type === "kiosko" ? "Kiosko" : t.channel_type === "tablet" ? "Tablet" : "Piso"}
                 {t.active ? "" : " · pausada"}
               </p>
               {areasReady ? (

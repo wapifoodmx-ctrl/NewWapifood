@@ -35,25 +35,25 @@ export default async function EmpezarPage() {
     {
       id: "platillos",
       ok: (categories.count || 0) > 0 && (products.count || 0) > 0,
-      title: "Primeros platillos",
-      detail: "Crea una categoría, por ejemplo Tacos, y un platillo con precio y foto si tienes.",
+      title: "Primeros productos",
+      detail: "Crea una categoría, por ejemplo Tacos, y un producto con precio. La foto puede esperar.",
       href: "/carta",
-      action: "Agregar platillos",
+      action: "Agregar productos",
     },
     {
       id: "mesas",
       ok: (tables.count || 0) > 0,
-      title: "Mesas y precios",
-      detail: "Abre al menos la caja o una mesa. El precio que captures es lo que cobras, ya con IVA, como en la carta.",
+      title: "Punto de venta y mesas",
+      detail: "El mostrador es el punto de venta. Si atiendes mesas, crea al menos una. El precio del producto es lo que cobras.",
       href: "/mesas",
-      action: "Crear mesa",
+      action: "Revisar mesas",
     },
     {
       id: "venta",
       ok: (paid.count || 0) > 0,
       title: "Una venta de prueba",
       detail: operational
-        ? "En la caja elige la mesa, toca un platillo y cobra en efectivo. Si fue de prueba, cancela la cuenta."
+        ? "En el punto de venta toca un producto y cobra en efectivo. Si fue de prueba, cancela la cuenta."
         : "Para cobrar necesitas un plan. Puedes saltar este paso y activarlo cuando quieras vender de verdad.",
       href: operational ? "/pos" : "/pagos",
       action: operational ? "Hacer la venta" : "Ver planes",
@@ -69,7 +69,7 @@ export default async function EmpezarPage() {
       setupOnly={setupOnly}
     >
       <nav className="mb-4 grid gap-2 sm:grid-cols-2" aria-label="Para dejar el local listo">
-        <Link data-tour="nav-carta" className="btn-ghost inline-flex h-12 items-center px-4" href="/carta">Platillos</Link>
+        <Link data-tour="nav-carta" className="btn-ghost inline-flex h-12 items-center px-4" href="/carta">Productos</Link>
                 <Link data-tour="nav-mesas" className="btn-ghost inline-flex h-12 items-center px-4" href="/mesas">Mesas</Link>
                 <Link data-tour="nav-equipo" className="btn-ghost inline-flex h-12 items-center px-4" href="/equipo">Equipo</Link>
                 <Link data-tour="nav-insumos" className="btn-ghost inline-flex h-12 items-center px-4" href="/insumos">Inventario</Link>

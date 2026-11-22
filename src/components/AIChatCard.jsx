@@ -153,7 +153,7 @@ export function AIChatCard({
             {history.map((m, i) => (
               <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                 <p
-                  className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-5 ${
+                  className={`max-w-[85%] whitespace-pre-line rounded-2xl px-3 py-2 text-sm leading-5 ${
                     m.role === "user"
                       ? "bg-[var(--color-onyx-warm)] text-[var(--color-parchment)]"
                       : "bg-[var(--color-linen)] text-[var(--color-onyx-warm)]"

@@ -1,9 +1,9 @@
 /** Todas las pantallas siguen en el menú. Los títulos están en español llano. */
 export const MODULES = [
-  { id: "dashboard", title: "Inicio", href: "/dashboard", group: "ops", nav: "hoy", icon: "home", hint: "Cómo va el día" },
-  { id: "pos", title: "Caja", href: "/pos", group: "ops", nav: "hoy", icon: "register", hint: "Pedidos y cobro" },
+  { id: "dashboard", title: "Inicio", href: "/dashboard", group: "ops", nav: "hoy", icon: "home", hint: "Cómo va el día", alias: "dashboard ventas" },
+  { id: "pos", title: "Punto de venta", short: "Venta", href: "/pos", group: "ops", nav: "hoy", icon: "register", hint: "Cobrar en mostrador", alias: "caja pos cobrar vender" },
   { id: "kitchen", title: "Cocina", href: "/cocina", group: "ops", nav: "hoy", icon: "flame", hint: "Comandas en vivo" },
-  { id: "tickets", title: "Cuentas", href: "/tickets", group: "ops", nav: "hoy", icon: "receipt", hint: "Ver e imprimir" },
+  { id: "tickets", title: "Tickets", href: "/tickets", group: "ops", nav: "hoy", icon: "receipt", hint: "Cuentas e impresión", alias: "cuentas ticket" },
   { id: "turno", title: "Turno de caja", href: "/turno", group: "ops", nav: "hoy", icon: "cash", hint: "Fondo, corte y diferencia" },
 { id: "propinas", title: "Propinas", href: "/propinas", group: "ops", nav: "hoy", icon: "users", hint: "Reparto del día" },
 { id: "checador", title: "Checador", href: "/checador", group: "ops", nav: "hoy", icon: "users", hint: "Entrada y salida" },
@@ -13,17 +13,17 @@ export const MODULES = [
   { id: "kiosko", title: "Kiosko", href: "/kiosko", group: "ops", nav: "piso", icon: "tablet", hint: "Pedido en el local" },
   { id: "menu-cliente", title: "Menú para clientes", href: "/menu", group: "ops", nav: "piso", icon: "qr", hint: "QR y domicilio" },
   { id: "pantallas", title: "Pantallas", href: "/pantallas", group: "ops", nav: "piso", icon: "screen", hint: "Cocina en una pantalla" },
-  { id: "carta", title: "Platillos", href: "/carta", group: "setup", nav: "carta", icon: "dish", hint: "Precios y fotos" },
-  { id: "insumos", title: "Insumos", href: "/insumos", group: "setup", nav: "carta", icon: "box", hint: "Lo que hay en bodega" },
+  { id: "carta", title: "Productos", href: "/carta", group: "setup", nav: "carta", icon: "dish", hint: "La carta: precios y fotos", alias: "platillos carta menu" },
+  { id: "insumos", title: "Inventario", href: "/insumos", group: "setup", nav: "carta", icon: "box", hint: "Insumos y piezas", alias: "insumos bodega" },
   { id: "compras", title: "Compras", href: "/compras", group: "setup", nav: "carta", icon: "box", hint: "Proveedores y costo" },
   { id: "recetas", title: "Recetas", href: "/recetas", group: "setup", nav: "carta", icon: "book", hint: "Qué lleva cada platillo" },
   { id: "listas", title: "Listas", href: "/listas", group: "setup", nav: "carta", icon: "list", hint: "Grupos de productos" },
   { id: "importar", title: "Importar", href: "/importar", group: "setup", nav: "carta", icon: "upload", hint: "Subir un archivo" },
   { id: "empezar", title: "Primeros pasos", href: "/empezar", group: "setup", nav: "cuenta", icon: "steps", hint: "Hasta la primera venta" },
-  { id: "config", title: "Datos del local", href: "/config", group: "setup", nav: "cuenta", icon: "store", hint: "Nombre, teléfono y logo" },
+  { id: "config", title: "Mi perfil", href: "/config", group: "setup", nav: "cuenta", icon: "store", hint: "Datos del local, logo y horario", alias: "restaurante config perfil" },
   { id: "equipo", title: "Equipo", href: "/equipo", group: "setup", nav: "cuenta", icon: "team", hint: "Quién puede entrar" },
   { id: "clientes", title: "Clientes", href: "/clientes", group: "setup", nav: "cuenta", icon: "users", hint: "Teléfono y domicilio" },
-  { id: "pagos", title: "Plan", href: "/pagos", group: "setup", nav: "cuenta", icon: "card", hint: "Pagar con Mercado Pago" },
+  { id: "pagos", title: "Opciones de pago", href: "/pagos", group: "setup", nav: "cuenta", icon: "card", hint: "Plan y Mercado Pago", alias: "plan pagos suscripcion" },
   { id: "masa", title: "Masa", href: "/masa", group: "ops", nav: "cuenta", icon: "bread", hint: "Producción de masa" },
 ];
 
@@ -150,7 +150,7 @@ export function roleLabel(role) {
     {
       owner: "Dueño",
       admin: "Administración",
-      piso: "Caja y piso",
+      piso: "Punto de venta y piso",
       cocina: "Cocina",
     }[role] || ""
   );

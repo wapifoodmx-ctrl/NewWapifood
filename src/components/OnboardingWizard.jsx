@@ -56,15 +56,15 @@ export function OnboardingWizard({ steps, canSell }) {
           <h2 className="mt-1 text-3xl">Ya puedes hacer una venta</h2>
           <p className="mt-2 text-lg text-[var(--ink-soft)]">
             {canSell
-              ? "Abre la caja, toca un platillo y cobra. Si fue de prueba, puedes cancelar la cuenta."
+              ? "Abre el punto de venta, toca un producto y cobra. Si fue de prueba, puedes cancelar la cuenta."
               : "Para cobrar hace falta un plan activo. Puedes ver los planes o seguir armando la carta."}
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <Link href={canSell ? "/pos" : "/pagos"} className="btn-lg btn-primary inline-flex items-center px-5 no-underline">
-              {canSell ? "Ir a la caja" : "Ver planes"}
+              {canSell ? "Ir al punto de venta" : "Ver planes"}
             </Link>
             <Link href="/carta" className="btn-ghost inline-flex items-center px-4 no-underline">
-              Revisar platillos
+              Revisar productos
             </Link>
           </div>
         </section>
@@ -113,7 +113,7 @@ export function OnboardingWizard({ steps, canSell }) {
       <p className="mt-6 text-base text-[var(--ink-soft)]">
         ¿Quieres entrar directo?{" "}
         <Link href={canSell ? "/pos" : "/pagos"} className="font-bold text-[var(--primary)] underline">
-          {canSell ? "Abrir la caja" : "Ver cómo activar el plan"}
+          {canSell ? "Abrir el punto de venta" : "Ver cómo activar el plan"}
         </Link>
       </p>
     </div>

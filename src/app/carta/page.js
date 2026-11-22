@@ -8,7 +8,7 @@ import { requireTenantSetup } from "@/lib/auth";
 export default async function CartaPage() {
   const { supabase, membership, operational, setupOnly } = await requireTenantSetup();
   if (!membership?.restaurant_id) {
-    return <AppShell title="Carta" operational={operational} setupOnly={setupOnly}><p>Sin restaurante.</p></AppShell>;
+    return <AppShell title="Productos" operational={operational} setupOnly={setupOnly}><p>Sin restaurante.</p></AppShell>;
   }
   const rid = membership.restaurant_id;
   const [{ data: products }, { data: categories }, { data: ingredients }] = await Promise.all([
@@ -22,7 +22,7 @@ export default async function CartaPage() {
     : { data: [] };
 
   return (
-    <AppShell title="Carta" restaurantName={membership.restaurants?.name} role={membership.role} operational={operational} setupOnly={setupOnly}>
+    <AppShell title="Productos" restaurantName={membership.restaurants?.name} role={membership.role} operational={operational} setupOnly={setupOnly}>
       <p className="mb-4 text-[var(--color-muted)]">
         Alta y edición de productos, categorías, precios, costos y fotos.
       </p>

@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/Icon";
 import { statusMeta, itemStatusMeta, waitMeta } from "@/lib/orderStatus";
 import { OrderComments } from "@/components/OrderComments";
 import { confirmAsync } from "@/components/ui/confirm";
+import { escapeHtml, openPrintWindow } from "@/lib/printDocument";
 
 /**
  * Cocina — status por ítem + status de orden (paridad Front).
@@ -283,7 +284,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
                   <EmptyState
                     icon="flame"
                     title="No hay pedidos en esta lista"
-                    text="Cuando la caja o un mesero envíen algo, la comanda aparece aquí en grande."
+                    text="Cuando el punto de venta o un mesero envíen algo, la comanda aparece aquí en grande."
                   />
                 </div>
       ) : null}
@@ -297,7 +298,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
             order.order_type === "domicilio"
               ? "Domicilio"
               : isCaja
-                ? "Caja"
+                ? "Punto de venta"
                 : `Mesa ${order.dining_tables?.number ?? "?"}`;
           return (
             <article key={order.id} className={`kds-card age-${wait.tone === "ok" ? "ok" : wait.tone}`}>
@@ -363,12 +364,9 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
                   Ver detalle
                 </button>
                 <button type="button" className="btn-ghost" onClick={() => {
-                  const popup = window.open("", "_blank", "noopener,noreferrer");
-                  if (!popup) return;
-                  const rows = (order.order_items || []).map((item) => `<li>${item.qty} × ${item.products?.name || "Platillo"} ${item.notes || ""}</li>`).join("");
-                  popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Comanda</title></head><body><h1>Comanda</h1><p>Mesa ${order.dining_tables?.number || ""}</p><ul>${rows}</ul></body></html>`);
-                  popup.document.close();
-                  popup.print();
+                  const rows = (order.order_items || []).map((item) => `<li>${escapeHtml(item.qty)} × ${escapeHtml(item.products?.name || "Platillo")} ${escapeHtml(item.notes || "")}</li>`).join("");
+                  const popup = openPrintWindow(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Comanda</title></head><body style="font-family:sans-serif;padding:24px;color:#1c1410"><h1>Comanda</h1><p>Mesa ${escapeHtml(order.dining_tables?.number || "punto de venta")}</p><ul>${rows}</ul><script>window.addEventListener("load",function(){window.print()})<\/script></body></html>`);
+                  if (!popup) toast.warning("Permite ventanas emergentes para ver la comanda.");
                 }}>Reimprimir comanda</button>
                 {order.status === "pendiente" ? (
                   <>

@@ -154,7 +154,7 @@ export function AppShell({
             {primary.map((item) => (
               <Link key={item.id} href={item.href} aria-current={current(item.href) ? "page" : undefined} className="tab-link">
                 <Icon name={item.icon} size={22} />
-                {item.title}
+                {item.short || item.title}
               </Link>
             ))}
             <button type="button" className="tab-link" onClick={() => setMore(true)} aria-expanded={more} aria-haspopup="dialog">

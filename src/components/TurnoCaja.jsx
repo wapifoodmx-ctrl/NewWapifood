@@ -7,6 +7,7 @@ import { toast } from "@/components/ui/Toast";
 import { confirmAsync } from "@/components/ui/confirm";
 import { Icon } from "@/components/ui/Icon";
 import { payLabel } from "@/lib/brand";
+import { escapeHtml, openPrintWindow } from "@/lib/printDocument";
 
 const KIND = {
   venta_efectivo: "Venta en efectivo",
@@ -30,26 +31,23 @@ function sumDrawer(counts) {
 }
 
 function printCut(title, report, counted, notes) {
-  const popup = window.open("", "_blank", "noopener,noreferrer");
-  if (!popup) return false;
   const methods = (report?.by_method || []).map((row) => {
     const typed = counted?.[row.method];
     const diff = typed === "" || typed == null ? "sin contar" : (Number(typed) - Number(row.food || 0)).toFixed(2);
-    return `<tr><td>${payLabel(row.method)}</td><td>${row.tickets}</td><td>${row.food}</td><td>${row.tips}</td><td>${typed ?? ""}</td><td>${diff}</td></tr>`;
+    return `<tr><td>${escapeHtml(payLabel(row.method))}</td><td>${escapeHtml(row.tickets)}</td><td>${escapeHtml(row.food)}</td><td>${escapeHtml(row.tips)}</td><td>${escapeHtml(typed ?? "")}</td><td>${escapeHtml(diff)}</td></tr>`;
   }).join("");
-  popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${title}</title>
+  const folios = (report?.folios || []).map((row) => `<li>${escapeHtml(row.folio)} · ${escapeHtml(payLabel(row.method))} · ${escapeHtml(row.amount)}</li>`).join("");
+  return Boolean(openPrintWindow(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
     <style>body{font-family:sans-serif;padding:24px;color:#2a2118} table{border-collapse:collapse;width:100%} td,th{border-bottom:1px solid #ddd;padding:6px;text-align:left} h1{font-size:22px}</style>
-    </head><body><h1>${title}</h1>
-    <p>Del ${report?.opened_at || ""} al ${report?.until || ""}</p>
-    <p>Fondo ${report?.opening_float ?? 0}. Efectivo esperado en el cajón ${report?.expected_cash ?? 0}. Contado ${counted?.efectivo ?? ""}.</p>
-    <p>Cuentas ${report?.tickets ?? 0}. Alimentos ${report?.food ?? 0}. Propinas ${report?.tips ?? 0}. Descuentos ${report?.discounts ?? 0}. Devoluciones ${report?.refunds ?? 0}. Cancelaciones ${report?.cancellations ?? 0}.</p>
+    </head><body><h1>${escapeHtml(title)}</h1>
+    <p>Del ${escapeHtml(report?.opened_at || "")} al ${escapeHtml(report?.until || "")}</p>
+    <p>Fondo ${escapeHtml(report?.opening_float ?? 0)}. Efectivo esperado en el cajón ${escapeHtml(report?.expected_cash ?? 0)}. Contado ${escapeHtml(counted?.efectivo ?? "")}.</p>
+    <p>Cuentas ${escapeHtml(report?.tickets ?? 0)}. Alimentos ${escapeHtml(report?.food ?? 0)}. Propinas ${escapeHtml(report?.tips ?? 0)}. Descuentos ${escapeHtml(report?.discounts ?? 0)}. Devoluciones ${escapeHtml(report?.refunds ?? 0)}. Cancelaciones ${escapeHtml(report?.cancellations ?? 0)}.</p>
     <table><thead><tr><th>Método</th><th>Cuentas</th><th>Alimentos</th><th>Propinas</th><th>Contado</th><th>Diferencia de alimentos</th></tr></thead><tbody>${methods}</tbody></table>
-    ${(report.folios || []).length ? `<h2>Folios</h2><ul>${report.folios.map((row) => `<li>${row.folio} · ${payLabel(row.method)} · ${row.amount}</li>`).join("")}</ul>` : ""}
-    <p>${notes || ""}</p></body></html>`);
-  popup.document.close();
-  popup.focus();
-  popup.print();
-  return true;
+    ${folios ? `<h2>Folios</h2><ul>${folios}</ul>` : ""}
+    <p>${escapeHtml(notes || "")}</p>
+    <script>window.addEventListener("load",function(){window.print()})<\/script>
+    </body></html>`));
 }
 
 export function TurnoCaja({ restaurantId, initialSession, initialMoves, history, cuts = [] }) {

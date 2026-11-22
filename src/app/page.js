@@ -10,7 +10,7 @@ import RotatingText from "@/components/RotatingText";
 import { OriginButton } from "@/components/OriginButton";
 
 const features = [
-  { icon: "register", t: "Caja", d: "Mesas, cuenta, cobro y ticket. Tres toques para cobrar." },
+  { icon: "register", t: "Punto de venta", d: "Tocas el producto y cobras. El mostrador ya está abierto." },
   { icon: "flame", t: "Cocina", d: "Comandas grandes, con el tiempo que llevan esperando." },
   { icon: "box", t: "Insumos y recetas", d: "El stock baja al cobrar, sin sistemas sueltos." },
   { icon: "qr", t: "Menú para llevar", d: "QR, kiosko y pedido del comensal, con foto." },
@@ -20,8 +20,8 @@ const features = [
 
 const steps = [
   { n: "1", t: "Crea tu cuenta", d: "Con tu correo. Te llega un enlace para confirmar." },
-  { n: "2", t: "Arma la carta", d: "Platillos, una mesa y los datos del local." },
-  { n: "3", t: "Cobra la primera", d: "Elige un plan y vende en efectivo, tarjeta u otro tipo de pago." },
+  { n: "2", t: "Carga tus productos", d: "Categoría, precio y, si quieres, foto. Es la carta de siempre." },
+  { n: "3", t: "Cobra en punto de venta", d: "Activa el plan y vende en efectivo, tarjeta u otro tipo de pago." },
 ];
 
 export default function LandingPage() {
@@ -56,7 +56,7 @@ export default function LandingPage() {
           <p className="text-base font-bold text-[var(--primary)]">Para restaurantes, fondas y cafeterías</p>
           <SplitText
             tag="h1"
-            text="Caja, cocina y menú. Tan claro que cualquiera lo usa."
+            text="Punto de venta, cocina y menú. Como ya lo usabas."
             className="mt-2 text-5xl leading-[1.05] sm:text-6xl"
             effect="blur"
             splitType="words"
@@ -130,7 +130,7 @@ export default function LandingPage() {
         <p className="mt-2 max-w-2xl text-lg text-[var(--ink-soft)]">Estas son las pantallas reales del sistema, no fotos de otro producto.</p>
         <div className="mt-6 grid gap-4 lg:grid-cols-3">
           {[
-            { t: "Caja", rows: ["Mesa 4 · abierta", "2 tacos · sin cebolla", "1 agua", "Cobrar"] },
+            { t: "Punto de venta", rows: ["Mostrador · abierto", "2 tacos · sin cebolla", "1 agua", "Cobrar"] },
             { t: "Cocina", rows: ["Mesa 4 · 6 min", "2 tacos al pastor", "Nota: sin cebolla", "Listo"] },
             { t: "Cuentas", rows: ["Ticket 1842", "Efectivo", "Total $186", "Imprimir"] },
           ].map((shot) => (
@@ -154,7 +154,7 @@ export default function LandingPage() {
               ["¿El anual sale más barato?", "Sí. Pagas 10 meses y usas el plan 12. En cada tarjeta se ve cuánto ahorras."],
               ["¿Varios locales se cobran aparte?", "No. El precio de Brasas, Comales o Fogones es el total del grupo. Cada local conserva sus mesas y meseros."],
               ["¿Puedo bajar de plan?", "Sí. No se borran mesas, meseros ni locales. Si ya hay más de los que permite el plan nuevo, no se pueden dar de alta más hasta quitar los que sobran."],
-              ["¿Hay prueba?", "Una cuenta nueva tiene 14 días en Brasa, sin cobro. Para vender de verdad se elige un plan."],
+              ["¿Hay prueba?", "Puedes armar productos, mesas y tu perfil antes de pagar. Para cobrar en el punto de venta se elige un plan, igual que antes."],
             ].map(([q, a]) => (
               <details key={q} className="rounded-2xl bg-[var(--bg)] p-4">
                 <summary className="cursor-pointer text-xl">{q}</summary>

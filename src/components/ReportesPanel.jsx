@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
 import { payLabel } from "@/lib/brand";
 import { toast } from "@/components/ui/Toast";
+import { downloadBytes } from "@/lib/printDocument";
 
 function todayISO() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
@@ -54,13 +55,11 @@ export function ReportesPanel({ restaurantId }) {
       "platillo,cantidad,alimentos",
       ...(report.top_products || []).map((p) => `"${String(p.name).replaceAll('"', '""')}",${p.qty},${p.food}`),
     ];
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `ventas-${from}-${to}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBytes({
+      filename: `ventas-${from}-${to}.csv`,
+      bytes: new TextEncoder().encode(`\uFEFF${lines.join("\n")}`),
+      type: "text/csv;charset=utf-8",
+    });
   }
 
   return (

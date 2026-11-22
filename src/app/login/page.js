@@ -29,11 +29,23 @@ export default function LoginPage() {
     }
     const { data: mem } = await supabase
       .from("memberships")
-      .select("role")
+      .select("role, restaurant_id")
       .eq("user_id", userId)
       .limit(1)
       .maybeSingle();
-    router.push(homePath(mem?.role));
+    const role = mem?.role;
+    if ((!role || role === "owner" || role === "admin") && mem?.restaurant_id) {
+      const { count } = await supabase
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .eq("restaurant_id", mem.restaurant_id);
+      if (!count) {
+        router.push("/empezar");
+        router.refresh();
+        return;
+      }
+    }
+    router.push(homePath(role));
     router.refresh();
   }
 

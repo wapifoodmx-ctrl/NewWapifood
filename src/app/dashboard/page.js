@@ -30,6 +30,7 @@ export default async function DashboardPage() {
   let sub = null;
   let productNames = {};
   let list = [];
+  let productCount = 0;
 
   if (restaurantId) {
     const [{ count: ot }, { data: orders }, { data: ings }, { data: subs }, { data: products }] =
@@ -92,6 +93,7 @@ export default async function DashboardPage() {
       byChannel[src] = (byChannel[src] || 0) + amt;
     }
 
+    productCount = (products || []).length;
     const prodMap = Object.fromEntries((products || []).map((p) => [p.id, p.name]));
     productNames = prodMap;
     const qtyByProd = {};
@@ -156,6 +158,53 @@ export default async function DashboardPage() {
       operational={operational}
       setupOnly={setupOnly}
     >
+      {(membership?.role === "owner" || membership?.role === "admin" || !membership?.role) && ticketCount === 0 ? (
+        <section className="card mb-6 p-6" aria-label="Cómo hacer una venta">
+          <p className="text-sm font-bold text-[var(--primary)]">El recorrido de siempre</p>
+          <h2 className="mt-1 text-3xl">Así se hace una venta</h2>
+          <p className="mt-2 text-lg text-[var(--ink-soft)]">
+            Es el mismo orden del Wapifood anterior: primero el producto, luego el punto de venta, y al final el cobro.
+          </p>
+          <ol className="mt-4 grid gap-3 md:grid-cols-3">
+            <li className="rounded-2xl bg-[var(--surface-2)] p-4">
+              <p className="text-sm font-bold text-[var(--primary)]">1. Productos</p>
+              <p className="mt-1 text-lg">Da de alta lo que vendes, con precio.</p>
+            </li>
+            <li className="rounded-2xl bg-[var(--surface-2)] p-4">
+              <p className="text-sm font-bold text-[var(--primary)]">2. Punto de venta</p>
+              <p className="mt-1 text-lg">El mostrador ya viene elegido. Toca el producto.</p>
+            </li>
+            <li className="rounded-2xl bg-[var(--surface-2)] p-4">
+              <p className="text-sm font-bold text-[var(--primary)]">3. Cobrar</p>
+              <p className="mt-1 text-lg">Efectivo, tarjeta u otro tipo de pago.</p>
+            </li>
+          </ol>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {productCount === 0 ? (
+              <Link href="/carta" className="btn-lg btn-primary inline-flex items-center px-5 no-underline">
+                Agregar el primer producto
+              </Link>
+            ) : operational ? (
+              <Link href="/pos" className="btn-lg btn-primary inline-flex items-center px-5 no-underline">
+                Abrir punto de venta
+              </Link>
+            ) : (
+              <Link href="/pagos" className="btn-lg btn-primary inline-flex items-center px-5 no-underline">
+                Activar plan para cobrar
+              </Link>
+            )}
+            <Link href="/empezar" className="btn-ghost inline-flex items-center px-4 no-underline">
+              Ver los primeros pasos
+            </Link>
+          </div>
+          {!operational ? (
+            <p className="mt-4 text-base text-[var(--ink-soft)]">
+              Puedes cargar productos, mesas y tu perfil ahora. Para cobrar hace falta un plan activo, igual que antes.
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
       <RoleHome role={membership?.role} restaurantName={restaurantName} />
 
       {setupOnly ? (
@@ -243,7 +292,7 @@ export default async function DashboardPage() {
                     </li>
                   ))
                 ) : (
-                  <li className="text-base text-[var(--ink-soft)]">Aún no hay ventas cobradas. La primera aparece cuando cobres en la caja.</li>
+                  <li className="text-base text-[var(--ink-soft)]">Aún no hay ventas cobradas. La primera aparece cuando cobres en el punto de venta.</li>
                 )}
               </ul>
             </section>

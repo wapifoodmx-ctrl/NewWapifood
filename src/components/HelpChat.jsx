@@ -22,7 +22,7 @@ export function HelpChat({ lift = "" }) {
         <div className="mb-2 h-[420px] w-[min(100vw-2rem,22rem)]">
           <AIChatCard
             title="Ayuda"
-            subtitle="Pregunta sobre caja, cocina, carta o inventario."
+            subtitle="Reglas de la caja, la cocina, la carta y el plan."
             greeting="¿En qué te ayudo?"
             prompt={HELP_SUGGESTIONS[0]}
             prompts={HELP_SUGGESTIONS}

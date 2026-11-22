@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
 import { payLabel } from "@/lib/brand";
 import { toast } from "@/components/ui/Toast";
+import { escapeHtml, openPrintWindow } from "@/lib/printDocument";
 
 function todayISO() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
@@ -33,12 +34,9 @@ export function PropinasPanel({ restaurantId }) {
   }
 
   function printShares(shares, total) {
-    const popup = window.open("", "_blank", "noopener,noreferrer");
-    if (!popup) return toast.error("El navegador bloqueó la ventana");
-    const rows = (shares || []).map((row) => `<tr><td>${row.waiter}</td><td>${row.amount}</td></tr>`).join("");
-    popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Reparto de propinas</title></head><body><h1>Reparto de propinas</h1><p>${from} a ${to}. Total ${total}.</p><table>${rows}</table></body></html>`);
-    popup.document.close();
-    popup.print();
+    const rows = (shares || []).map((row) => `<tr><td>${escapeHtml(row.waiter)}</td><td>${escapeHtml(row.amount)}</td></tr>`).join("");
+    const popup = openPrintWindow(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Reparto de propinas</title></head><body style="font-family:sans-serif;padding:24px;color:#1c1410"><h1>Reparto de propinas</h1><p>${escapeHtml(from)} a ${escapeHtml(to)}. Total ${escapeHtml(total)}.</p><table>${rows}</table><script>window.addEventListener("load",function(){window.print()})<\/script></body></html>`);
+    if (!popup) return toast.error("Permite ventanas emergentes para ver el reparto.");
   }
 
   async function closePayout() {

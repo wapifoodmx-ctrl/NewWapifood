@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import { OrderComments } from "@/components/OrderComments";
 import { downloadTicketPdf } from "@/lib/ticketPdf";
+import { escapeHtml, openPrintWindow } from "@/lib/printDocument";
 import { QuePaso } from "@/components/QuePaso";
 import { askManagerPin } from "@/lib/managerPin";
 import { includedIva } from "@/lib/iva";
@@ -43,35 +44,30 @@ export function TicketCard({ order, productNames = {}, onChanged, ivaEnabled = f
   }
 
   function printTicket() {
-    const w = window.open("", "_blank", "width=360,height=640");
-    if (!w) {
-      toast.warning("Permite ventanas emergentes para imprimir.");
-      return;
-    }
     const rows = (order.order_items || [])
       .map((i) => {
         const line = Number(i.unit_price) * Number(i.qty);
-        const note = i.notes ? `<div style="font-size:11px;color:#666">${i.notes}</div>` : "";
-        return `<tr><td style="padding:6px 0;vertical-align:top">${i.qty} × ${productName(i.product_id)}${note}</td>
-          <td style="padding:6px 0;text-align:right;vertical-align:top">${money(line)}</td></tr>`;
+        const note = i.notes ? `<div style="font-size:11px;color:#666">${escapeHtml(i.notes)}</div>` : "";
+        return `<tr><td style="padding:6px 0;vertical-align:top">${escapeHtml(i.qty)} × ${escapeHtml(productName(i.product_id))}${note}</td>
+          <td style="padding:6px 0;text-align:right;vertical-align:top">${escapeHtml(money(line))}</td></tr>`;
       })
       .join("");
     const code = order.public_code || order.id?.slice(0, 8);
-    w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"/><title>Ticket ${code}</title>
-<style>body{font-family:ui-monospace,monospace;padding:16px;font-size:13px}
+    const opened = openPrintWindow(`<!doctype html><html lang="es"><head><meta charset="utf-8"/><title>Ticket ${escapeHtml(code)}</title>
+<style>body{font-family:ui-monospace,monospace;padding:16px;font-size:13px;color:#1c1410}
 h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
 .total{display:flex;justify-content:space-between;font-weight:700;margin-top:12px;border-top:1px dashed #999;padding-top:8px}
 </style></head><body>
-<h1>Wapifood</h1><p style="margin:0 0 8px;font-size:13px">Mesa ${order.dining_tables?.number ?? "—"} · ${(order.source||"pos").toUpperCase()}</p>
-<p style="color:#555;font-size:11px">${meta.label} · ${payLabel(order.method)} · ${whenLabel(order.closed_at || order.opened_at)}</p>
-${order.folio || order.mp_payment_id ? `<p style="font-size:11px">Folio: ${order.folio || order.mp_payment_id}</p>` : ""}
-<p style="font-size:11px">Código: ${code}</p>
+<h1>Wapifood</h1><p style="margin:0 0 8px;font-size:13px">Mesa ${escapeHtml(order.dining_tables?.number ?? "—")} · ${escapeHtml((order.source || "pos").toUpperCase())}</p>
+<p style="color:#555;font-size:11px">${escapeHtml(meta.label)} · ${escapeHtml(payLabel(order.method))} · ${escapeHtml(whenLabel(order.closed_at || order.opened_at))}</p>
+${order.folio || order.mp_payment_id ? `<p style="font-size:11px">Folio: ${escapeHtml(order.folio || order.mp_payment_id)}</p>` : ""}
+<p style="font-size:11px">Código: ${escapeHtml(code)}</p>
 <table>${rows}</table>
-<div class="total"><span>Total</span><span>${money(total)}</span></div>
-${ivaEnabled ? `<p style="font-size:11px">IVA 16% incluido: ${money(includedIva(total))}. No se suma.</p>` : ""}
-<script>window.onload=function(){window.print();}</script>
+<div class="total"><span>Total</span><span>${escapeHtml(money(total))}</span></div>
+${ivaEnabled ? `<p style="font-size:11px">IVA 16% incluido: ${escapeHtml(money(includedIva(total)))}. No se suma.</p>` : ""}
+<script>window.addEventListener("load", function () { window.print(); });<\/script>
 </body></html>`);
-    w.document.close();
+    if (!opened) toast.warning("Permite ventanas emergentes para imprimir.");
   }
 
   function pdfTicket() {

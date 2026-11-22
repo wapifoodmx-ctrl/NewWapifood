@@ -10,7 +10,7 @@ export default async function PagosPage({ searchParams }) {
   const locked = params?.motivo === "plan" || params?.motivo === "operacion";
 
   if (!membership?.restaurant_id) {
-    return <AppShell title="Pagos" operational={operational} setupOnly={setupOnly}><p>Sin restaurante.</p></AppShell>;
+    return <AppShell title="Opciones de pago" operational={operational} setupOnly={setupOnly}><p>Sin restaurante.</p></AppShell>;
   }
 
   const { data: subs } = await supabase
@@ -20,16 +20,16 @@ export default async function PagosPage({ searchParams }) {
     .order("created_at", { ascending: false });
 
   return (
-    <AppShell title="Pagos / plan" operational={operational} setupOnly={setupOnly} restaurantName={membership.restaurants?.name} role={membership.role}>
+    <AppShell title="Opciones de pago" operational={operational} setupOnly={setupOnly} restaurantName={membership.restaurants?.name} role={membership.role}>
       {locked ? (
-        <div className="mb-4 rounded-2xl border border-[var(--color-ember)] bg-[var(--color-cream)] p-4 text-sm">
+        <div className="mb-4 rounded-2xl border border-[var(--color-ember)] bg-[var(--color-cream)] p-4 text-base">
           {params?.motivo === "operacion"
-            ? "Para vender (POS, menú QR, kiosko, meseros y cocina operativa) necesitas un plan activo. El trial solo sirve para configurar tu restaurante."
-            : "Tu periodo de prueba o plan venció. Activa un plan para continuar."}
+            ? "Todavía no puedes cobrar. Elige un plan aquí abajo. Mientras tanto sí puedes cargar productos, mesas y tu perfil."
+            : "Tu plan no está activo. Elige uno para volver a vender."}
         </div>
       ) : null}
-      <p className="mb-4 text-[var(--color-muted)]">
-        Plan SaaS del restaurante. Activación automática en modo prueba; la pasarela real se conecta después.
+      <p className="mb-4 text-lg text-[var(--ink-soft)]">
+        El plan se paga con Mercado Pago. Cuando el pago queda confirmado, el punto de venta, la cocina y los meseros ya se pueden usar.
       </p>
       <SubscriptionPanel restaurantId={membership.restaurant_id} initialSubs={subs || []} />
     </AppShell>

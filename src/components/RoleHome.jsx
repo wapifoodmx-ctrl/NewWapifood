@@ -5,7 +5,7 @@ import { roleLabel, tilesForRole } from "@/lib/modules";
 const COPY = {
   owner: "Esto es lo que más se usa en el día. Lo demás está en el menú.",
   admin: "Opera el piso o entra a la carta y al equipo.",
-  piso: "Tu lugar es la caja y las mesas.",
+  piso: "Tu lugar es el punto de venta y las mesas.",
   cocina: "Tu lugar es la cocina. Las comandas nuevas llegan solas.",
 };
 

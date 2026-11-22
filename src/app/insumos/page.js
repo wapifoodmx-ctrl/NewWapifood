@@ -8,7 +8,7 @@ export default async function InsumosPage() {
   const { supabase, membership, operational, setupOnly } = await requireTenantSetup();
   if (!membership?.restaurant_id) {
     return (
-      <AppShell title="Insumos" operational={operational} setupOnly={setupOnly}>
+      <AppShell title="Inventario" operational={operational} setupOnly={setupOnly}>
         <p>Sin restaurante.</p>
       </AppShell>
     );
@@ -70,7 +70,7 @@ export default async function InsumosPage() {
 
   return (
     <AppShell
-      title="Insumos"
+      title="Inventario"
       restaurantName={membership.restaurants?.name}
       role={membership.role}
       operational={operational}

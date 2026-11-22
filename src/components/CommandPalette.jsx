@@ -30,7 +30,7 @@ export function CommandPalette({ open, onClose }) {
     const needle = fold(query.trim());
     const all = [...MODULES, HELP];
     if (!needle) return all;
-    return all.filter((item) => fold(`${item.title} ${item.hint}`).includes(needle));
+    return all.filter((item) => fold(`${item.title} ${item.short || ""} ${item.hint} ${item.alias || ""}`).includes(needle));
   }, [query]);
 
   const active = items.length ? Math.min(index, items.length - 1) : 0;
@@ -100,7 +100,7 @@ export function CommandPalette({ open, onClose }) {
               setIndex(0);
             }}
             onKeyDown={onInputKey}
-            placeholder="Ir a caja, cocina, platillos…"
+            placeholder="Ir a punto de venta, productos, cocina…"
             aria-controls="cmdk-list"
             aria-activedescendant={items[active] ? `cmdk-${items[active].id}` : undefined}
             aria-autocomplete="list"
@@ -126,7 +126,7 @@ export function CommandPalette({ open, onClose }) {
               </button>
             </li>
           ))}
-          {!items.length ? <li className="cmdk-empty">No hay una pantalla con ese nombre. Prueba «caja» o «plan».</li> : null}
+          {!items.length ? <li className="cmdk-empty">No hay una pantalla con ese nombre. Prueba «punto de venta» o «productos».</li> : null}
         </ul>
       </div>
     </div>

@@ -35,7 +35,7 @@ export default async function PosPage() {
     ]);
 
   return (
-    <AppShell title="Caja" restaurantName={membership.restaurants?.name} role={membership.role} operational={operational} setupOnly={setupOnly} focus>
+    <AppShell title="Punto de venta" restaurantName={membership.restaurants?.name} role={membership.role} operational={operational} setupOnly={setupOnly} focus>
       <PosBoard
         restaurantId={rid}
         tables={tables || []}

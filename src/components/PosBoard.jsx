@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
 import { extrasCharge, extrasForProduct, lineAmount } from "@/lib/extras";
@@ -29,7 +29,8 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   const [live, setLive] = useState(false);
   const [tableAlerts, setTableAlerts] = useState([]);
   const [qrAutoOpen, setQrAutoOpen] = useState(false);
-  const [activeTableId, setActiveTableId] = useState(null);
+  const [pickedTableId, setPickedTableId] = useState(null);
+  const openLock = useRef(new Map());
   const [catFilter, setCatFilter] = useState("");
   const [loading, setLoading] = useState(false);
   const [lastTicket, setLastTicket] = useState(null);
@@ -165,6 +166,14 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   }, [restaurantId, supabase]);
 
 
+  const counterId = useMemo(() => {
+    const counter = tables.find(
+      (table) => table.channel_type === "caja" && table.active !== false && table.state !== "no_disponible",
+    );
+    return counter?.id ?? null;
+  }, [tables]);
+  const activeTableId = pickedTableId || counterId;
+
   const order = orders.find(
     (o) => o.table_id === activeTableId && o.status !== "pagada" && o.status !== "cancelada",
   );
@@ -212,7 +221,15 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   }
 
   async function openTable(tableId) {
-    setActiveTableId(tableId);
+    const pending = openLock.current.get(tableId);
+    if (pending) return pending;
+    const job = openTableNow(tableId).finally(() => openLock.current.delete(tableId));
+    openLock.current.set(tableId, job);
+    return job;
+  }
+
+  async function openTableNow(tableId) {
+    setPickedTableId(tableId);
     setLastTicket(null);
     setTip("");
     setTipMethodOverride(null);
@@ -221,7 +238,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     );
     if (existing) {
       if (qrAutoOpen) await supabase.rpc("open_table_session", { p_table: tableId });
-      return;
+      return existing;
     }
     setLoading(true);
     const { data: created, error } = await supabase
@@ -237,12 +254,14 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     setLoading(false);
     if (error) {
       toast.error(error.message);
-      return;
+      return null;
     }
     await supabase.from("dining_tables").update({ state: "ocupada" }).eq("id", tableId);
     setOrders((prev) => [created, ...prev]);
-        if (qrAutoOpen) await supabase.rpc("open_table_session", { p_table: tableId });
-        toast.success("Mesa abierta");
+    if (qrAutoOpen) await supabase.rpc("open_table_session", { p_table: tableId });
+    const table = tables.find((item) => item.id === tableId);
+    if (table?.channel_type !== "caja") toast.success("Mesa abierta");
+    return created;
   }
 
   function chooseProduct(product) {
@@ -274,13 +293,14 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   }
 
   async function addItem(product, selected = [], modifiers = []) {
-    if (!order) {
-      toast.warning("Elige una mesa primero");
+    const current = order || (activeTableId ? await openTable(activeTableId) : null);
+    if (!current) {
+      toast.warning("Elige el punto de venta o una mesa");
       return;
     }
     setLoading(true);
     const note = null;
-    const line = (order.order_items || []).find((i) => i.product_id === product.id && (i.notes || null) === note);
+    const line = (current.order_items || []).find((i) => i.product_id === product.id && (i.notes || null) === note);
     let lineId = line?.id;
     if (line) {
       await supabase
@@ -289,7 +309,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         .eq("id", line.id);
     } else {
       const { data, error } = await supabase.from("order_items").insert({
-        order_id: order.id,
+        order_id: current.id,
         product_id: product.id,
         qty: 1,
         unit_price: product.price,
@@ -302,11 +322,11 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       }
       lineId = data.id;
     }
-    await saveLineExtras(order.id, product.id, selected, lineId);
+    await saveLineExtras(current.id, product.id, selected, lineId);
     if (modifiers?.length && lineId) {
       await supabase.from("order_item_modifiers").insert(modifiers.map((item) => ({
         order_item_id: lineId,
-        order_id: order.id,
+        order_id: current.id,
         option_id: item.option_id,
         name: item.name,
         extra_price: Number(item.extra_price) || 0,
@@ -445,7 +465,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     });
     setLoading(false);
     if (error) return toast.error(error.message);
-    setActiveTableId(null);
+    setPickedTableId(null);
     setCartOpen(false);
     await refresh();
     toast.success("Cuenta cancelada");
@@ -675,7 +695,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     setTipMethodOverride(null);
     if (!splitIds.length || emptied) {
       setCartOpen(false);
-      setActiveTableId(null);
+      setPickedTableId(null);
     }
     await refresh();
     toast.success(splitIds.length ? `Parte cobrada con ${payLabel(payMethod)}` : `Cobrado con ${payLabel(payMethod)}`);
@@ -696,9 +716,9 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
           <p className="text-base text-[var(--ink-soft)]">
             {activeTable
               ? activeTable.channel_type === "caja"
-                ? "Caja"
+                ? "Punto de venta"
                 : `Mesa ${activeTable.number}`
-              : "Elige una mesa"}
+              : "Elige el punto de venta"}
             {order ? ` · ${statusMeta(order.status).label}` : ""}
           </p>
         </div>
@@ -778,7 +798,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         })}
       </ul>
       {!(order?.order_items || []).length ? (
-        <EmptyState icon="cart" title="La cuenta está vacía" text="Toca un platillo para agregarlo. Un toque suma uno." />
+        <EmptyState icon="cart" title="La cuenta está vacía" text="Toca un producto para agregarlo. Un toque suma uno." />
       ) : null}
       <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
         <label className="text-sm font-bold">
@@ -845,7 +865,9 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   return (
     <div className="pos-shell relative">
       <p className="mb-3 text-base font-bold text-[var(--ink-soft)]" role="status">
-        {live ? "En vivo. Las mesas se actualizan solas." : "Conectando… si tarda, revisa tu internet."}
+        {live
+          ? "Punto de venta listo. Toca un producto y cobra. Las mesas del salón están a la izquierda."
+          : "Conectando… si tarda, revisa tu internet."}
       </p>
       <LoadingOverlay visible={loading} message="Guardando la cuenta…" />
 
@@ -864,7 +886,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       ) : null}
       <div className="pos-layout">
         <aside aria-label="Mesas" data-tour="pos-mesas">
-          <h2 className="mb-2 text-xl">Mesas</h2>
+          <h2 className="mb-2 text-xl">Punto de venta y mesas</h2>
           <div className="pos-tables-grid">
             {sortedTables.map((t) => {
               const liveOrder = orders.find(
@@ -872,7 +894,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
               );
               const meta = tableStateMeta(t.state, Boolean(liveOrder));
               const active = activeTableId === t.id;
-              const name = t.channel_type === "caja" ? "Caja" : `Mesa ${t.number}`;
+              const name = t.channel_type === "caja" ? "Punto de venta" : `Mesa ${t.number}`;
               return (
                 <button
                   key={t.id}
@@ -892,7 +914,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
             })}
           </div>
           {!sortedTables.length ? (
-            <EmptyState icon="table" title="Aún no hay mesas" text="Crea la caja o una mesa. Sin eso no se puede vender." action={<Link className="btn-primary mt-2 inline-flex items-center px-4 no-underline" href="/mesas">Crear mesa</Link>} />
+            <EmptyState icon="table" title="Aún no hay mostrador" text="Crea el punto de venta o una mesa. Sin eso no se puede vender." action={<Link className="btn-primary mt-2 inline-flex items-center px-4 no-underline" href="/mesas">Crear mesa</Link>} />
           ) : null}
         </aside>
 
@@ -901,18 +923,18 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                       <div>
                         <EmptyState
                           icon="table"
-                          title="Elige una mesa para empezar"
-                          text="Toca Caja o una mesa libre. Después, un toque en el platillo lo agrega."
+                          title="Elige el punto de venta para empezar"
+                          text="Toca Punto de venta, o una mesa libre si el pedido es de salón. Después, un toque en el producto lo agrega."
                         />
-                        <p data-tour="pos-cocina" className="mt-3 text-lg">Enviar a cocina aparece cuando la mesa ya tiene platillos.</p>
-                        <p data-tour="pos-cobrar" className="mt-2 text-lg">Cobrar aparece en la cuenta, abajo, cuando ya elegiste la mesa.</p>
+                        <p data-tour="pos-cocina" className="mt-3 text-lg">Enviar a cocina aparece cuando la cuenta ya tiene productos.</p>
+                        <p data-tour="pos-cobrar" className="mt-2 text-lg">Cobrar aparece en la cuenta, abajo, cuando ya elegiste dónde vender.</p>
                       </div>
                     ) : (
             <>
               <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
                 <div>
                   <h2 className="text-3xl">
-                    {activeTable?.channel_type === "caja" ? "Caja" : `Mesa ${activeTable?.number}`}
+                    {activeTable?.channel_type === "caja" ? "Punto de venta" : `Mesa ${activeTable?.number}`}
                   </h2>
                   <p className="text-base text-[var(--ink-soft)]">
                     {order ? statusMeta(order.status).label : "Sin cuenta"} · {itemCount} {itemCount === 1 ? "platillo" : "platillos"}
@@ -964,7 +986,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 })}
               </div>
               {!productList.length ? (
-                <EmptyState icon="dish" title="No hay platillos en esta lista" text="Prueba otra categoría o agrega platillos en la carta." action={<Link className="btn-primary mt-2 inline-flex items-center px-4 no-underline" href="/carta">Ir a platillos</Link>} />
+                <EmptyState icon="dish" title="No hay productos en esta lista" text="Prueba otra categoría o agrega productos en la carta." action={<Link className="btn-primary mt-2 inline-flex items-center px-4 no-underline" href="/carta">Ir a productos</Link>} />
               ) : null}
             </>
           )}

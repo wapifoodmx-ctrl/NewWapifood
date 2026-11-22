@@ -17,8 +17,8 @@ export const TOURS = {
     roles: ["owner", "admin", "piso"],
     paths: ["/pos"],
     steps: [
-      { tour: "pos-mesas", title: "Elige una mesa", text: "Toca una mesa libre. Así empieza la cuenta.", interactive: true },
-      { tour: "pos-platillos", title: "Agrega un platillo", text: "Un toque en el platillo lo pone en la cuenta.", interactive: true },
+      { tour: "pos-mesas", title: "El mostrador ya está abierto", text: "Punto de venta es el mostrador. Toca una mesa solo si el pedido es de salón.", interactive: true },
+      { tour: "pos-platillos", title: "Agrega un producto", text: "Un toque en el producto lo pone en la cuenta.", interactive: true },
       { tour: "pos-cocina", title: "A cocina", text: "Cuando esté listo el pedido, tócalo para enviarlo.", interactive: true },
       { tour: "pos-cobrar", title: "Cobrar", text: "Toca Cobrar. Elige efectivo, tarjeta u otro tipo de pago.", interactive: true },
     ],
@@ -67,7 +67,7 @@ export const TOURS = {
     roles: ["owner", "admin"],
     paths: ["/empezar", "/config"],
     steps: [
-      { tour: "nav-carta", title: "La carta", text: "Aquí pones platillos y precios." },
+      { tour: "nav-carta", title: "Los productos", text: "Aquí pones lo que vendes y su precio." },
       { tour: "nav-mesas", title: "Las mesas", text: "Arma el salón antes de vender." },
       { tour: "nav-equipo", title: "El equipo", text: "Invita a quien cobra, cocina o administra." },
       { tour: "nav-insumos", title: "El inventario", text: "Anota lo que hay en bodega. Así no se acaba sin aviso." },
