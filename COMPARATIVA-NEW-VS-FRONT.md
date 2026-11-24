@@ -352,7 +352,7 @@ Al migrar cada vista, verificar:
 | Fecha | Ítem | Patch / commit | Notas |
 |-------|------|----------------|-------|
 | 2026-10-29 | Documento creado | COMPARATIVA-NEW-VS-FRONT.md | Baseline |
-| | | | |
+| 2026-11-23 | Revisión contra commits de Comandas (feb–mar) y pantallas vivas | migración `20261123180000_sin_insumo_pantalla.sql` | Se puede quitar, mesero con nota/modificadores, pantalla pública de lista, folio y origen en cocina. El stock de «Sin X» no se salta: igual que `process-order` |
 
 ---
 

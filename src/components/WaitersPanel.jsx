@@ -32,7 +32,7 @@ export function WaitersPanel({ restaurantId, initialWaiters, tables, initialAssi
       .select("*")
       .single();
     if (err) {
-      setError(err.message + " — ¿ya corriste supabase/004_schema_saas_completo.sql?");
+      setError("No se pudo guardar al mesero. Revisa el nombre y el código, o vuelve a entrar.");
       return;
     }
     setWaiters((w) => [...w, data]);

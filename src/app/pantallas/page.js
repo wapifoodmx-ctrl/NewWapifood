@@ -17,7 +17,7 @@ export default async function PantallasPage() {
       setupOnly={setupOnly}
     >
       <p className="mb-4 text-[var(--color-muted)]">
-        Atajos a pantallas del local (cocina, POS, vista TV).
+        Atajos a pantallas del local. La lista de platillos para la televisión se abre desde Listas.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <Link

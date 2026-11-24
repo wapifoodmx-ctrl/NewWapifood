@@ -34,6 +34,80 @@ export function cashSuggestions(total) {
   return [...new Set(steps)].slice(0, 4);
 }
 
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi;
+
+export function sourceLabel(source) {
+  return (
+    {
+      pos: "Caja",
+      web_menu: "Menú web",
+      kiosko: "Kiosko",
+      mesero: "Mesero",
+      tablet: "Tablet",
+      mesa: "Mesa",
+    }[source] || "Caja"
+  );
+}
+
+export function moveReasonLabel(reason) {
+  return (
+    {
+      venta: "Venta",
+      merma: "Merma",
+      entrada: "Entrada",
+      ajuste: "Ajuste",
+      devolucion: "Devolución",
+      compra: "Compra",
+    }[reason] || "Movimiento"
+  );
+}
+
+export function friendlyError(message) {
+  const raw = String(message || "").trim();
+  if (!raw) return "No se pudo completar. Intenta de nuevo.";
+  const text = raw.toLowerCase();
+  if (text.includes("invalid login") || text.includes("invalid credentials") || text.includes("email not confirmed") || text.includes("already registered")) {
+    return friendlyAuthError(raw);
+  }
+  if (text.includes("jwt") || text.includes("not authenticated") || text.includes("no autenticado")) {
+    return "Tu sesión venció. Vuelve a entrar.";
+  }
+  if (text.includes("row-level") || text.includes("row level") || text.includes("permission denied") || text.includes("sin permiso")) {
+    return "No tienes permiso para hacer eso.";
+  }
+  if (text.includes("duplicate") || text.includes("unique constraint") || text.includes("already exists")) {
+    return "Ese dato ya existe. Usa otro nombre o número.";
+  }
+  if (text.includes("foreign key")) {
+    return "No se puede borrar porque ya se usó en pedidos o recetas.";
+  }
+  if (text.includes("check constraint") || text.includes("violates")) {
+    return "Ese dato no es válido. Revísalo e inténtalo otra vez.";
+  }
+  if (text.includes("failed to fetch") || text.includes("network") || text.includes("fetch")) {
+    return "No hay conexión. Revisa tu internet y vuelve a intentar.";
+  }
+  if (text.includes("plan activo") || text.includes("no tiene un plan")) {
+    return "Necesitas un plan activo para vender.";
+  }
+  if (text.includes("código inválido") || text.includes("codigo invalido") || text.includes("confirmation")) {
+    return "El código no coincide. Pídelo en el local.";
+  }
+  if (/sql\s*\d|supabase|\.sql|pgrst|schema|function public|does not exist|column |relation /.test(text)) {
+    return "Eso todavía no está listo en el servidor. Avisa a soporte de Wapifood.";
+  }
+  const cleaned = raw
+    .replace(UUID_RE, "")
+    .replace(/¿[^?]*sql[^?]*\??/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([.,])/g, "$1")
+    .trim();
+  if (!cleaned || /[{}[\]]|constraint|postgres|uuid/i.test(cleaned)) {
+    return "No se pudo completar. Intenta de nuevo.";
+  }
+  return cleaned;
+}
+
 export function friendlyAuthError(message) {
   const text = String(message || "").toLowerCase();
   if (text.includes("invalid login") || text.includes("invalid credentials")) {

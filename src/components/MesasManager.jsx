@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import { Icon } from "@/components/ui/Icon";
 import { EmptyState } from "@/components/ui/States";
-import { tableStateMeta } from "@/lib/brand";
+import { friendlyError, tableStateMeta } from "@/lib/brand";
 import { confirmAsync } from "@/components/ui/confirm";
 import { openPrintWindow } from "@/lib/printDocument";
 
@@ -77,7 +77,7 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null, s
     const { error } = await supabase.rpc("ensure_channel_tables", {
       p_restaurant: restaurantId,
     });
-    if (error) return setErr(error.message + " — ¿corriste SQL 013?");
+    if (error) return setErr(friendlyError(error.message));
     const { data } = await supabase
       .from("dining_tables")
       .select("*")
@@ -110,7 +110,7 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null, s
       })
       .select("*")
       .single();
-    if (error) return setErr(error.message);
+    if (error) return setErr(friendlyError(error.message));
     setTables((t) => [...t, data].sort((a, b) => a.number - b.number));
     setNumber("");
     setSeats("2");
@@ -128,7 +128,7 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null, s
       .insert({ restaurant_id: restaurantId, name, sort_order: areas.length })
       .select("id,name,sort_order")
       .single();
-    if (error) return setErr(error.message);
+    if (error) return setErr(friendlyError(error.message));
     setAreas((list) => [...list, data]);
     setAreaId(data.id);
     setAreaName("");
@@ -138,7 +138,7 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null, s
   async function assignArea(table, nextArea) {
     const supabase = createClient();
     const { error } = await supabase.from("dining_tables").update({ area_id: nextArea || null }).eq("id", table.id);
-    if (error) return setErr(error.message);
+    if (error) return setErr(friendlyError(error.message));
     setTables((list) => list.map((t) => (t.id === table.id ? { ...t, area_id: nextArea || null } : t)));
   }
 
@@ -176,7 +176,7 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null, s
       .eq("id", t.id)
       .select("*")
       .single();
-    if (error) return setErr(error.message);
+    if (error) return setErr(friendlyError(error.message));
     setTables((xs) => xs.map((x) => (x.id === t.id ? data : x)));
   }
 
@@ -200,7 +200,7 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null, s
       .eq("id", t.id)
       .select("*")
       .single();
-    if (error) return setErr(error.message);
+    if (error) return setErr(friendlyError(error.message));
     setTables((xs) => xs.map((x) => (x.id === t.id ? data : x)));
   }
 
@@ -215,13 +215,13 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null, s
       .eq("table_id", id);
     if (count && count > 0) {
       const { error } = await supabase.from("dining_tables").update({ active: false }).eq("id", id);
-      if (error) return setErr(error.message);
+      if (error) return setErr(friendlyError(error.message));
       setTables((xs) => xs.map((x) => (x.id === id ? { ...x, active: false } : x)));
       setErr("La mesa tiene historial de pedidos; se desactivó en lugar de eliminarse.");
       return;
     }
     const { error } = await supabase.from("dining_tables").delete().eq("id", id);
-    if (error) return setErr(error.message);
+    if (error) return setErr(friendlyError(error.message));
     setTables((xs) => xs.filter((x) => x.id !== id));
   }
 
@@ -277,7 +277,7 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null, s
             return (
             <article
               key={t.id}
-              className={`table-tile tone-${t.active ? meta.tone : "off"} !min-h-0 w-full ${t.active ? "" : "opacity-70"}`}
+              className={`flex min-w-0 flex-col gap-2 rounded-[18px] border border-[var(--border)] bg-[var(--surface)] p-4 ${t.active ? "" : "opacity-70"}`}
             >
               <div className="flex w-full items-center justify-between gap-2">
                 <p className="text-2xl font-extrabold">Mesa {t.number}</p>
@@ -318,10 +318,10 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null, s
                   </option>
                 ))}
               </select>
-              {(t.channel_type === "tablet" || t.channel_type === "piso") ? (
-                <p className="mt-2 break-all text-base text-[var(--ink-soft)]">
-                  Enlace de tablet: /tablet/{t.id}
-                </p>
+              {t.channel_type === "tablet" ? (
+                <a href={`/tablet/${t.id}`} className="btn-ghost inline-flex h-12 items-center px-3">
+                  Abrir tablet
+                </a>
               ) : null}
               <div className="mt-3 flex w-full flex-wrap gap-2">
                 <button type="button" onClick={() => toggle(t)} className="btn-ghost px-3">

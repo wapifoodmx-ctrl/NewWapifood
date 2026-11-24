@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { friendlyError } from "@/lib/brand";
 
 export function ThemePanel({ restaurantId, initial }) {
   const [primary, setPrimary] = useState(initial?.primary_color || "#c45c26");
@@ -19,7 +20,7 @@ export function ThemePanel({ restaurantId, initial }) {
       primary_color: primary,
       secondary_color: secondary,
     });
-    if (error) setErr(error.message + " — ¿corriste SQL 004?");
+    if (error) setErr(friendlyError(error.message));
     else setMsg("Colores del menú digital guardados.");
   }
 

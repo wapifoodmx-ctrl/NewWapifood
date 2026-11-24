@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { money } from "@/lib/format";
+import { sourceLabel } from "@/lib/brand";
 
 /**
  * Fase 8: rangos 7d / 30d / mes actual sobre órdenes ya cargadas.
@@ -64,6 +65,7 @@ export function DashboardInsights({ orders, productNames }) {
 
   const nowChart = new Date();
   const bucketCount = range === "anio" ? 12 : range === "dia" ? 1 : range === "semana" ? 7 : range === "mes" ? nowChart.getDate() : 14;
+  const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
   const series = Array.from({ length: bucketCount }, (_, idx) => {
     if (range === "anio") {
       return paid.filter((o) => {
@@ -129,11 +131,19 @@ export function DashboardInsights({ orders, productNames }) {
         <h2 className="text-xl font-normal">{range === "anio" ? "Tickets por mes" : "Tickets por día"}</h2>
         <div className="mt-4 flex h-28 items-end gap-1 overflow-x-auto">
           {series.map((v, i) => (
-            <div key={i} className="flex min-w-[8px] flex-1 flex-col items-center gap-1">
+            <div key={i} className="flex min-w-[28px] flex-1 flex-col items-center gap-1">
               <div
-                className="w-full bg-[var(--color-saffron-glow)]"
-                style={{ height: `${(v / max) * 100}%`, minHeight: v ? 3 : 1 }}
+                className="w-full rounded-t bg-[var(--primary-solid)]"
+                style={{ height: `${(v / max) * 100}%`, minHeight: v ? 4 : 1 }}
+                title={`${v} tickets`}
               />
+              <span className="text-[10px] font-bold text-[var(--ink-soft)]">
+                {range === "anio"
+                  ? monthNames[i]
+                  : range === "dia"
+                    ? "Hoy"
+                    : new Date(nowChart.getFullYear(), nowChart.getMonth(), nowChart.getDate() - (bucketCount - 1 - i)).getDate()}
+              </span>
             </div>
           ))}
         </div>
@@ -163,7 +173,7 @@ export function DashboardInsights({ orders, productNames }) {
                 .sort((a, b) => b[1] - a[1])
                 .map(([k, v]) => (
                   <li key={k} className="flex justify-between border-b border-[var(--color-warm-stone)] py-1">
-                    <span className="uppercase">{k}</span>
+                    <span>{sourceLabel(k)}</span>
                     <span className="font-semibold">{money(v)}</span>
                   </li>
                 ))
@@ -181,7 +191,7 @@ export function DashboardInsights({ orders, productNames }) {
             todayOrders.slice(0, 25).map((o) => (
               <li key={o.id} className="flex justify-between border-b border-[var(--color-warm-stone)] py-1">
                 <span>
-                  {(o.source || "pos").toUpperCase()} · {statusMetaLabel(o.status)}
+                  {sourceLabel(o.source)} · {statusMetaLabel(o.status)}
                 </span>
                 <span className="text-[var(--color-walnut)]">
                   {o.opened_at ? new Date(o.opened_at).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }) : ""}

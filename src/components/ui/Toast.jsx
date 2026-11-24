@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { friendlyError } from "@/lib/brand";
 
 let pushToast = null;
 
@@ -16,10 +17,10 @@ export const toast = {
     pushToast?.({ type: "success", ...normalize(message, extra, 4000) });
   },
   error(message, extra) {
-    pushToast?.({ type: "error", ...normalize(message, extra, 6500) });
+    pushToast?.({ type: "error", ...normalize(friendlyError(message), extra, 6500) });
   },
   warning(message, extra) {
-    pushToast?.({ type: "warning", ...normalize(message, extra, 6000) });
+    pushToast?.({ type: "warning", ...normalize(friendlyError(message), extra, 6000) });
   },
   info(message, extra) {
     pushToast?.({ type: "info", ...normalize(message, extra, 3200) });

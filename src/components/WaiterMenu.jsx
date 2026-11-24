@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
+import { friendlyError } from "@/lib/brand";
 
 export function WaiterMenu({ restaurantId, restaurantName, products, categories, tables }) {
   const [waiter, setWaiter] = useState(null);
@@ -38,7 +39,7 @@ export function WaiterMenu({ restaurantId, restaurantName, products, categories,
       setWaiter(data);
       setCode("");
     } catch (e2) {
-      setError(e2.message || "Código inválido");
+      setError(friendlyError(e2.message || "Código inválido"));
     } finally {
       setLoading(false);
     }

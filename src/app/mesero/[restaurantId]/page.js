@@ -18,6 +18,9 @@ export default async function MeseroRestaurantPage({ params }) {
       tables={data.tables}
       canOperate={data.canOperate}
       productExtras={data.extras || []}
+      modifierGroups={data.modifierGroups || []}
+      modifierLinks={data.modifierLinks || []}
+      removableLines={data.removableLines || []}
     />
   );
 }

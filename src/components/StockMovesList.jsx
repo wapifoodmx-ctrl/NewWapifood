@@ -1,5 +1,7 @@
 "use client";
 
+import { moveReasonLabel } from "@/lib/brand";
+
 export function StockMovesList({ moves, ingredientNames }) {
   if (!moves?.length) {
     return (
@@ -19,7 +21,7 @@ export function StockMovesList({ moves, ingredientNames }) {
           <div>
             <p className="font-semibold">{ingredientNames[m.ingredient_id] || "Insumo"}</p>
             <p className="text-[var(--color-walnut)]" suppressHydrationWarning>
-              {m.reason || "movimiento"}
+              {moveReasonLabel(m.reason)}
               {m.created_at ? ` · ${new Date(m.created_at).toLocaleString("es-MX")}` : ""}
             </p>
           </div>

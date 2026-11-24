@@ -24,6 +24,7 @@ export async function loadPublicMenu(restaurantId) {
     { data: modifierGroups },
     { data: modifierOptions },
     { data: modifierLinks },
+    removableResult,
   ] =
     await Promise.all([
       supabase
@@ -56,6 +57,7 @@ export async function loadPublicMenu(restaurantId) {
       supabase.from("modifier_groups").select("id,name,min_select,max_select,required").eq("restaurant_id", restaurantId),
       supabase.from("modifier_options").select("id,group_id,name,extra_price"),
       supabase.from("product_modifier_groups").select("product_id,group_id"),
+      supabase.rpc("public_removable_lines", { p_restaurant: restaurantId }),
     ]);
 
   const extras = extrasResult.error
@@ -75,6 +77,7 @@ export async function loadPublicMenu(restaurantId) {
       options: (modifierOptions || []).filter((option) => option.group_id === group.id),
     })),
     modifierLinks: (modifierLinks || []).filter((link) => products?.some((product) => product.id === link.product_id)),
+    removableLines: removableResult.error ? [] : removableResult.data || [],
     canOperate: !!canOps,
   };
 }

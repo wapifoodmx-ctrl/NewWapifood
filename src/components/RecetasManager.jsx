@@ -12,6 +12,7 @@ import {
   unitLabel,
 } from "@/lib/units";
 import { dishCost, margin, money } from "@/lib/format";
+import { friendlyError } from "@/lib/brand";
 
 /**
  * Recetas — qty siempre se guarda en unidad BASE del insumo (g/ml/pza),
@@ -26,6 +27,7 @@ export function RecetasManager({ products, ingredients, categories = [], initial
   const [useLarge, setUseLarge] = useState(false); // true = capturar en kg o L
   const [err, setErr] = useState("");
   const [extraPrice, setExtraPrice] = useState("0");
+  const [canRemove, setCanRemove] = useState(false);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("");
 
@@ -93,17 +95,28 @@ export function RecetasManager({ products, ingredients, categories = [], initial
     }
 
     const supabase = createClient();
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("recipe_lines")
       .upsert(
-        { product_id: productId, ingredient_id: ingredientId, qty: baseQty },
+        { product_id: productId, ingredient_id: ingredientId, qty: baseQty, is_removable: canRemove },
         { onConflict: "product_id,ingredient_id" },
       )
       .select("*")
       .single();
+    if (error && /is_removable/i.test(error.message || "")) {
+      ({ data, error } = await supabase
+        .from("recipe_lines")
+        .upsert(
+          { product_id: productId, ingredient_id: ingredientId, qty: baseQty },
+          { onConflict: "product_id,ingredient_id" },
+        )
+        .select("*")
+        .single());
+      if (!error) toast.warning("La base todavía no guarda «se puede quitar». Aplica la migración.");
+    }
 
     if (error) {
-      setErr(error.message);
+      setErr(friendlyError(error.message));
       toast.error(error.message);
       return;
     }
@@ -119,6 +132,28 @@ export function RecetasManager({ products, ingredients, categories = [], initial
     });
     setQty(canToggle ? "50" : "1");
     setUseLarge(false);
+    setCanRemove(false);
+  }
+
+  async function toggleRemovable(line) {
+    const next = !line.is_removable;
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("recipe_lines")
+      .update({ is_removable: next })
+      .eq("product_id", line.product_id)
+      .eq("ingredient_id", line.ingredient_id);
+    if (error) {
+      toast.error(/is_removable/i.test(error.message || "") ? "Falta aplicar la migración de «se puede quitar»." : error.message);
+      return;
+    }
+    setLines((ls) =>
+      ls.map((row) =>
+        row.product_id === line.product_id && row.ingredient_id === line.ingredient_id
+          ? { ...row, is_removable: next }
+          : row,
+      ),
+    );
   }
 
   async function removeLine(product_id, ingredient_id) {
@@ -246,7 +281,15 @@ export function RecetasManager({ products, ingredients, categories = [], initial
                   <li key={`${l.product_id}-${l.ingredient_id}`} className="flex justify-between gap-2">
                     <span>
                       {ingMap.get(l.ingredient_id)?.name || "Insumo"} · {formatLineQty(l)}
+                      {l.is_removable ? " · se puede quitar" : ""}
                     </span>
+                    <button
+                      type="button"
+                      className="text-xs font-semibold uppercase"
+                      onClick={() => toggleRemovable(l)}
+                    >
+                      {l.is_removable ? "Quitar opción" : "Se puede quitar"}
+                    </button>
                     <button
                       type="button"
                       className="text-xs font-semibold text-[var(--color-wine)]"
@@ -335,6 +378,11 @@ export function RecetasManager({ products, ingredients, categories = [], initial
               {useLarge ? unitLabel(largeUnit(base)) : unitLabel(base)}
             </span>
           </div>
+        </label>
+
+        <label className="mt-3 flex min-h-12 items-center gap-3 text-sm">
+          <input type="checkbox" checked={canRemove} onChange={(e) => setCanRemove(e.target.checked)} />
+          Se puede quitar en el menú (ejemplo: sin cebolla)
         </label>
 
         {canToggle ? (

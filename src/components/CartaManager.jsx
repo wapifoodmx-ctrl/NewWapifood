@@ -9,6 +9,7 @@ import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { money, dishCost } from "@/lib/format";
 import { uploadPublicImage } from "@/lib/storage";
 import { isMissingRelation } from "@/lib/schema";
+import { friendlyError } from "@/lib/brand";
 
 const emptyProduct = {
   name: "",
@@ -75,12 +76,12 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories,
     const sort_order = categories.length;
     const { data, error } = await supabase
       .from("categories")
-      .insert({ restaurant_id: restaurantId, name: newCat.trim(), sort_order })
+      .insert({ restaurant_id: restaurantId, name: newCat.trim().toUpperCase(), sort_order })
       .select("*")
       .single();
     setLoading(false);
     if (error) {
-      setErr(error.message);
+      setErr(friendlyError(error.message));
       toast.error(error.message);
       return;
     }
@@ -95,7 +96,7 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories,
     const supabase = createClient();
     const { data, error } = await supabase
       .from("categories")
-      .update({ name: editCatName.trim() })
+      .update({ name: editCatName.trim().toUpperCase() })
       .eq("id", id)
       .select("*")
       .single();
@@ -146,7 +147,7 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories,
     const { error: e1 } = await supabase.from("categories").update({ sort_order: orderA }).eq("id", a.id);
     const { error: e2 } = await supabase.from("categories").update({ sort_order: orderB }).eq("id", b.id);
     if (e1 || e2) {
-      toast.error((e1 || e2).message + " — ¿corriste SQL 019?");
+      toast.error((e1 || e2).message);
       return;
     }
     setCategories((cs) =>

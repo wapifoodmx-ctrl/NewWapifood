@@ -47,6 +47,7 @@ export default async function KioskPage({ params }) {
       productExtras={data.extras || []}
       modifierGroups={data.modifierGroups || []}
       modifierLinks={data.modifierLinks || []}
+      removableLines={data.removableLines || []}
     />
   );
 }

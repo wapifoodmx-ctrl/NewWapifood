@@ -23,7 +23,7 @@ export default async function TabletPage({ params }) {
   }
 
   const restaurantId = table.restaurant_id;
-  const [{ data: restaurant }, { data: canOps }, { data: products }, { data: categories }, { data: theme }, { data: profile }, extrasResult] =
+  const [{ data: restaurant }, { data: canOps }, { data: products }, { data: categories }, { data: theme }, { data: profile }, extrasResult, { data: modifierGroups }, { data: modifierOptions }, { data: modifierLinks }, removableResult] =
     await Promise.all([
       supabase.from("restaurants").select("id,name,logo_url").eq("id", restaurantId).maybeSingle(),
       supabase.rpc("can_operate", { p_restaurant: restaurantId }),
@@ -43,6 +43,10 @@ export default async function TabletPage({ params }) {
       supabase
         .from("product_extras")
         .select("product_id,ingredient_id,qty,extra_price,ingredients(name,unit)"),
+      supabase.from("modifier_groups").select("id,name,min_select,max_select,required").eq("restaurant_id", restaurantId),
+      supabase.from("modifier_options").select("id,group_id,name,extra_price"),
+      supabase.from("product_modifier_groups").select("product_id,group_id"),
+      supabase.rpc("public_removable_lines", { p_restaurant: restaurantId }),
     ]);
 
   if (!restaurant) {
@@ -65,6 +69,12 @@ export default async function TabletPage({ params }) {
               .map(normalizeExtraRow)
               .filter((row) => row && (products || []).some((p) => p.id === row.product_id))
       }
+      modifierGroups={(modifierGroups || []).map((group) => ({
+        ...group,
+        options: (modifierOptions || []).filter((option) => option.group_id === group.id),
+      }))}
+      modifierLinks={modifierLinks || []}
+      removableLines={removableResult.error ? [] : removableResult.data || []}
     />
   );
 }

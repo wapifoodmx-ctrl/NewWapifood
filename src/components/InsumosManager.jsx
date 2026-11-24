@@ -217,7 +217,7 @@ export function InsumosManager({
     });
     setLoading(false);
     if (error) {
-      toast.error(error.message + (error.message?.includes("register_entrada") ? " — ¿SQL 020?" : ""));
+      toast.error(error.message);
       return;
     }
     const delta = moveType === "entrada" ? qty : -qty;

@@ -17,6 +17,9 @@ export function TabletMenu({
   profile,
   canOperate,
   productExtras = [],
+  modifierGroups = [],
+  modifierLinks = [],
+  removableLines = [],
 }) {
   const [unlocked, setUnlocked] = useState(!table.access_pin);
   const [pin, setPin] = useState("");
@@ -105,6 +108,9 @@ export function TabletMenu({
       orderSource="tablet"
       fixedTableId={table.id}
       productExtras={productExtras}
+      modifierGroups={modifierGroups}
+      modifierLinks={modifierLinks}
+      removableLines={removableLines}
     />
   );
 }

@@ -36,6 +36,30 @@ export function ModifierGroups({ groups, selected, onToggle }) {
   );
 }
 
+export function OmitPicker({ options, selected, onToggle }) {
+  if (!options?.length) return null;
+  const picked = selected || [];
+  return (
+    <fieldset className="mt-4">
+      <legend className="text-xs font-semibold uppercase">Se puede quitar</legend>
+      <p className="mt-1 text-sm text-[var(--ink-soft)]">Cocina lo ve como nota. El inventario sigue la receta.</p>
+      <ul className="mt-2 space-y-2">
+        {options.map((row) => {
+          const on = picked.some((item) => item.ingredient_id === row.ingredient_id);
+          return (
+            <li key={row.ingredient_id}>
+              <label className="flex min-h-12 items-center gap-3 text-base">
+                <input type="checkbox" checked={on} onChange={() => onToggle(row)} />
+                <span>Sin {row.name}</span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+    </fieldset>
+  );
+}
+
 export function ExtrasPicker({ extras, selected, onToggle }) {
   if (!extras?.length) return null;
   const picked = selected || [];

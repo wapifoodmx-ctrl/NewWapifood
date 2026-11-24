@@ -7,10 +7,12 @@ import { toast } from "@/components/ui/Toast";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { statusMeta, itemStatusMeta } from "@/lib/orderStatus";
 import { extraPayload, extrasCharge, extrasForProduct } from "@/lib/extras";
-import { ExtrasPicker } from "@/components/ExtrasPicker";
+import { ExtrasPicker, ModifierGroups, OmitPicker } from "@/components/ExtrasPicker";
+import { groupsForProduct, modifierError, toggleModifier } from "@/lib/modifiers";
+import { composeLineNote, needsCustomize, removableForProduct } from "@/lib/removable";
 import { Icon } from "@/components/ui/Icon";
 import { EmptyState } from "@/components/ui/States";
-import { tableStateMeta } from "@/lib/brand";
+import { friendlyError, tableStateMeta } from "@/lib/brand";
 
 const SESSION_KEY = "wapifood_waiter_session";
 
@@ -26,6 +28,9 @@ export function WaiterApp({
   tables,
   canOperate,
   productExtras = [],
+  modifierGroups = [],
+  modifierLinks = [],
+  removableLines = [],
 }) {
   const [session, setSession] = useState(null);
   const [code, setCode] = useState("");
@@ -160,8 +165,9 @@ async function login(e) {
       setCode("");
       toast.success(`Hola, ${data?.name || "mesero"}`);
     } catch (e2) {
-      setError(e2.message || "Código inválido");
-      toast.error(e2.message || "Código inválido");
+      const msg = friendlyError(e2.message || "Código inválido");
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -174,29 +180,50 @@ async function login(e) {
     setTableId("");
   }
 
-  function add(p, selected = []) {
+  function lineKey(item) {
+    return [
+      item.product_id,
+      item.note || "",
+      (item.extras || []).map((extra) => extra.ingredient_id).sort().join(","),
+      (item.modifiers || []).map((mod) => mod.option_id).sort().join(","),
+    ].join("|");
+  }
+
+  function add(p, selected = [], modifiers = [], omitted = [], freeNote = "") {
+    const note = composeLineNote(
+      [freeNote, (modifiers || []).map((item) => item.name).join(", ")].filter(Boolean).join(", "),
+      omitted,
+    );
+    const row = {
+      product_id: p.id,
+      name: p.name,
+      price: Number(p.price),
+      qty: 1,
+      extras: selected,
+      modifiers,
+      note,
+    };
+    const key = lineKey(row);
     setCart((c) => {
-      const f = c.find((x) => x.product_id === p.id);
-      if (f) {
-        return c.map((x) =>
-          x.product_id === p.id ? { ...x, qty: x.qty + 1, extras: selected.length ? selected : x.extras || [] } : x,
-        );
-      }
-      return [...c, { product_id: p.id, name: p.name, price: Number(p.price), qty: 1, extras: selected }];
+      const found = c.find((item) => lineKey(item) === key);
+      if (found) return c.map((item) => (lineKey(item) === key ? { ...item, qty: item.qty + 1 } : item));
+      return [...c, row];
     });
   }
 
   function choose(p) {
-    if (extrasForProduct(productExtras, p.id).length) {
-      setExtraPick({ product: p, selected: [] });
+    const extras = extrasForProduct(productExtras, p.id);
+    const groups = groupsForProduct(modifierGroups, modifierLinks, p.id);
+    if (needsCustomize(p.id, extras, groups, removableLines)) {
+      setExtraPick({ product: p, selected: [], modifiers: [], omitted: [], note: "" });
       return;
     }
-    add(p, []);
+    add(p, [], [], [], "");
   }
 
-  function dec(id) {
+  function dec(key) {
     setCart((c) =>
-      c.map((x) => (x.product_id === id ? { ...x, qty: x.qty - 1 } : x)).filter((x) => x.qty > 0),
+      c.map((x) => (lineKey(x) === key ? { ...x, qty: x.qty - 1 } : x)).filter((x) => x.qty > 0),
     );
   }
 
@@ -211,6 +238,7 @@ async function login(e) {
         p_items: cart.map((i) => ({
           product_id: i.product_id,
           qty: i.qty,
+          notes: i.note || null,
           extras: extraPayload(i.extras),
         })),
         p_customer_name: session?.name || "Mesero",
@@ -219,6 +247,16 @@ async function login(e) {
         p_source: "mesero",
       });
       if (error) throw error;
+      for (const item of cart) {
+        if (!item.modifiers?.length) continue;
+        const saved = await supabase.rpc("save_line_modifiers", {
+          p_order: orderId,
+          p_product: item.product_id,
+          p_notes: item.note || null,
+          p_options: item.modifiers.map((mod) => ({ option_id: mod.option_id })),
+        });
+        if (saved.error) throw saved.error;
+      }
 
       if (orderId && session?.id && session?.access_code) {
         const { error: e2 } = await supabase.rpc("set_order_waiter", {
@@ -407,8 +445,8 @@ async function login(e) {
                 </p>
                 <div className="mt-1 flex flex-wrap gap-1">
                   {cart.map((i) => (
-                    <button key={i.product_id} type="button" onClick={() => dec(i.product_id)} className="btn-ghost px-2 text-sm">
-                      − {i.name}
+                    <button key={lineKey(i)} type="button" onClick={() => dec(lineKey(i))} className="btn-ghost px-2 text-sm">
+                      − {i.qty}× {i.name}{i.note ? ` (${i.note})` : ""}
                     </button>
                   ))}
                 </div>
@@ -482,6 +520,22 @@ async function login(e) {
         <div className="fixed inset-0 z-[1700] flex items-end justify-center bg-black/50 p-4 sm:items-center">
           <div role="dialog" aria-modal="true" aria-labelledby="waiter-extra-title" className="max-h-[90vh] w-full max-w-md overflow-y-auto border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-5">
             <h2 id="waiter-extra-title" className="text-2xl font-normal">{extraPick.product.name}</h2>
+            <OmitPicker
+              options={removableForProduct(removableLines, extraPick.product.id)}
+              selected={extraPick.omitted || []}
+              onToggle={(row) =>
+                setExtraPick((pick) => {
+                  if (!pick) return pick;
+                  const has = (pick.omitted || []).some((item) => item.ingredient_id === row.ingredient_id);
+                  return {
+                    ...pick,
+                    omitted: has
+                      ? pick.omitted.filter((item) => item.ingredient_id !== row.ingredient_id)
+                      : [...(pick.omitted || []), row],
+                  };
+                })
+              }
+            />
             <ExtrasPicker
               extras={extrasForProduct(productExtras, extraPick.product.id)}
               selected={extraPick.selected}
@@ -498,6 +552,33 @@ async function login(e) {
                 })
               }
             />
+            <ModifierGroups
+              groups={groupsForProduct(modifierGroups, modifierLinks, extraPick.product.id)}
+              selected={extraPick.modifiers || []}
+              onToggle={(option) =>
+                setExtraPick((pick) =>
+                  pick
+                    ? {
+                        ...pick,
+                        modifiers: toggleModifier(
+                          groupsForProduct(modifierGroups, modifierLinks, pick.product.id),
+                          pick.modifiers || [],
+                          option,
+                        ),
+                      }
+                    : pick,
+                )
+              }
+            />
+            <label className="mt-3 block text-sm font-bold">
+              Nota
+              <input
+                className="mt-1 h-12 w-full border border-[var(--color-warm-stone)] px-3"
+                value={extraPick.note || ""}
+                onChange={(e) => setExtraPick((pick) => (pick ? { ...pick, note: e.target.value } : pick))}
+                placeholder="Poco picante, para llevar…"
+              />
+            </label>
             <div className="mt-4 flex gap-2">
               <button type="button" className="h-11 flex-1 border border-[var(--color-warm-stone)] text-xs font-semibold uppercase" onClick={() => setExtraPick(null)}>
                 Cancelar
@@ -506,7 +587,12 @@ async function login(e) {
                 type="button"
                 className="h-11 flex-1 bg-[var(--color-onyx-warm)] text-xs font-semibold uppercase text-[var(--color-parchment)]"
                 onClick={() => {
-                  add(extraPick.product, extraPick.selected);
+                  const groupError = modifierError(
+                    groupsForProduct(modifierGroups, modifierLinks, extraPick.product.id),
+                    extraPick.modifiers || [],
+                  );
+                  if (groupError) return toast.error(groupError);
+                  add(extraPick.product, extraPick.selected, extraPick.modifiers || [], extraPick.omitted || [], extraPick.note || "");
                   setExtraPick(null);
                 }}
               >

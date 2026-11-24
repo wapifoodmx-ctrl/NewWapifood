@@ -7,8 +7,10 @@ import { extraPayload, extrasCharge, extrasForProduct } from "@/lib/extras";
 import { isOpenNow } from "@/lib/hours";
 import { toast } from "@/components/ui/Toast";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
-import { ExtrasLines, ExtrasPicker, ModifierGroups } from "@/components/ExtrasPicker";
+import { ExtrasLines, ExtrasPicker, ModifierGroups, OmitPicker } from "@/components/ExtrasPicker";
 import { groupsForProduct, modifierError, toggleModifier } from "@/lib/modifiers";
+import { composeLineNote, needsCustomize, removableForProduct } from "@/lib/removable";
+import { friendlyError } from "@/lib/brand";
 
 /**
  * Menú digital / kiosko — paridad Menucliente (ProductDetailModal, CartModal, etc.)
@@ -27,6 +29,7 @@ export function DigitalMenu({
   productExtras = [],
   modifierGroups = [],
   modifierLinks = [],
+  removableLines = [],
   schedule = "",
 }) {
   const primary = theme?.primary_color || "var(--color-saffron-glow)";
@@ -48,6 +51,7 @@ export function DigitalMenu({
   const [detailNote, setDetailNote] = useState("");
   const [detailExtras, setDetailExtras] = useState([]);
   const [detailModifiers, setDetailModifiers] = useState([]);
+  const [detailOmit, setDetailOmit] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const openNow = orderSource !== "web_menu" || isOpenNow(schedule);
@@ -65,6 +69,7 @@ export function DigitalMenu({
     setDetailNote("");
     setDetailExtras([]);
     setDetailModifiers([]);
+    setDetailOmit([]);
   }
 
   function toggleDetailExtra(extra) {
@@ -82,11 +87,12 @@ export function DigitalMenu({
       toast.error(groupError);
       return;
     }
+    const note = composeLineNote(detailNote, detailOmit);
     setCart((c) => {
       const key = detail.id;
       const extraKey = extraPayload(detailExtras).map((e) => e.ingredient_id).sort().join(",");
       const modKey = (detailModifiers || []).map((item) => item.option_id).sort().join(",");
-      const f = c.find((x) => x.product_id === key && (x.note || "") === (detailNote || "") && extraPayload(x.extras).map((e) => e.ingredient_id).sort().join(",") === extraKey && (x.modifiers || []).map((item) => item.option_id).sort().join(",") === modKey);
+      const f = c.find((x) => x.product_id === key && (x.note || "") === note && extraPayload(x.extras).map((e) => e.ingredient_id).sort().join(",") === extraKey && (x.modifiers || []).map((item) => item.option_id).sort().join(",") === modKey);
       if (f) {
         return c.map((x) =>
           x === f ? { ...x, qty: x.qty + detailQty } : x,
@@ -99,7 +105,7 @@ export function DigitalMenu({
           name: detail.name,
           price: Number(detail.price),
           qty: detailQty,
-          note: detailNote.trim() || "",
+          note,
           extras: detailExtras,
           modifiers: detailModifiers,
         },
@@ -110,7 +116,7 @@ export function DigitalMenu({
   }
 
   function addQuick(p) {
-    if (extrasForProduct(productExtras, p.id).length || groupsForProduct(modifierGroups, modifierLinks, p.id).length) {
+    if (needsCustomize(p.id, extrasForProduct(productExtras, p.id), groupsForProduct(modifierGroups, modifierLinks, p.id), removableLines)) {
       openDetail(p);
       return;
     }
@@ -215,8 +221,9 @@ export function DigitalMenu({
       setStatus("ok");
       toast.success("Pedido enviado");
     } catch (e) {
-      setStatus(e.message || "No se pudo enviar el pedido");
-      toast.error(e.message || "No se pudo enviar el pedido");
+      const msg = friendlyError(e.message || "No se pudo enviar el pedido");
+      setStatus(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -361,6 +368,17 @@ export function DigitalMenu({
                   <button type="button" className="h-10 w-10 border border-[var(--color-warm-stone)] font-bold" onClick={() => setDetailQty((q) => q + 1)}>+</button>
                 </div>
               </label>
+              <OmitPicker
+                options={removableForProduct(removableLines, detail.id)}
+                selected={detailOmit}
+                onToggle={(row) =>
+                  setDetailOmit((list) =>
+                    list.some((item) => item.ingredient_id === row.ingredient_id)
+                      ? list.filter((item) => item.ingredient_id !== row.ingredient_id)
+                      : [...list, row],
+                  )
+                }
+              />
               <ExtrasPicker
                 extras={extrasForProduct(productExtras, detail.id)}
                 selected={detailExtras}

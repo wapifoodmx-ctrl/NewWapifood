@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
 import { extrasCharge, extrasForProduct, lineAmount } from "@/lib/extras";
 import { itemStatusMeta, statusMeta } from "@/lib/orderStatus";
-import { ExtrasLines, ExtrasPicker } from "@/components/ExtrasPicker";
+import { ExtrasLines, ExtrasPicker, OmitPicker } from "@/components/ExtrasPicker";
 import { isMissingRelation } from "@/lib/schema";
 import { toast } from "@/components/ui/Toast";
 import { confirmAsync } from "@/components/ui/confirm";
@@ -18,12 +18,13 @@ import { askManagerPin } from "@/lib/managerPin";
 import { MesaTools } from "@/components/MesaTools";
 import { ModifierGroups } from "@/components/ExtrasPicker";
 import { groupsForProduct, modifierError, toggleModifier } from "@/lib/modifiers";
+import { composeLineNote, needsCustomize, removableForProduct } from "@/lib/removable";
 import { PAY_METHODS, cashSuggestions, categoryColor, haptic, payLabel, tableStateMeta } from "@/lib/brand";
 
 /**
  * POS — paridad gradual con Puntodeventa (CarritoModal + ModalsPago).
  */
-export function PosBoard({ restaurantId, tables: initialTables, products, categories, initialOrders, productExtras = [], modifierGroups = [], modifierLinks = [] }) {
+export function PosBoard({ restaurantId, tables: initialTables, products, categories, initialOrders, productExtras = [], modifierGroups = [], modifierLinks = [], removableLines = [] }) {
   const [tables, setTables] = useState(initialTables || []);
   const [orders, setOrders] = useState(initialOrders);
   const [live, setLive] = useState(false);
@@ -267,11 +268,11 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   function chooseProduct(product) {
     const extras = extrasForProduct(productExtras, product.id);
     const groups = groupsForProduct(modifierGroups, modifierLinks, product.id);
-    if (extras.length || groups.length) {
-      setExtraPick({ product, selected: [], modifiers: [] });
+    if (needsCustomize(product.id, extras, groups, removableLines)) {
+      setExtraPick({ product, selected: [], modifiers: [], omitted: [], note: "" });
       return;
     }
-    addItem(product, []);
+    addItem(product, [], [], null);
   }
 
   async function saveLineExtras(orderId, productId, selected, lineId) {
@@ -292,16 +293,17 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     }
   }
 
-  async function addItem(product, selected = [], modifiers = []) {
+  async function addItem(product, selected = [], modifiers = [], note = null) {
     const current = order || (activeTableId ? await openTable(activeTableId) : null);
     if (!current) {
       toast.warning("Elige el punto de venta o una mesa");
       return;
     }
     setLoading(true);
-    const note = null;
-    const line = (current.order_items || []).find((i) => i.product_id === product.id && (i.notes || null) === note);
+    const lineNote = note || null;
+    const line = (current.order_items || []).find((i) => i.product_id === product.id && (i.notes || null) === lineNote);
     let lineId = line?.id;
+    const created = !line;
     if (line) {
       await supabase
         .from("order_items")
@@ -313,7 +315,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         product_id: product.id,
         qty: 1,
         unit_price: product.price,
-        notes: null,
+        notes: lineNote,
       }).select("id").single();
       if (error) {
         setLoading(false);
@@ -323,7 +325,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       lineId = data.id;
     }
     await saveLineExtras(current.id, product.id, selected, lineId);
-    if (modifiers?.length && lineId) {
+    if (created && modifiers?.length && lineId) {
       await supabase.from("order_item_modifiers").insert(modifiers.map((item) => ({
         order_item_id: lineId,
         order_id: current.id,
@@ -1068,6 +1070,22 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
             <p className="text-lg font-extrabold">
               {money(Number(extraPick.product.price) + extrasCharge(extraPick.selected))}
             </p>
+            <OmitPicker
+              options={removableForProduct(removableLines, extraPick.product.id)}
+              selected={extraPick.omitted || []}
+              onToggle={(row) =>
+                setExtraPick((pick) => {
+                  if (!pick) return pick;
+                  const has = (pick.omitted || []).some((item) => item.ingredient_id === row.ingredient_id);
+                  return {
+                    ...pick,
+                    omitted: has
+                      ? pick.omitted.filter((item) => item.ingredient_id !== row.ingredient_id)
+                      : [...(pick.omitted || []), row],
+                  };
+                })
+              }
+            />
             <ExtrasPicker
               extras={extrasForProduct(productExtras, extraPick.product.id)}
               selected={extraPick.selected}
@@ -1089,6 +1107,15 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
               selected={extraPick.modifiers || []}
               onToggle={(option) => setExtraPick((pick) => pick ? { ...pick, modifiers: toggleModifier(groupsForProduct(modifierGroups, modifierLinks, pick.product.id), pick.modifiers || [], option) } : pick)}
             />
+            <label className="mt-3 block text-sm font-bold">
+              Nota
+              <input
+                className="mt-1 h-12 w-full"
+                value={extraPick.note || ""}
+                onChange={(e) => setExtraPick((pick) => (pick ? { ...pick, note: e.target.value } : pick))}
+                placeholder="Poco picante, para llevar…"
+              />
+            </label>
             <div className="mt-5 flex gap-2">
               <button type="button" onClick={() => setExtraPick(null)} className="btn-ghost flex-1">
                 Cancelar
@@ -1099,8 +1126,12 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                   const pick = extraPick;
                   const groupError = modifierError(groupsForProduct(modifierGroups, modifierLinks, pick.product.id), pick.modifiers || []);
                   if (groupError) return toast.error(groupError);
+                  const note = composeLineNote(
+                    [pick.note, (pick.modifiers || []).map((item) => item.name).join(", ")].filter(Boolean).join(", "),
+                    pick.omitted || [],
+                  );
                   setExtraPick(null);
-                  addItem(pick.product, pick.selected, pick.modifiers || []);
+                  addItem(pick.product, pick.selected, pick.modifiers || [], note || null);
                 }}
                 className="btn-lg btn-primary flex-1"
               >

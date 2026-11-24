@@ -132,8 +132,11 @@ export function ListsManager({ restaurantId, products, initialLists, unavailable
             </button>
           </div>
           <p className="mt-1 text-sm text-[var(--color-espresso)]">
-            Estas listas alimentan pantallas del local, como la lista personalizada del front.
+            Estas listas alimentan la pantalla del local. Abre el enlace en la televisión, sin iniciar sesión.
           </p>
+          <a href={`/vista/lista/${current.id}`} className="mt-2 inline-flex h-12 items-center text-base font-bold text-[var(--primary)]">
+            Abrir pantalla
+          </a>
           <form onSubmit={addProduct} className="mt-3 flex gap-2">
             <select value={productId} onChange={(e) => setProductId(e.target.value)} className="h-11 min-w-0 flex-1 border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-2">
               {products.map((p) => (

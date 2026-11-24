@@ -68,7 +68,7 @@ export function ConfigPanel({ restaurant, profile }) {
       if (error) throw error;
       if (!savedLogo) {
         throw new Error(
-          "El logo se subió al storage pero no se pudo guardar en el restaurante (permisos). Ejecuta SQL 018_fix_restaurants_rls.sql",
+          "El logo se subió, pero no se pudo guardar en el restaurante. Vuelve a entrar e inténtalo otra vez.",
         );
       }
       set("logo_url", savedLogo.logo_url || url);
@@ -131,7 +131,7 @@ export function ConfigPanel({ restaurant, profile }) {
       if (e1) throw e1;
       if (!savedRest) {
         throw new Error(
-          "No se pudo actualizar el restaurante (nombre/logo). Ejecuta en Supabase el SQL 018_fix_restaurants_rls.sql",
+          "No se pudo guardar el nombre. Vuelve a entrar e inténtalo otra vez.",
         );
       }
       set("name", savedRest.name || name);

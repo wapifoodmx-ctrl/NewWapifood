@@ -14,7 +14,7 @@ import { escapeHtml, openPrintWindow } from "@/lib/printDocument";
 import { QuePaso } from "@/components/QuePaso";
 import { askManagerPin } from "@/lib/managerPin";
 import { includedIva } from "@/lib/iva";
-import { payLabel } from "@/lib/brand";
+import { payLabel, sourceLabel } from "@/lib/brand";
 
 export function TicketCard({ order, productNames = {}, onChanged, ivaEnabled = false }) {
   const meta = statusMeta(order.status);
@@ -52,16 +52,16 @@ export function TicketCard({ order, productNames = {}, onChanged, ivaEnabled = f
           <td style="padding:6px 0;text-align:right;vertical-align:top">${escapeHtml(money(line))}</td></tr>`;
       })
       .join("");
-    const code = order.public_code || order.id?.slice(0, 8);
-    const opened = openPrintWindow(`<!doctype html><html lang="es"><head><meta charset="utf-8"/><title>Ticket ${escapeHtml(code)}</title>
+    const code = order.public_code || "";
+    const opened = openPrintWindow(`<!doctype html><html lang="es"><head><meta charset="utf-8"/><title>Ticket ${escapeHtml(code || "cuenta")}</title>
 <style>body{font-family:ui-monospace,monospace;padding:16px;font-size:13px;color:#1c1410}
 h1{font-size:16px;margin:0 0 4px}table{width:100%;border-collapse:collapse}
 .total{display:flex;justify-content:space-between;font-weight:700;margin-top:12px;border-top:1px dashed #999;padding-top:8px}
 </style></head><body>
-<h1>Wapifood</h1><p style="margin:0 0 8px;font-size:13px">Mesa ${escapeHtml(order.dining_tables?.number ?? "—")} · ${escapeHtml((order.source || "pos").toUpperCase())}</p>
+<h1>Wapifood</h1><p style="margin:0 0 8px;font-size:13px">Mesa ${escapeHtml(order.dining_tables?.number ?? "—")} · ${escapeHtml(sourceLabel(order.source))}</p>
 <p style="color:#555;font-size:11px">${escapeHtml(meta.label)} · ${escapeHtml(payLabel(order.method))} · ${escapeHtml(whenLabel(order.closed_at || order.opened_at))}</p>
 ${order.folio || order.mp_payment_id ? `<p style="font-size:11px">Folio: ${escapeHtml(order.folio || order.mp_payment_id)}</p>` : ""}
-<p style="font-size:11px">Código: ${escapeHtml(code)}</p>
+${code ? `<p style="font-size:11px">Código: ${escapeHtml(code)}</p>` : ""}
 <table>${rows}</table>
 <div class="total"><span>Total</span><span>${escapeHtml(money(total))}</span></div>
 ${ivaEnabled ? `<p style="font-size:11px">IVA 16% incluido: ${escapeHtml(money(includedIva(total)))}. No se suma.</p>` : ""}
@@ -71,10 +71,10 @@ ${ivaEnabled ? `<p style="font-size:11px">IVA 16% incluido: ${escapeHtml(money(i
   }
 
   function pdfTicket() {
-    const code = order.public_code || order.id?.slice(0, 8);
+    const code = order.public_code || "cuenta";
     const lines = [
       "Wapifood",
-      `Mesa ${order.dining_tables?.number ?? "-"}  ${order.source || "pos"}`,
+      `Mesa ${order.dining_tables?.number ?? "-"}  ${sourceLabel(order.source)}`,
       `${meta.label}  ${payLabel(order.method)}`,
       `Codigo ${code}`,
       ...(order.folio || order.mp_payment_id ? [`Folio ${order.folio || order.mp_payment_id}`] : []),
@@ -254,13 +254,12 @@ ${ivaEnabled ? `<p style="font-size:11px">IVA 16% incluido: ${escapeHtml(money(i
             </span>
           </div>
           <p className="text-sm text-[var(--color-espresso)]" suppressHydrationWarning>
-            {order.source ? `${order.source} · ` : ""}
-            {payLabel(order.method)}{order.folio || order.mp_payment_id ? ` · folio ${order.folio || order.mp_payment_id}` : ""}
+            {sourceLabel(order.source)} · {payLabel(order.method)}{order.folio ? ` · folio ${order.folio}` : ""}
             {order.closed_at || order.opened_at ? ` · ${whenLabel(order.closed_at || order.opened_at)}` : ""}
           </p>
-          <p className="mt-1 font-mono text-[11px] text-[var(--color-walnut)]">
-            {order.public_code || order.id?.slice(0, 8)}
-          </p>
+          {order.public_code ? (
+            <p className="mt-1 text-sm font-bold text-[var(--ink-soft)]">Folio {order.public_code}</p>
+          ) : null}
           {order.order_type === "domicilio" ? (
             <p className="mt-1 text-xs text-[var(--color-saffron-glow)]">
               Domicilio: {order.delivery_address || "—"}
@@ -313,7 +312,7 @@ ${ivaEnabled ? `<p style="font-size:11px">IVA 16% incluido: ${escapeHtml(money(i
           PDF
         </button>
         <Link href={beeperHref} className="wf-btn flex h-10 items-center border border-[var(--color-warm-stone)] bg-[var(--color-parchment)] px-4">
-          Ver beeper
+          Ver pedido
         </Link>
         {order.status === "pagada" ? (
           <button type="button" onClick={refundFree} className="wf-btn h-10 px-4 text-[var(--color-wine)]">

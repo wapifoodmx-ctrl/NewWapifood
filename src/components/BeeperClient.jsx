@@ -97,7 +97,7 @@ export function BeeperClient({
       </p>
 
       <p className="mt-8 text-center text-xs text-[var(--color-walnut)]">
-        Esta pantalla se actualiza sola. Puedes dejarla abierta como localizador (beeper).
+        Esta pantalla se actualiza sola. Puedes dejarla abierta mientras esperas.
       </p>
     </div>
   );

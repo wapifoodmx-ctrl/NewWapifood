@@ -46,6 +46,7 @@ export default async function PublicMenuPage({ params }) {
       productExtras={data.extras || []}
       modifierGroups={data.modifierGroups || []}
       modifierLinks={data.modifierLinks || []}
+      removableLines={data.removableLines || []}
       schedule={data.profile?.schedule || ""}
     />
   );

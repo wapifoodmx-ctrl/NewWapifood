@@ -1,6 +1,18 @@
 # Paridad Wapifood legado → NewWapifood
 
-Fecha: 2026-11-10. El detalle de cada pantalla y endpoint está en `docs/LEGADO-INVENTARIO.md`. Esta matriz solo marca el estado en New, con la ruta de los dos lados. Nada queda en «completo» sin un camino de código de punta a punta.
+Fecha: 2026-11-23. El detalle de cada pantalla y endpoint está en `docs/LEGADO-INVENTARIO.md`. Esta matriz solo marca el estado en New, con la ruta de los dos lados. Nada queda en «completo» sin un camino de código de punta a punta.
+
+## Revisión 2026-11-23 (commits de Comandas feb–mar + pantallas vivas)
+
+Se releyó `Comanadas` (último commit `7cfb2b8`, extras en recetas) y las fichas de `FuncionalidadWapiFrontPorVista`. Lo que ya operaba en New no se reescribió. Se cerraron estos huecos:
+
+- **Se puede quitar.** En Recetas se marca el insumo. Caja, menú, kiosko, tablet, mesero y QR de mesa arman la nota `Sin {insumo}`. Cocina la ve en la nota. El stock **no** se salta: el legado tampoco se lo mandaba a `process-order`. Si Hugo quiere que «sin cebolla» no descuente cebolla, es un cambio de inventario y hay que decirlo.
+- **Mesero.** Ya manda nota, adicionales y modificadores. Antes el pedido salía con `p_notes: null` y sin grupos.
+- **Pantalla de lista.** `/vista/lista/{id}` proyecta la custom-list sin login. El enlace sale de Listas. No borra la sesión, a diferencia de `/pantallasExternal`.
+- **Cocina.** El origen ya no dice «caja» si vino del mesero, la tablet o el menú web. Muestra el folio `public_code`.
+- **Categorías.** El alta y el rename guardan el nombre en mayúsculas, como el legado.
+
+Sigue fuera a propósito: chatbot remoto, masa (el legado también estaba en desarrollo), comentarios de redes (el componente de comentario del legado es la nota de la línea, no una red social), caducidad de 12 h de la dirección, recorte del dashboard por plan, correo de invitación y reembolso de Mercado Pago por API.
 
 Leyenda: **completo**, **parcial** (se dice qué falta), **ausente**, **distinto** (a propósito o porque el legado tampoco lo tenía y aquí se tomó una regla explícita).
 
@@ -12,8 +24,8 @@ Flujos de esta matriz: **58**. Cada fila está en un solo grupo.
 
 | | Antes (main, verificado en código) | Después de este cambio |
 |---|---|---|
-| Completo | 38 | 41 |
-| Parcial | 7 | 4 |
+| Completo | 38 | 43 |
+| Parcial | 7 | 3 |
 | Ausente | 2 | 1 |
 | Distinto | 11 | 12 |
 
@@ -34,7 +46,7 @@ Pasaron a completo las dos líneas del mismo platillo, la ficha del mesero con d
 | 9 | Extra con precio | `ExtrasModals`, micro `/inventory/extras` (no está en el snapshot) | `product_extras` | completo | completo |
 | 10 | Insumos, PIN, kardex, merma, entrada | `Inventarios/` | `InsumosManager.jsx` | completo | completo |
 | 11 | Import CSV | `importrouter.py` | `/importar` | completo | completo |
-| 12 | Listas custom y pantallas | `custom-list`, `pantallas` | `/listas`, `/pantallas` | parcial. La pantalla es un enlace, no el carrusel del legado | parcial. Igual |
+| 12 | Listas custom y pantallas | `custom-list`, `pantallas` | `/listas`, `/vista/lista/[id]` | parcial. La pantalla es un enlace, no el carrusel del legado | completo. Carrusel público de la lista. El carrusel de admin sigue aparte |
 | 13 | Mesas Libre / Ocupado / NoDisponible | `tablesStatus.js` | `dining_tables.state`, `MesasManager` | completo | completo |
 | 14 | Liberar mesas sin cuenta | `POST /tables/LiberarTodasLasMesas` | botón en `MesasManager.releaseIdle` | ausente | completo |
 | 15 | Áreas de mesa | no existían | `dining_areas`, selector en Mesas | ausente | distinto. Se agregaron porque el encargo las pidió. No cambian el cobro |
@@ -81,8 +93,9 @@ Pasaron a completo las dos líneas del mismo platillo, la ficha del mesero con d
 | 56 | Colores del menú | `/menucolors` | `menu_theme`, `ThemePanel` | completo | completo |
 | 57 | Código de confirmación en mesa | `confirmation-code` | `place_public_order` | completo | completo |
 | 58 | Impresora de comandas en cocina | no hay servicio; imprime el navegador en tickets | igual en Cuentas | completo | completo |
+| 59 | Quitar insumo de la receta (`is_displayable`) | POS, menú, mesero, kiosko | Recetas + caja + menús + QR | ausente | completo como nota. No altera el stock |
 
-Grupos actuales: completo 1–11, 13, 14, 16–21, 24–36, 38–40, 42, 43, 45, 56–58 (41). Parcial 12, 37, 54, 55 (4). Ausente 48 (1). Distinto 15, 22, 23, 41, 44, 46, 47, 49–53 (12).
+Grupos actuales: completo 1–14, 16–21, 24–36, 38–40, 42, 43, 45, 56–59 (43). Parcial 37, 54, 55 (3). Ausente 48 (1). Distinto 15, 22, 23, 41, 44, 46, 47, 49–53 (12).
 
 ## Reglas de dinero que quedaron escritas
 
@@ -112,7 +125,7 @@ Migración `supabase/migrations/20261104010000_paridad_caja_equipo_clientes.sql`
 
 ## Qué sigue pendiente y por qué
 
-- Carrusel de pantallas como el legado.
+- Carrusel de admin (cocina/caja/tickets) sigue siendo distinto del carrusel de platillos. El de platillos ya está en `/vista/lista/{id}`.
 - Caducidad de 12 h de la dirección (decisión 9).
 - Recorte del dashboard por plan.
 - Correo de invitación (decisión 7).

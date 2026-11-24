@@ -15,7 +15,7 @@ export default async function PosPage() {
     );
   }
   const rid = membership.restaurant_id;
-  const [{ data: tables }, { data: products }, { data: categories }, { data: orders }, extrasResult, { data: modifierGroups }, { data: modifierOptions }, { data: modifierLinks }] =
+  const [{ data: tables }, { data: products }, { data: categories }, { data: orders }, extrasResult, { data: modifierGroups }, { data: modifierOptions }, { data: modifierLinks }, removableResult] =
     await Promise.all([
       supabase.from("dining_tables").select("*").eq("restaurant_id", rid).eq("active", true).order("number"),
       supabase.from("products").select("*").eq("restaurant_id", rid).eq("active", true).order("name"),
@@ -32,6 +32,7 @@ export default async function PosPage() {
       supabase.from("modifier_groups").select("id,name,min_select,max_select,required").eq("restaurant_id", rid),
       supabase.from("modifier_options").select("id,group_id,name,extra_price"),
       supabase.from("product_modifier_groups").select("product_id,group_id"),
+      supabase.rpc("public_removable_lines", { p_restaurant: rid }),
     ]);
 
   return (
@@ -47,6 +48,7 @@ export default async function PosPage() {
           options: (modifierOptions || []).filter((option) => option.group_id === group.id),
         }))}
         modifierLinks={modifierLinks || []}
+        removableLines={removableResult.error ? [] : removableResult.data || []}
         productExtras={
           extrasResult.error
             ? []

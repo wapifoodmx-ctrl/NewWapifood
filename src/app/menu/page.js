@@ -23,31 +23,17 @@ export default async function MenuIndexPage() {
           Comparte este enlace con tus clientes. Requiere plan activo.
         </p>
         {rid ? (
-          <>
-            <code className="mt-4 block break-all rounded-xl bg-[var(--color-cream)] px-3 py-2 text-sm">
-              /m/{rid}
-            </code>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <Link
-                href={`/m/${rid}`}
-                className="inline-flex h-12 items-center rounded-full bg-[var(--color-ember)] px-6 font-semibold text-white"
-              >
-                Abrir menú público
-              </Link>
-              <Link
-                href={`/kiosko/${rid}`}
-                className="inline-flex h-12 items-center rounded-full border border-[var(--color-line)] bg-[var(--color-cream)] px-6 font-semibold"
-              >
-                Abrir kiosko
-              </Link>
-              <Link
-                href={`/mesero/${rid}`}
-                className="inline-flex h-12 items-center rounded-full border border-[var(--color-line)] bg-[var(--color-cream)] px-6 font-semibold"
-              >
-                Acceso mesero
-              </Link>
-            </div>
-          </>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link href={`/m/${rid}`} className="btn-primary inline-flex h-12 items-center px-5">
+              Abrir menú público
+            </Link>
+            <Link href={`/kiosko/${rid}`} className="btn-ghost inline-flex h-12 items-center px-5">
+              Abrir kiosko
+            </Link>
+            <Link href={`/mesero/${rid}`} className="btn-ghost inline-flex h-12 items-center px-5">
+              Acceso mesero
+            </Link>
+          </div>
         ) : (
           <p className="mt-4 text-[var(--color-wine)]">Sin restaurante vinculado.</p>
         )}
