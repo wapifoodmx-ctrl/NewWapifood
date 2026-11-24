@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { homePath, primaryModules, roleLabel, sectionForPath } from "@/lib/modules";
+import { NAV_GROUPS, homePath, modulesInGroup, roleLabel, sectionForPath } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/client";
 import ThemeToggle from "@/components/ThemeToggle";
 import { RestaurantSwitcher } from "@/components/RestaurantSwitcher";
@@ -26,10 +26,12 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const [more, setMore] = useState(false);
+  const [sheetGroup, setSheetGroup] = useState(null);
   const [palette, setPalette] = useState(false);
   const { rail, open, toggleRail, toggleSection, ensureSection } = useNavPrefs();
-  const primary = primaryModules(role);
   const home = homePath(role);
+  const sheetItems = sheetGroup ? modulesInGroup(role, sheetGroup) : [];
+  const sheetTitle = NAV_GROUPS.find((group) => group.id === sheetGroup)?.label || "Todas las secciones";
 
   useEffect(() => {
     ensureSection(sectionForPath(role, pathname));
@@ -117,29 +119,41 @@ export function AppShell({
                 <RestaurantSwitcher />
               </div>
               <button type="button" data-tour="buscar" className="icon-btn" onClick={openSearch} aria-label="Buscar pantalla" aria-keyshortcuts="Control+K">
-                <Icon name="search" size={20} />
+                <Icon name="search" size={24} />
               </button>
               {focus ? (
-                              <div className="hidden lg:block">
-                                <OriginButton className="btn-ghost" onClick={() => router.push(home)}>
-                                  Inicio
-                                </OriginButton>
-                              </div>
-                            ) : null}
+                <button
+                  type="button"
+                  className="icon-btn lg:hidden"
+                  aria-label="Abrir el menú"
+                  aria-expanded={more}
+                  aria-haspopup="dialog"
+                  onClick={() => {
+                    setSheetGroup(null);
+                    setMore(true);
+                  }}
+                >
+                  <Icon name="list" size={24} />
+                </button>
+              ) : null}
+              {focus ? (
+                <div className="hidden lg:block">
+                  <OriginButton className="btn-ghost" onClick={() => router.push(home)}>
+                    Inicio
+                  </OriginButton>
+                </div>
+              ) : null}
               <ThemeToggle className={focus ? "" : "lg:hidden"} />
               <button type="button" className="btn-ghost hidden h-12 px-3 sm:inline-flex" onClick={() => startTour(undefined, { force: true })}>
-                              Ver guía
+                Ver guía
               </button>
-                            <button type="button" onClick={signOut} className="btn-ghost px-4 lg:hidden">
-                              Salir
-                            </button>
               {focus ? (
-                              <div className="hidden lg:block">
-                                <OriginButton className="btn-ghost" onClick={signOut}>
-                                  Salir
-                                </OriginButton>
-                              </div>
-                            ) : null}
+                <div className="hidden lg:block">
+                  <OriginButton className="btn-ghost" onClick={signOut}>
+                    Salir
+                  </OriginButton>
+                </div>
+              ) : null}
             </div>
           </div>
         </header>
@@ -151,15 +165,35 @@ export function AppShell({
       {focus ? null : (
         <nav data-tour="menu" className="app-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-[var(--border)] bg-[var(--surface)] px-1 py-1 lg:hidden" aria-label="Accesos rápidos">
           <div className="mx-auto flex max-w-3xl gap-1">
-            {primary.map((item) => (
-              <Link key={item.id} href={item.href} aria-current={current(item.href) ? "page" : undefined} className="tab-link">
-                <Icon name={item.icon} size={22} />
-                {item.short || item.title}
-              </Link>
+            {NAV_GROUPS.map((group) => (
+              <button
+                key={group.id}
+                type="button"
+                className="tab-link"
+                aria-current={modulesInGroup(role, group.id).some((item) => current(item.href)) ? "page" : undefined}
+                aria-expanded={more && sheetGroup === group.id}
+                aria-haspopup="dialog"
+                onClick={() => {
+                  setSheetGroup(group.id);
+                  setMore(true);
+                }}
+              >
+                <Icon name={group.icon} size={24} />
+                <span>{group.label}</span>
+              </button>
             ))}
-            <button type="button" className="tab-link" onClick={() => setMore(true)} aria-expanded={more} aria-haspopup="dialog">
-              <Icon name="list" size={22} />
-              Más
+            <button
+              type="button"
+              className="tab-link"
+              onClick={() => {
+                setSheetGroup(null);
+                setMore(true);
+              }}
+              aria-expanded={more && !sheetGroup}
+              aria-haspopup="dialog"
+            >
+              <Icon name="list" size={24} />
+              <span>Más</span>
             </button>
           </div>
         </nav>
@@ -171,16 +205,32 @@ export function AppShell({
             className="sheet"
             role="dialog"
             aria-modal="true"
-            aria-label="Todas las secciones"
+            aria-label={sheetTitle}
             onClick={(event) => event.stopPropagation()}
           >
             <div className="sheet-handle" />
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-2xl">Todas las secciones</h2>
+              <h2 className="text-2xl">{sheetTitle}</h2>
               <button type="button" className="btn-ghost px-3" onClick={() => setMore(false)}>
                 Cerrar
               </button>
             </div>
+            {sheetGroup ? (
+              <div className="grid gap-2">
+                {sheetItems.map((item) => (
+                  <Link key={item.id} href={item.href} className="tab-sheet-link" aria-current={current(item.href) ? "page" : undefined} onClick={() => setMore(false)}>
+                    <Icon name={item.icon} size={28} />
+                    <span>
+                      {item.title}
+                      <small>{item.hint}</small>
+                    </span>
+                  </Link>
+                ))}
+                {sheetItems.length ? null : (
+                  <p className="text-lg text-[var(--ink-soft)]">En este acceso no hay pantallas para tu puesto. Ábrelas en Más.</p>
+                )}
+              </div>
+            ) : (
             <SideNav
               variant="sheet"
               role={role}
@@ -193,6 +243,7 @@ export function AppShell({
               onNavigate={() => setMore(false)}
               homeHref={home}
             />
+            )}
           </div>
         </div>
       ) : null}

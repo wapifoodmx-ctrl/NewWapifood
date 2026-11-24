@@ -136,5 +136,9 @@ Migración `supabase/migrations/20261104010000_paridad_caja_equipo_clientes.sql`
 
 ## Pedido desde la mesa con QR
 
-El QR impreso no cambia: `/{slug}/mesa/{numero}`. Caja abre una sesion con token. Al cobrar, el token deja de servir. `docs/PLANES.md` no dice si esto entra en Brasa o solo en un plan mayor. Queda disponible en todos los planes hasta que Hugo lo decida.
+El QR impreso es fijo: `/{slug}/mesa/{numero}`. No lleva token, fecha ni uuid. Caja abre la sesión. El mesero también puede abrirla si en Datos del local está activo que, al abrir una cuenta, la mesa queda lista para el celular. Cada apertura crea un token de 32 bytes. El celular lo guarda en una cookie httpOnly de esa mesa. Sin sesión, la pantalla dice «Pídele al mesero que abra tu mesa» y puede llamar al mesero.
+
+El pedido entra en caja como «Por aceptar». Caja lo acepta, lo edita o lo rechaza. Con «Aceptar solos los pedidos del celular mientras la mesa esté abierta», pasa directo a cocina y a la cuenta. No hay pago en el celular. «Pide la cuenta» avisa a caja. Cobrar o cancelar cierra la sesión y el token deja de servir. El precio sale de la base, por `get_table_menu`, `place_table_order`, `get_table_bill` y `call_waiter`. El estado sigue en `/t/{id}`.
+
+Imprimir una mesa o «Imprimir todos» abre el cuadro de impresión: nombre del local, número y «Escanea para pedir». Entra en todos los planes que tienen mesas. Reusa `dining_tables`, `orders` y el menú web. No hay otra tabla ni otra ruta de pedido.
 

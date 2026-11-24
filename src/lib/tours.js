@@ -58,8 +58,8 @@ export const TOURS = {
     roles: ["owner", "admin", "piso"],
     paths: ["/mesas"],
     steps: [
-      { tour: "qr-abrir", title: "Abre la mesa", text: "Sin esto, el celular no puede pedir." },
-      { tour: "qr-imprimir", title: "Imprime el QR", text: "Se imprime una vez. No cambia. Escanea para pedir." },
+      { tour: "qr-abrir", title: "Abre la mesa", text: "El QR impreso no pide solo. Caja abre la sesión. El pedido del celular llega como «Por aceptar». Al cobrar, el token se apaga." },
+      { tour: "qr-imprimir", title: "Imprime el QR", text: "Una hoja por mesa: nombre, número y «Escanea para pedir». El impreso no cambia y no lleva el token." },
     ],
   },
   negocio: {

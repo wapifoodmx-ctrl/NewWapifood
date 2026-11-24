@@ -79,8 +79,8 @@ export function ClosedTable({ slug, number, name }) {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col bg-[var(--bg)] px-4 py-10 text-[var(--ink)]">
-      <p className="text-sm font-bold uppercase tracking-wide text-[var(--primary)]">{name}</p>
-      <h1 className="mt-2 text-4xl">Mesa {number}</h1>
+      <p className="text-lg font-bold uppercase tracking-wide text-[var(--primary)]">{name}</p>
+      <h1 className="mt-2 text-5xl">Mesa {number}</h1>
       <p className="mt-4">
         <StatusWord tone="bad">Cerrada</StatusWord>
       </p>
@@ -226,9 +226,9 @@ export function TableOrder({ slug, number, token }) {
   return (
     <main className="mx-auto min-h-screen max-w-5xl bg-[var(--bg)] px-4 py-6 pb-8 text-[var(--ink)]">
       <p className="text-sm font-bold uppercase tracking-wide text-[var(--primary)]">{menu?.restaurant || "Tu mesa"}</p>
-      <h1 className="text-4xl">Mesa {menu?.number || number}</h1>
-      <p className="mt-2 text-lg text-[var(--ink-soft)]">Toca un platillo para agregarlo. El cobro es en la mesa.</p>
-      <button type="button" className="btn btn-ghost mt-4" onClick={callWaiter}>Llamar al mesero</button>
+      <h1 className="text-5xl">Mesa {menu?.number || number}</h1>
+      <p className="mt-2 text-xl text-[var(--ink-soft)]">Toca un platillo para agregarlo. El cobro es en la mesa.</p>
+      <button type="button" className="btn btn-lg btn-ghost mt-4" onClick={callWaiter}>Llamar al mesero</button>
 
       {loading && !menu ? (
         <div className="menu-grid mt-6" aria-hidden="true">
@@ -262,10 +262,10 @@ export function TableOrder({ slug, number, token }) {
                   </div>
                   <div className="px-3 pb-2 pt-3">
                     <p className="text-sm font-bold text-[var(--ink-soft)]">{categoryName(product)}</p>
-                    <h2 className="text-lg">{product.name}</h2>
-                    <p className="font-bold">{money(product.price)}</p>
+                    <h2 className="text-2xl">{product.name}</h2>
+                    <p className="text-xl font-bold">{money(product.price)}</p>
                   </div>
-                  <button type="button" className="btn btn-primary mx-3 mb-3 w-[calc(100%-1.5rem)]" onClick={() => choose(product)}>
+                  <button type="button" className="btn btn-primary mx-3 mb-3 min-h-12 w-[calc(100%-1.5rem)]" onClick={() => choose(product)}>
                     {needsCustomize(menu, product.id) ? "Elegir" : "Agregar"}
                   </button>
                 </article>
@@ -299,7 +299,7 @@ export function TableOrder({ slug, number, token }) {
         {(bill?.items || []).length ? (bill.items || []).map((item, index) => {
           const meta = itemWord(item.status);
           return (
-            <p key={`${item.name}-${index}`} className="mt-3 text-lg">
+            <p key={`${item.name}-${index}`} className="mt-3 text-xl">
               {item.qty} × {item.name}
               {item.notes ? ` · ${item.notes}` : ""}
               {(item.extras || []).map((extra) => ` · ${extra.name}`).join("")}
@@ -310,7 +310,8 @@ export function TableOrder({ slug, number, token }) {
             </p>
           );
         }) : <p className="mt-2 text-[var(--ink-soft)]">Cuando caja acepte el pedido, los platillos aparecen aquí.</p>}
-        <p className="mt-4 text-2xl font-extrabold">Total {money(bill?.total || 0)}</p>
+        <p className="mt-4 text-3xl font-extrabold">Total {money((Number(bill?.total) || 0) + cartTotal(cart))}</p>
+        {count ? <p className="mt-1 text-lg text-[var(--ink-soft)]">Incluye {money(cartTotal(cart))} en el carrito, todavía sin enviar.</p> : null}
         {bill?.public_code ? <p className="mt-1 text-[var(--ink-soft)]">Código {bill.public_code}</p> : null}
         {bill?.order_id ? (
           <Link className="mt-3 inline-flex min-h-12 items-center font-bold text-[var(--primary)]" href={`/t/${bill.order_id}`}>

@@ -7,7 +7,7 @@ import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { EmptyState, Skeleton } from "@/components/ui/States";
 import { Icon } from "@/components/ui/Icon";
 import { statusMeta, itemStatusMeta, waitMeta } from "@/lib/orderStatus";
-import { sourceLabel } from "@/lib/brand";
+import { kitchenArrival } from "@/lib/brand";
 import { OrderComments } from "@/components/OrderComments";
 import { confirmAsync } from "@/components/ui/confirm";
 import { escapeHtml, openPrintWindow } from "@/lib/printDocument";
@@ -319,7 +319,7 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
                 </p>
               ) : null}
               <p className="text-base text-[var(--ink-soft)]">
-                Llegó de {sourceLabel(order.source)}
+                {kitchenArrival(order.source)}
                 {order.public_code ? ` · Ticket ${order.public_code}` : ""}
                 {order.opened_at
                   ? ` · ${new Date(order.opened_at).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}`

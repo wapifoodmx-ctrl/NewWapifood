@@ -191,7 +191,7 @@ export function SideNav({
           onNavigate?.();
         }}
       >
-        <Icon name={item.icon} size={20} />
+        <Icon name={item.icon} size={48} />
         {labeled ? <span className="side-label">{item.title}</span> : <span className="side-tip">{item.title}</span>}
       </Link>
     );
@@ -217,13 +217,13 @@ export function SideNav({
             aria-label={rail ? "Mostrar el menú con texto" : "Compactar el menú a iconos"}
             onClick={onToggleRail}
           >
-            <Icon name="rail" size={20} />
+            <Icon name="rail" size={48} />
           </button>
         ) : null}
       </div>
 
       <button type="button" className="side-link side-search" onClick={onSearch} aria-keyshortcuts="Control+K">
-        <Icon name="search" size={20} />
+        <Icon name="search" size={48} />
         {compact ? <span className="side-tip">Buscar</span> : <span className="side-label">Buscar</span>}
         {compact ? null : <kbd>{shortcut}</kbd>}
       </button>
@@ -250,7 +250,7 @@ export function SideNav({
                 onFocus={(event) => openFly(section.id, event.currentTarget)}
                 onClick={(event) => openFly(section.id, event.currentTarget)}
               >
-                <Icon name={section.icon} size={20} />
+                <Icon name={section.icon} size={48} />
                 <span className="side-tip">{section.label}</span>
               </button>
             );
@@ -263,7 +263,7 @@ export function SideNav({
                 aria-expanded={expanded}
                 onClick={() => onToggleSection(section.id)}
               >
-                <Icon name={section.icon} size={20} />
+                <Icon name={section.icon} size={48} />
                 <span className="side-label">{section.label}</span>
                 <Icon name="chevron" size={16} />
               </button>
@@ -318,7 +318,7 @@ export function SideNav({
             <p className="side-pop-title">Estás en {restaurantName || "tu restaurante"}</p>
             {compact ? <RestaurantSwitcher /> : null}
             <button type="button" role="menuitem" className="side-link" onClick={onSignOut}>
-              <Icon name="close" size={20} />
+              <Icon name="close" size={48} />
               <span className="side-label">Salir</span>
             </button>
           </div>

@@ -28,10 +28,10 @@ export const MODULES = [
 ];
 
 export const NAV_GROUPS = [
-  { id: "hoy", label: "Hoy" },
-  { id: "piso", label: "En el piso" },
-  { id: "carta", label: "Tu carta" },
-  { id: "cuenta", label: "Tu negocio" },
+  { id: "hoy", label: "Hoy", icon: "home" },
+  { id: "piso", label: "En el piso", icon: "flame" },
+  { id: "carta", label: "Tu carta", icon: "dish" },
+  { id: "cuenta", label: "Tu negocio", icon: "store" },
 ];
 
 /** Secciones del menú de escritorio, por tarea. */
@@ -136,6 +136,15 @@ export function primaryModules(role) {
         ? ["pos", "mesas", "kitchen", "tickets"]
         : ["pos", "kitchen", "mesas", "dashboard"];
   return ids.map((id) => MODULES.find((m) => m.id === id)).filter(Boolean);
+}
+
+/** Accesos del teléfono, agrupados como Hoy / En el piso / Tu carta / Tu negocio. */
+export function modulesInGroup(role, navId) {
+  const model = navModel(role);
+  const visible = new Set(
+    [...model.pins, ...model.sections.flatMap((section) => section.items), ...model.more].map((item) => item.id),
+  );
+  return MODULES.filter((item) => item.nav === navId && visible.has(item.id));
 }
 
 /** Después de entrar, cada rol cae en su pantalla de trabajo. */

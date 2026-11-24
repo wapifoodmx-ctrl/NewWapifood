@@ -49,6 +49,12 @@ export function sourceLabel(source) {
   );
 }
 
+/** Cocina nunca muestra la palabra interna «pos». */
+export function kitchenArrival(source) {
+  if (!source || source === "pos" || sourceLabel(source) === "Caja") return "Llegó de caja";
+  return `Llegó de ${sourceLabel(source)}`;
+}
+
 export function moveReasonLabel(reason) {
   return (
     {

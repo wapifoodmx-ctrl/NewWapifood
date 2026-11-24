@@ -654,8 +654,9 @@ button.side-link {
 .is-rail a.side-link,
 .is-rail button.side-account,
 .is-rail button.side-search {
-  width: 44px;
-  min-width: 44px;
+  width: 48px;
+  min-width: 48px;
+  min-height: 48px;
   justify-content: center;
   padding: 0;
 }
@@ -872,10 +873,33 @@ button.cmdk-item[aria-selected="true"] {
   justify-content: center;
   gap: 0.1rem;
   border-radius: 14px;
+  padding: 2px;
   color: var(--ink);
   text-decoration: none;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
+  line-height: 1.05;
+  text-align: center;
+  background: transparent;
+}
+
+.tab-sheet-link {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  gap: 12px;
+  border-radius: 14px;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.tab-sheet-link small {
+  display: block;
+  color: var(--ink-soft);
+  font-weight: 650;
 }
 
 .tab-link[aria-current="page"] {
@@ -926,7 +950,12 @@ button.cmdk-item[aria-selected="true"] {
   .sheet-handle { display: none; }
 }
 
-.pos-shell { font-size: 18px; }
+.pos-shell {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+  font-size: 18px;
+}
 
 .pos-layout {
   display: grid;
@@ -938,17 +967,28 @@ button.cmdk-item[aria-selected="true"] {
   min-width: 0;
 }
 
+.pos-layout > aside {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
 .pos-tables-grid {
   display: flex;
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
   gap: 8px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   padding-bottom: 4px;
 }
 
 .table-tile {
   display: flex;
-  min-width: 132px;
+  flex: 0 0 132px;
+  width: 132px;
+  max-width: 100%;
   min-height: 92px;
   flex-direction: column;
   align-items: flex-start;
@@ -1187,11 +1227,13 @@ button.cmdk-item[aria-selected="true"] {
     grid-template-columns: 210px minmax(0, 1fr) 360px;
     align-items: start;
   }
+  .pos-layout > aside { overflow: visible; }
   .pos-tables-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     overflow: visible;
   }
+  .table-tile { width: 100%; }
   .pos-summary,
   .pos-summary.open {
     display: block;

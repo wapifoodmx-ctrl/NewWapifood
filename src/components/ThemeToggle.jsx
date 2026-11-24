@@ -51,7 +51,7 @@ export default function ThemeToggle({ className = "" }) {
         width="28"
         height="28"
         viewBox="0 0 24 24"
-        className={`transition-colors duration-300 ${dark ? "text-indigo-400" : "text-amber-500"}`}
+        className="text-[var(--primary-solid)] transition-colors duration-300"
       >
         <mask id={maskId}>
           <rect width="24" height="24" fill="white" />
