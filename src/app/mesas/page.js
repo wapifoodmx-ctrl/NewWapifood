@@ -29,6 +29,7 @@ export default async function MesasPage() {
         initialTables={tables || []}
         tableLimit={plan?.plan ? planMeta(plan.plan).mesas : null}
         slug={restaurant?.slug || ""}
+        restaurantName={membership.restaurants?.name || ""}
       />
     </AppShell>
   );

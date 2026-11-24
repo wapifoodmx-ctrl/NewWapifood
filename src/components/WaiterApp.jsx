@@ -43,6 +43,7 @@ export function WaiterApp({
   const [activeOrders, setActiveOrders] = useState([]);
   const [history, setHistory] = useState([]);
   const [extraPick, setExtraPick] = useState(null);
+  const [canOpenQr, setCanOpenQr] = useState(false);
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -59,6 +60,24 @@ export function WaiterApp({
     }, 0);
     return () => clearTimeout(kick);
   }, [restaurantId]);
+
+  useEffect(() => {
+    if (!session?.id || !session?.access_code || !restaurantId) return undefined;
+    let cancel = false;
+    supabase
+      .rpc("waiter_can_open_table", {
+        p_restaurant: restaurantId,
+        p_waiter: session.id,
+        p_code: session.access_code,
+      })
+      .then(({ data, error }) => {
+        if (cancel || error) return;
+        setCanOpenQr(Boolean(data));
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [session?.id, session?.access_code, restaurantId, supabase]);
 
   const allowedTables = useMemo(() => {
     if (!session) return [];
@@ -161,6 +180,7 @@ async function login(e) {
         restaurant_name: restaurantName,
       };
       localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+      setCanOpenQr(false);
       setSession(s);
       setCode("");
       toast.success(`Hola, ${data?.name || "mesero"}`);
@@ -176,6 +196,7 @@ async function login(e) {
   function logout() {
     localStorage.removeItem(SESSION_KEY);
     setSession(null);
+    setCanOpenQr(false);
     setCart([]);
     setTableId("");
   }
@@ -225,6 +246,24 @@ async function login(e) {
     setCart((c) =>
       c.map((x) => (lineKey(x) === key ? { ...x, qty: x.qty - 1 } : x)).filter((x) => x.qty > 0),
     );
+  }
+
+  async function openForPhone() {
+    if (!tableId || !session?.id || !session?.access_code) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc("open_table_session_for_waiter", {
+        p_table: tableId,
+        p_waiter: session.id,
+        p_code: session.access_code,
+      });
+      if (error) throw error;
+      toast.success(data?.already ? "La mesa ya estaba abierta" : "Mesa abierta. El cliente ya puede pedir.");
+    } catch (e) {
+      toast.error(friendlyError(e.message));
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function send() {
@@ -389,6 +428,15 @@ async function login(e) {
                 <EmptyState icon="table" title="No tienes mesas" text="Pide en caja que te asignen una mesa." />
               ) : null}
             </fieldset>
+            {canOpenQr && allowedTables.some((table) => table.id === tableId && table.channel_type !== "caja" && table.channel_type !== "kiosko") ? (
+              <button
+                type="button"
+                className="mt-3 h-14 w-full rounded-[3px] bg-[var(--color-onyx-warm)] text-sm font-semibold text-[var(--color-parchment)]"
+                onClick={openForPhone}
+              >
+                Abrir para el celular
+              </button>
+            ) : null}
 
             <div className="mt-3 flex gap-1 overflow-x-auto">
               <button

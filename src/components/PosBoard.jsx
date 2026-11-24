@@ -19,7 +19,9 @@ import { MesaTools } from "@/components/MesaTools";
 import { ModifierGroups } from "@/components/ExtrasPicker";
 import { groupsForProduct, modifierError, toggleModifier } from "@/lib/modifiers";
 import { composeLineNote, needsCustomize, removableForProduct } from "@/lib/removable";
-import { PAY_METHODS, cashSuggestions, categoryColor, haptic, payLabel, tableStateMeta } from "@/lib/brand";
+import { PAY_METHODS, cashSuggestions, categoryColor, friendlyError, haptic, payLabel, tableStateMeta } from "@/lib/brand";
+import { requestPayload } from "@/lib/tableMenu";
+import { TableRequestAlert } from "@/components/TableRequestAlert";
 
 /**
  * POS — paridad gradual con Puntodeventa (CarritoModal + ModalsPago).
@@ -29,6 +31,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
   const [orders, setOrders] = useState(initialOrders);
   const [live, setLive] = useState(false);
   const [tableAlerts, setTableAlerts] = useState([]);
+  const [requestDrafts, setRequestDrafts] = useState({});
   const [qrAutoOpen, setQrAutoOpen] = useState(false);
   const [pickedTableId, setPickedTableId] = useState(null);
   const openLock = useRef(new Map());
@@ -107,12 +110,38 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
     return () => clearInterval(timer);
   }, [restaurantId, supabase]);
 
+  function forgetDraft(id) {
+    setRequestDrafts((current) => {
+      if (!current[id]) return current;
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+  }
+
   async function reviewAlert(id, accept) {
     const reason = accept ? null : window.prompt("¿Por qué no se acepta?") || "No se pudo";
     const { error } = await supabase.rpc("review_table_request", { p_id: id, p_accept: accept, p_reason: reason });
-    if (error) toast.error(error.message);
+    if (error) toast.error(friendlyError(error.message));
     else toast.success(accept ? "Pedido aceptado" : "Pedido rechazado");
     setTableAlerts((list) => list.filter((row) => row.id !== id));
+    forgetDraft(id);
+  }
+
+  async function saveRequest(id, lines) {
+    const items = requestPayload(lines);
+    if (!items.length) {
+      toast.warning("Para quitarlo todo, rechaza el pedido.");
+      return;
+    }
+    const { error } = await supabase.rpc("revise_table_request", { p_id: id, p_items: items });
+    if (error) {
+      toast.error(friendlyError(error.message));
+      return;
+    }
+    setTableAlerts((list) => list.map((row) => (row.id === id ? { ...row, items: lines } : row)));
+    forgetDraft(id);
+    toast.success("Cambios guardados. Sigue por aceptar.");
   }
 
   // Realtime: órdenes + estados de mesa
@@ -876,13 +905,15 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
       {tableAlerts.length ? (
         <div className="mb-3 grid gap-2" data-tour="qr-avisos">
           {tableAlerts.map((alert) => (
-            <div key={alert.id} className="rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-3">
-              <p className="text-lg font-bold">{alert.kind === "mesero" ? "El cliente llama al mesero" : alert.kind === "cuenta" ? "Piden la cuenta" : "Pedido del celular por aceptar"}</p>
-              <div className="mt-2 flex gap-2">
-                <button type="button" className="btn-primary h-12 px-4" onClick={() => reviewAlert(alert.id, true)}>Aceptar</button>
-                <button type="button" className="btn-ghost h-12 px-4" onClick={() => reviewAlert(alert.id, false)}>Rechazar</button>
-              </div>
-            </div>
+            <TableRequestAlert
+              key={alert.id}
+              alert={alert}
+              tableNumber={tables.find((table) => table.id === alert.table_id)?.number}
+              draft={requestDrafts[alert.id]}
+              onDraft={(items) => setRequestDrafts((current) => ({ ...current, [alert.id]: items }))}
+              onSave={(lines) => saveRequest(alert.id, lines)}
+              onReview={(accept) => reviewAlert(alert.id, accept)}
+            />
           ))}
         </div>
       ) : null}

@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/States";
 import { friendlyError, tableStateMeta } from "@/lib/brand";
 import { confirmAsync } from "@/components/ui/confirm";
 import { openPrintWindow } from "@/lib/printDocument";
+import { mesaPrintDocument, printableTables } from "@/lib/mesaPrint";
 
 const CHANNELS = [
   { id: "caja", label: "Punto de venta" },
@@ -16,7 +17,7 @@ const CHANNELS = [
   { id: "kiosko", label: "Kiosko" },
 ];
 
-export function MesasManager({ restaurantId, initialTables, tableLimit = null, slug = "" }) {
+export function MesasManager({ restaurantId, initialTables, tableLimit = null, slug = "", restaurantName = "" }) {
   const [tables, setTables] = useState(initialTables);
   const [areas, setAreas] = useState([]);
   const [areasReady, setAreasReady] = useState(false);
@@ -233,14 +234,17 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null, s
     }
 
     async function printQr(list) {
+      if (!slug) return toast.error("Falta el enlace del local. Guarda el local en Datos antes de imprimir.");
+      const ready = printableTables(list);
+      if (!ready.length) return toast.error("No hay mesas de piso para imprimir.");
       const QR = (await import("qrcode")).default;
       const origin = window.location.origin;
-      const cards = await Promise.all(list.filter((table) => table.channel_type !== "caja").map(async (table) => {
+      const cards = await Promise.all(ready.map(async (table) => {
         const url = `${origin}/${slug}/mesa/${table.number}`;
         const image = await QR.toDataURL(url, { margin: 1, width: 280 });
-        return `<section style="break-inside:avoid;padding:24px;text-align:center;font-family:Georgia,serif"><p>Wapifood</p><h1>Mesa ${table.number}</h1><img alt="" src="${image}" width="220" height="220" /><p>Escanea para pedir</p></section>`;
+        return { number: table.number, image };
       }));
-      const popup = openPrintWindow(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>QR de mesas</title></head><body>${cards.join("")}<script>window.addEventListener("load",function(){window.print()})<\/script></body></html>`);
+      const popup = openPrintWindow(mesaPrintDocument({ restaurantName, cards }));
       if (!popup) return toast.error("Permite ventanas emergentes para ver el QR.");
     }
 

@@ -74,6 +74,27 @@ export function changeQty(cart, index, delta) {
     .filter((row) => row.qty > 0);
 }
 
+export function changeRequestQty(items, index, delta) {
+  return (items || [])
+    .map((row, i) => {
+      if (i !== index) return row;
+      const next = Math.min(20, Math.max(0, Number(row.qty || 1) + delta));
+      return { ...row, qty: next };
+    })
+    .filter((row) => row.qty > 0);
+}
+
+export function requestPayload(items) {
+  return (items || []).map((row) => ({
+    product_id: row.product_id,
+    qty: Math.min(20, Math.max(1, Number(row.qty) || 1)),
+    notes: row.notes || "",
+    modifiers: (row.modifiers || [])
+      .map((mod) => ({ option_id: mod.option_id }))
+      .filter((mod) => mod.option_id),
+  }));
+}
+
 export function lineTotal(row) {
   const extras = (row?.modifiers || []).reduce((sum, item) => sum + Number(item.extra_price || item.price || 0), 0);
   return (Number(row?.price) + extras) * Number(row?.qty || 0);

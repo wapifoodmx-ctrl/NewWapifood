@@ -317,7 +317,7 @@ export function TableOrder({ slug, number, token }) {
             Ver el estado del pedido
           </Link>
         ) : null}
-        <button type="button" className="btn btn-lg btn-ghost mt-4 w-full" onClick={askBill}>Pedir la cuenta</button>
+        <button type="button" className="btn btn-lg btn-ghost mt-4 w-full" onClick={askBill}>Pide la cuenta</button>
         <p className="mt-2 text-[var(--ink-soft)]">No se paga en el celular.</p>
       </section>
 

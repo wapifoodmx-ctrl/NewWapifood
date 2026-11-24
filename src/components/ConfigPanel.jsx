@@ -305,7 +305,7 @@ export function ConfigPanel({ restaurant, profile }) {
           </label>
           <label className="mt-3 flex items-center gap-2 text-sm font-semibold">
             <input type="checkbox" checked={!!form.qr_auto_open} onChange={(e) => set("qr_auto_open", e.target.checked)} />
-            Al abrir una cuenta, la mesa queda lista para pedir desde el celular
+            Al abrir una cuenta, la mesa queda lista para pedir desde el celular. Con esto activo, el mesero también puede abrirla.
           </label>
           <label className="mt-3 flex items-center gap-2 text-sm font-semibold">
             <input type="checkbox" checked={!!form.qr_auto_accept} onChange={(e) => set("qr_auto_accept", e.target.checked)} />

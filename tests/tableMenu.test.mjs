@@ -6,11 +6,13 @@ import {
   cartCount,
   cartTotal,
   changeQty,
+  changeRequestQty,
   itemWord,
   menuCategories,
   modifierIssue,
   productsInCategory,
   requestItemNames,
+  requestPayload,
   requestWord,
   sendNote,
   toggleTableModifier,
@@ -74,4 +76,21 @@ test("la cuenta y los avisos dicen el estado con palabras", () => {
   assert.match(sendNote(false), /Caja lo revisa/);
   assert.deepEqual(requestItemNames([{ qty: 2, name: "Taco" }]), ["2 × Taco"]);
   assert.equal(billLineTotal({ qty: 2, price: 25, extras: [{ extra_price: 5 }] }), 60);
+});
+
+test("caja cambia cantidades sin mandar el precio del cliente", () => {
+  const items = [
+    { product_id: "p1", name: "Taco", qty: 2, price: 1, notes: "sin cebolla", modifiers: [{ option_id: "o1", extra_price: 99 }] },
+    { product_id: "p2", name: "Agua", qty: 1, price: 20 },
+  ];
+  const less = changeRequestQty(items, 0, -1);
+  assert.equal(less[0].qty, 1);
+  assert.equal(less[0].price, 1);
+  assert.equal(changeRequestQty(less, 0, -1).length, 1);
+  const capped = changeRequestQty([{ product_id: "p1", qty: 20 }], 0, 5);
+  assert.equal(capped[0].qty, 20);
+  assert.deepEqual(requestPayload(items), [
+    { product_id: "p1", qty: 2, notes: "sin cebolla", modifiers: [{ option_id: "o1" }] },
+    { product_id: "p2", qty: 1, notes: "", modifiers: [] },
+  ]);
 });
