@@ -10,7 +10,7 @@ export default async function PublicTicketPage({ params }) {
 
   if (error || !data) {
     return (
-      <div className="grid min-h-screen place-items-center bg-[#f4efe6] px-4">
+      <div className="grid min-h-screen place-items-center bg-[var(--bg)] px-4 text-[var(--ink)]">
         <p className="text-center text-lg">Pedido no encontrado.</p>
       </div>
     );
