@@ -6,35 +6,18 @@ import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import { createClient } from "@/lib/supabase/client";
 import { TOURS, homeTour, tourForPath } from "@/lib/tours";
+import { fitTourPopover, pickTourElement, popoverSide } from "@/lib/tourTarget";
 
-function visible(selector) {
-  return [...document.querySelectorAll(`[data-tour="${selector}"]`)].find((node) => {
-    const box = node.getBoundingClientRect();
-    if (box.width < 8 || box.height < 8) return false;
-    const style = getComputedStyle(node);
-    if (style.display === "none" || style.visibility === "hidden") return false;
-    if (box.bottom < 0 || box.top > window.innerHeight) return true;
-        const hit = document.elementFromPoint(box.left + Math.min(box.width / 2, 24), box.top + Math.min(box.height / 2, 24));
-        return Boolean(hit && (node === hit || node.contains(hit)));
-  });
-}
-
-function sideFor(node) {
-  const box = node.getBoundingClientRect();
-  const middle = box.top + box.height / 2;
-  if (window.innerWidth < 768) return middle > window.innerHeight * 0.55 ? "top" : "bottom";
-  return middle > window.innerHeight * 0.7 ? "top" : "bottom";
-}
-
-async function remember(tourId) {
+function remember(tourId) {
   const supabase = createClient();
-  const { data } = await supabase.auth.getUser();
-  const userId = data.user?.id;
-  if (!userId) return;
-  await supabase.from("user_tour_seen").upsert(
-    { user_id: userId, tour_id: tourId, seen_at: new Date().toISOString() },
-    { onConflict: "user_id,tour_id" },
-  );
+  supabase.auth.getUser().then(({ data }) => {
+    const userId = data.user?.id;
+    if (!userId) return;
+    supabase.from("user_tour_seen").upsert(
+      { user_id: userId, tour_id: tourId, seen_at: new Date().toISOString() },
+      { onConflict: "user_id,tour_id" },
+    );
+  });
 }
 
 async function alreadySeen(tourId) {
@@ -48,8 +31,26 @@ async function alreadySeen(tourId) {
     .eq("user_id", userId)
     .eq("tour_id", tourId)
     .maybeSingle();
-  if (error) return true;
+  if (error) return false;
   return Boolean(row);
+}
+
+function placeCard(popover) {
+  const card = popover?.wrapper;
+  if (!card) return;
+  const viewport = window.visualViewport;
+  const width = viewport?.width || window.innerWidth;
+  const height = viewport?.height || window.innerHeight;
+  card.style.maxWidth = `${Math.max(160, width - 16)}px`;
+  const placed = fitTourPopover(card, {
+    width,
+    height,
+    bottomReserve: width < 1024 ? 88 : 0,
+  });
+  card.style.left = `${placed.left}px`;
+  card.style.top = `${placed.top}px`;
+  card.style.right = "auto";
+  card.style.bottom = "auto";
 }
 
 export function startTour(tourId, { force = false } = {}) {
@@ -62,57 +63,95 @@ export function TourGuide({ role }) {
   useEffect(() => {
     let active = null;
     let cancelled = false;
+    let unlisten = () => {};
 
     async function run(tourId, force) {
       const tour = TOURS[tourId];
       if (!tour || !tour.roles.includes(role || "owner")) return;
       if (!force && (await alreadySeen(tourId))) return;
       if (cancelled) return;
-      const steps = tour.steps
-        .map((step) => {
-          const element = visible(step.tour);
-          if (!element) return null;
-          return {
-            element,
-            disableActiveInteraction: step.interactive ? false : undefined,
-            advanceOn: step.interactive ? "click" : undefined,
-            popover: {
-              title: step.title,
-              description: step.interactive ? `${step.text} Toca lo iluminado para seguir.` : step.text,
-              side: sideFor(element),
-              align: "start",
-              showButtons: step.interactive ? ["previous", "close"] : ["next", "previous", "close"],
-            },
-          };
-        })
-        .filter(Boolean);
-      if (!steps.length) return;
+
+      const steps = tour.steps.map((step) => {
+        const element = () => pickTourElement(step.tour);
+        const sample = element();
+        return {
+          element,
+          // Sin `instruction`: en driver 1.14 eso bloquea Siguiente hasta que
+          // el toque cae en el hueco, y en varios teléfonos ese toque no cae.
+          disableActiveInteraction: !step.interactive,
+          advanceOn: step.interactive ? "click" : undefined,
+          popover: {
+            title: step.title,
+            description: step.interactive
+              ? `${step.text} Toca lo iluminado para seguir, o Siguiente.`
+              : `${step.text} Toca Siguiente.`,
+            side: sample ? popoverSide(sample.getBoundingClientRect(), {
+              width: window.innerWidth,
+              height: window.visualViewport?.height || window.innerHeight,
+            }) : "bottom",
+            align: "center",
+          },
+        };
+      });
+
       active?.destroy();
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       const guide = driver({
         animate: !reduce,
+        smoothScroll: false,
         overlayOpacity: 0.45,
-        stagePadding: 8,
+        stagePadding: 10,
         stageRadius: 16,
-        popoverOffset: 16,
+        popoverOffset: 12,
         showProgress: true,
         progressText: "Paso {{current}} de {{total}}",
         nextBtnText: "Siguiente",
         prevBtnText: "Atrás",
         doneBtnText: "Listo",
         closeBtnLabel: "Saltar",
+        allowClose: true,
+        // Un toque en lo oscuro no cierra: en el teléfono se iba y quedaba marcada como vista.
+        overlayClickBehavior: "none",
         popoverClass: "wf-tour",
-        onPopoverRender: (popover) => {
-          popover.closeButton.textContent = "Saltar";
-          popover.previousButton.textContent = "Atrás";
-          if (popover.nextButton.textContent !== "Listo") popover.nextButton.textContent = "Siguiente";
+        waitForElement: 1200,
+        onElementMissing: (_element, _step, opts) => {
+          if (opts.driver.hasNextStep()) opts.driver.moveNext();
+          else opts.driver.destroy();
+          return false;
         },
-        onDestroyed: () => {
-          remember(tourId);
+        onInteraction: (_element, step, opts) => {
+          if (opts.event?.type !== "click" || opts.region === "popover") return;
+          if (opts.region === "element" && step?.advanceOn) return;
+          opts.driver.nudge(
+            opts.region === "element"
+              ? "Toca Siguiente para seguir."
+              : "Toca la zona iluminada, o Siguiente.",
+          );
+          return false;
+        },
+        onPopoverPositioned: (popover) => {
+          placeCard(popover);
+        },
+        onDestroyed: (_element, _step, opts) => {
+          const reason = opts?.reason;
+          if (reason === "done" || reason === "close" || reason === "overlay" || reason === "escape") {
+            remember(tourId);
+          }
         },
         steps,
       });
       active = guide;
+      const refresh = () => {
+        if (guide.isActive()) guide.refresh();
+      };
+      window.visualViewport?.addEventListener("resize", refresh);
+      window.visualViewport?.addEventListener("scroll", refresh);
+      window.addEventListener("orientationchange", refresh);
+      unlisten = () => {
+        window.visualViewport?.removeEventListener("resize", refresh);
+        window.visualViewport?.removeEventListener("scroll", refresh);
+        window.removeEventListener("orientationchange", refresh);
+      };
       guide.drive();
     }
 
@@ -122,19 +161,21 @@ export function TourGuide({ role }) {
     }
 
     const timer = window.setTimeout(async () => {
-          const hello = homeTour(pathname, role);
-          if (hello && !(await alreadySeen(hello))) {
-            run(hello, false);
-            return;
-          }
-          const tourId = tourForPath(pathname, role);
-          if (tourId && tourId !== hello) run(tourId, false);
-        }, 700);
+      const hello = homeTour(pathname, role);
+      if (hello && !(await alreadySeen(hello))) {
+        run(hello, false);
+        return;
+      }
+      const tourId = tourForPath(pathname, role);
+      if (tourId && tourId !== hello) run(tourId, false);
+    }, 700);
+
     window.addEventListener("wapifood-tour", onAsk);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
       window.removeEventListener("wapifood-tour", onAsk);
+      unlisten();
       active?.destroy();
     };
   }, [pathname, role]);

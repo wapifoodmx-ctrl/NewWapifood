@@ -252,17 +252,13 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null, s
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <div>
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={ensureDefaults}
-            className="h-10 rounded-full bg-[var(--color-cream)] px-4 text-sm font-semibold"
-          >
+          <button type="button" onClick={ensureDefaults} className="btn btn-ghost">
             Crear caja + kiosko base
           </button>
-          <button type="button" data-tour="qr-imprimir" onClick={() => printQr(tables)} className="h-12 rounded-full bg-[var(--color-cream)] px-4 text-sm font-semibold">
+          <button type="button" data-tour="qr-imprimir" onClick={() => printQr(tables)} className="btn btn-primary">
             Imprimir todos
           </button>
-          <button type="button" onClick={releaseIdle} className="h-10 rounded-full bg-[var(--color-cream)] px-4 text-sm font-semibold">
+          <button type="button" onClick={releaseIdle} className="btn btn-ghost">
             Liberar mesas vacías
           </button>
           {tableLimit ? (
@@ -291,8 +287,8 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null, s
                 {meta.label} · {t.seats} lugares
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
-                <button type="button" data-tour="qr-abrir" className="h-12 rounded-full bg-[var(--primary-solid)] px-3 text-sm font-bold text-[var(--on-solid)]" onClick={() => openQr(t)}>Abrir mesa</button>
-                <button type="button" className="h-12 rounded-full border border-[var(--border)] px-3 text-sm font-bold" onClick={() => printQr([t])}>Imprimir QR</button>
+                <button type="button" data-tour="qr-abrir" className="btn btn-primary" onClick={() => openQr(t)}>Abrir mesa</button>
+                <button type="button" className="btn btn-ghost" onClick={() => printQr([t])}>Imprimir QR</button>
               </div>
               <p className="text-base text-[var(--ink-soft)]">
                 {t.channel_type === "caja" ? "Punto de venta" : t.channel_type === "kiosko" ? "Kiosko" : t.channel_type === "tablet" ? "Tablet" : "Piso"}
@@ -349,14 +345,14 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null, s
       </div>
 
       <form onSubmit={addTable} className="h-fit rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper)] p-4">
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-sage)]">{live ? "En vivo · estados de mesa" : "Conectando…"}</p>
+        <p className="mb-2 text-sm font-semibold text-[var(--ink-soft)]">{live ? "En vivo · estados de mesa" : "Conectando…"}</p>
       <h2 className="text-xl font-semibold">Nueva mesa / canal</h2>
         <label className="mt-3 block text-sm font-semibold">
           Número
           <input
             value={number}
             onChange={(e) => setNumber(e.target.value)}
-            className="mt-1 h-11 w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-cream)] px-3"
+            className="mt-1 h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3"
           />
         </label>
         <label className="mt-2 block text-sm font-semibold">
@@ -364,7 +360,7 @@ export function MesasManager({ restaurantId, initialTables, tableLimit = null, s
           <input
             value={seats}
             onChange={(e) => setSeats(e.target.value)}
-            className="mt-1 h-11 w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-cream)] px-3"
+            className="mt-1 h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3"
           />
         </label>
         <label className="mt-2 block text-sm font-semibold">

@@ -318,9 +318,9 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
                   {order.delivery_address || "Sin dirección"}
                 </p>
               ) : null}
+              <p className="chip chip-warn w-fit text-lg font-extrabold">{kitchenArrival(order.source)}</p>
               <p className="text-base text-[var(--ink-soft)]">
-                {kitchenArrival(order.source)}
-                {order.public_code ? ` · Ticket ${order.public_code}` : ""}
+                {order.public_code ? `Ticket ${order.public_code}` : ""}
                 {order.opened_at
                   ? ` · ${new Date(order.opened_at).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}`
                   : ""}

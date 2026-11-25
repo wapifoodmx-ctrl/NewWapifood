@@ -79,7 +79,7 @@ export function ClosedTable({ slug, number, name }) {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col bg-[var(--bg)] px-4 py-10 text-[var(--ink)]">
-      <p className="text-lg font-bold uppercase tracking-wide text-[var(--primary)]">{name}</p>
+      <p className="text-xl font-bold text-[var(--primary)]">{name}</p>
       <h1 className="mt-2 text-5xl">Mesa {number}</h1>
       <p className="mt-4">
         <StatusWord tone="bad">Cerrada</StatusWord>
@@ -224,8 +224,8 @@ export function TableOrder({ slug, number, token }) {
   const count = cartCount(cart);
 
   return (
-    <main className="mx-auto min-h-screen max-w-5xl bg-[var(--bg)] px-4 py-6 pb-8 text-[var(--ink)]">
-      <p className="text-sm font-bold uppercase tracking-wide text-[var(--primary)]">{menu?.restaurant || "Tu mesa"}</p>
+    <main className="guest-menu mx-auto min-h-screen max-w-5xl bg-[var(--bg)] px-4 py-6 text-[var(--ink)]">
+      <p className="text-xl font-bold text-[var(--primary)]">{menu?.restaurant || "Tu mesa"}</p>
       <h1 className="text-5xl">Mesa {menu?.number || number}</h1>
       <p className="mt-2 text-xl text-[var(--ink-soft)]">Toca un platillo para agregarlo. El cobro es en la mesa.</p>
       <button type="button" className="btn btn-lg btn-ghost mt-4" onClick={callWaiter}>Llamar al mesero</button>
@@ -261,11 +261,11 @@ export function TableOrder({ slug, number, token }) {
                     )}
                   </div>
                   <div className="px-3 pb-2 pt-3">
-                    <p className="text-sm font-bold text-[var(--ink-soft)]">{categoryName(product)}</p>
+                    <p className="text-base font-bold text-[var(--ink-soft)]">{categoryName(product)}</p>
                     <h2 className="text-2xl">{product.name}</h2>
                     <p className="text-xl font-bold">{money(product.price)}</p>
                   </div>
-                  <button type="button" className="btn btn-primary mx-3 mb-3 min-h-12 w-[calc(100%-1.5rem)]" onClick={() => choose(product)}>
+                  <button type="button" className="btn btn-primary mx-3 mb-3 w-[calc(100%-1.5rem)]" onClick={() => choose(product)}>
                     {needsCustomize(menu, product.id) ? "Elegir" : "Agregar"}
                   </button>
                 </article>
@@ -318,22 +318,25 @@ export function TableOrder({ slug, number, token }) {
             Ver el estado del pedido
           </Link>
         ) : null}
-        <button type="button" className="btn btn-lg btn-ghost mt-4 w-full" onClick={askBill}>Pide la cuenta</button>
-        <p className="mt-2 text-[var(--ink-soft)]">No se paga en el celular.</p>
+        <p className="mt-2 text-[var(--ink-soft)]">No se paga en el celular. El total queda abajo.</p>
       </section>
 
       {error ? <p className="mt-4 text-lg text-[var(--wine)]" role="alert">{error}</p> : null}
       {note ? <p className="mt-4 text-lg" role="status">{note}</p> : null}
 
-      {count > 0 ? (
-        <div className="menu-dock">
-          <div>
-            <p className="text-sm font-bold opacity-80">{count} {count === 1 ? "platillo" : "platillos"}</p>
-            <p className="text-2xl font-extrabold">{money(cartTotal(cart))}</p>
-          </div>
-          <button type="button" className="btn btn-lg btn-primary" onClick={() => setCartOpen(true)}>Ver pedido</button>
+      <div className="menu-dock">
+        <div>
+          <p className="text-base font-bold opacity-80">
+            {count ? `${count} ${count === 1 ? "platillo" : "platillos"} por enviar` : "Total de la mesa"}
+          </p>
+          <p className="text-3xl font-extrabold">{money((Number(bill?.total) || 0) + cartTotal(cart))}</p>
         </div>
-      ) : null}
+        {count ? (
+          <button type="button" className="btn btn-lg btn-primary" onClick={() => setCartOpen(true)}>Ver pedido</button>
+        ) : (
+          <button type="button" className="btn btn-lg btn-primary" onClick={askBill}>Pide la cuenta</button>
+        )}
+      </div>
 
       {cartOpen ? (
         <Sheet title="Tu pedido" labelledBy="pedido-titulo" onClose={() => setCartOpen(false)}>

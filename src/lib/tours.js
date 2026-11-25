@@ -49,8 +49,7 @@ export const TOURS = {
     paths: ["/pos", "/tickets"],
     steps: [
       { tour: "que-paso", title: "Si algo salió mal", text: "Toca ¿Qué pasó? No hace falta adivinar botones.", interactive: true },
-      { tour: "que-paso-opciones", title: "Elige qué pasó", text: "Puedes cancelar la cuenta, quitar platillos o devolver dinero." },
-      { tour: "que-paso-dinero", title: "El dinero", text: "Nada, una parte o todo. En efectivo sale del cajón. Con tarjeta queda pendiente." },
+      { tour: "que-paso-opciones", title: "Elige qué pasó", text: "Puedes cancelar la cuenta, quitar platillos o devolver dinero. Si hay dinero: nada, una parte o todo. En efectivo sale del cajón." },
     ],
   },
   "mesa-qr": {

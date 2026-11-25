@@ -121,9 +121,14 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
 
   async function reviewAlert(id, accept) {
     const reason = accept ? null : window.prompt("¿Por qué no se acepta?") || "No se pudo";
+    const alert = tableAlerts.find((row) => row.id === id);
     const { error } = await supabase.rpc("review_table_request", { p_id: id, p_accept: accept, p_reason: reason });
     if (error) toast.error(friendlyError(error.message));
-    else toast.success(accept ? "Pedido aceptado" : "Pedido rechazado");
+    else {
+      if (accept && alert?.table_id) setPickedTableId(alert.table_id);
+      toast.success(accept ? "Pedido aceptado" : "Pedido rechazado");
+      if (accept) await refresh();
+    }
     setTableAlerts((list) => list.filter((row) => row.id !== id));
     forgetDraft(id);
   }
@@ -842,7 +847,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         </label>
         <button type="button" className="btn-ghost mt-5" onClick={saveGuest}>Anotar</button>
       </div>
-      <div className="mt-4 grid grid-cols-[1.2fr_0.8fr_auto] gap-2">
+      <div className="pos-discount mt-4">
         <label className="sr-only" htmlFor="pos-discount-type">Tipo de descuento</label>
         <select
           id="pos-discount-type"
@@ -1054,7 +1059,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         </aside>
       </div>
 
-      {activeTableId && !cartOpen ? (
+      {activeTableId && !payOpen ? (
         <div className="pos-dock">
           <button type="button" className="btn-ghost flex-1" onClick={() => setCartOpen(true)}>
             Cuenta · {itemCount}
@@ -1244,7 +1249,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 ))}
               </div>
             ) : null}
-            <div className="mt-4 grid grid-cols-3 gap-2">
+            <div className="pay-methods mt-4">
               {PAY_METHODS.map((m) => (
                 <button
                   key={m.id}
@@ -1287,7 +1292,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 ) : null}
               </div>
             ) : null}
-            <div className="mt-5 grid gap-2">
+            <div className="sheet-actions">
               <button type="button" onClick={confirmPay} className="btn-lg btn-primary">
                 Confirmar cobro
               </button>
