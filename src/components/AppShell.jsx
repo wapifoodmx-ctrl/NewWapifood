@@ -105,7 +105,7 @@ export function AppShell({
           </div>
         ) : null}
 
-        <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--bg)_90%,transparent)] px-4 py-3 backdrop-blur-md">
+        <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3">
           <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-3">
             <div className="min-w-0">
               <p data-tour="local" className="truncate text-sm text-[var(--ink-soft)] lg:hidden">

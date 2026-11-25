@@ -5,7 +5,7 @@ import Link from "next/link";
 import { money } from "@/lib/format";
 import { lineAmount } from "@/lib/extras";
 import { confirmAsync } from "@/components/ui/confirm";
-import { statusMeta } from "@/lib/orderStatus";
+import { closeHint, statusMeta } from "@/lib/orderStatus";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import { OrderComments } from "@/components/OrderComments";
@@ -272,6 +272,12 @@ ${ivaEnabled ? `<p style="font-size:11px">IVA 16% incluido: ${escapeHtml(money(i
         </div>
         <p className="text-2xl font-semibold">{money(total)}</p>
       </div>
+      {canCancel ? (
+        <p className="mt-2 text-sm font-bold">
+          {closeHint(order.status)}{" "}
+          <Link href="/pos" className="underline">Ir a cobrar</Link>
+        </p>
+      ) : null}
       {order.status === "pagada" ? (
         <p className="mt-2 text-xs text-[var(--color-muted)]">
           Por platillo: &quot;Devolver inventario&quot; regresa insumos al stock, &quot;Merma&quot; los deja consumidos, &quot;Reembolsar&quot; devuelve el dinero al cliente. El dinero no se devuelve automáticamente al devolver inventario.

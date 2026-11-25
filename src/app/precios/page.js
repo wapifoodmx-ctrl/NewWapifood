@@ -1,10 +1,6 @@
-"use client";
-
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { PricingSection } from "@/components/PricingSection";
 import ThemeToggle from "@/components/ThemeToggle";
-import { OriginButton } from "@/components/OriginButton";
 
 const faqs = [
   ["¿El anual sale más barato?", "Sí. Pagas 10 meses y usas el plan 12. Cada tarjeta dice cuánto ahorras."],
@@ -14,24 +10,25 @@ const faqs = [
 ];
 
 export default function PreciosPage() {
-  const router = useRouter();
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--ink)]">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
+      <header className="entry flex items-center justify-between gap-3 py-5">
         <Link href="/" className="brand text-3xl no-underline">Wapifood</Link>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <OriginButton className="btn btn-primary" onClick={() => router.push("/login")}>Crear cuenta</OriginButton>
+          <Link href="/login" className="btn btn-primary inline-flex items-center justify-center no-underline">Crear cuenta</Link>
         </div>
       </header>
-      <PricingSection />
-      <section className="mx-auto max-w-3xl px-4 pb-16">
+      <div id="contenido">
+        <PricingSection />
+      </div>
+      <section className="faq-band mx-auto max-w-3xl px-4">
         <h2 className="text-3xl">Preguntas frecuentes</h2>
-        <div className="mt-4 grid gap-3">
-          {faqs.map(([q, a]) => (
-            <details key={q} className="rounded-2xl border border-[var(--border)] p-4">
-              <summary className="cursor-pointer text-xl">{q}</summary>
-              <p className="mt-2 text-lg text-[var(--ink-soft)]">{a}</p>
+        <div className="mt-4">
+          {faqs.map(([question, answer]) => (
+            <details key={question}>
+              <summary>{question}</summary>
+              <p className="mt-2 text-lg text-[var(--ink-soft)]">{answer}</p>
             </details>
           ))}
         </div>

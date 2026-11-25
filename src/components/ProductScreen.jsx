@@ -73,7 +73,7 @@ export function ProductScreen({ restaurant, listName, products }) {
             <article key={product.id} className="flex flex-col justify-end rounded-[22px] border border-[var(--border)] bg-[var(--surface)] p-6">
               {product.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={product.image_url} alt="" className="mb-4 h-64 w-full rounded-[16px] object-cover" />
+                <img src={product.image_url} alt="" className="dish-frame mb-4" />
               ) : null}
               <p className="text-sm font-bold uppercase tracking-wide text-[var(--primary)]">{product.category || "Destacado"}</p>
               <h2 className="mt-1 text-5xl">{product.name}</h2>

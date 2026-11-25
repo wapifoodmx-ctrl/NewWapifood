@@ -74,6 +74,16 @@ export const TOURS = {
   },
 };
 
+/** Una fila por ruta. Sirve en el teléfono y en la computadora del mismo usuario. */
+export function screenFlag(pathname) {
+  return pathname ? `pantalla:${pathname}` : "";
+}
+
+/** La guía sola sale la primera vez que entran a esa pantalla. */
+export function shouldAutoShowTour(screenSeen, tourSeen) {
+  return !screenSeen && !tourSeen;
+}
+
 export function homeTour(pathname, role) {
   const key = role || "owner";
   const home = key === "cocina" ? "/cocina" : key === "piso" ? "/pos" : "/dashboard";

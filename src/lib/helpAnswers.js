@@ -40,11 +40,11 @@ const TOPICS = [
   },
   {
     id: "cobro",
-    strong: ["como cobro", "realizar un cobro", "metodos de pago", "forma de pago"],
+    strong: ["como cobro", "realizar un cobro", "metodos de pago", "forma de pago", "finalizar orden", "cerrar la cuenta", "cuando se cierra"],
     words: ["cobrar", "cobro", "efectivo", "tarjeta", "transferencia"],
     block: ["plan", "suscripcion", "mercado pago", "mensual"],
     answer:
-      "En Punto de venta toca el producto y luego Cobrar.\nEfectivo, tarjeta u otro tipo de pago. En efectivo escribe lo que te dieron: el cambio es eso menos el total, a centavos.\nLa propina se anota aparte y no cambia el precio de la comida. Puedes cobrar aunque el turno de caja no esté abierto. Si el turno está abierto, el efectivo y la propina en efectivo entran al cajón. Tarjeta y transferencia no entran.",
+      "La orden se cierra solo aquí: en Punto de venta, con Cobrar. Pasa a Pagada y baja el inventario. Cocina, Entregada y Todo listo no la cierran.\nEn Punto de venta toca el producto y luego Cobrar.\nEfectivo, tarjeta u otro tipo de pago. En efectivo escribe lo que te dieron: el cambio es eso menos el total, a centavos.\nLa propina se anota aparte y no cambia el precio de la comida. Puedes cobrar aunque el turno de caja no esté abierto. Si el turno está abierto, el efectivo y la propina en efectivo entran al cajón. Tarjeta y transferencia no entran.",
   },
   {
     id: "descuento",
@@ -85,14 +85,14 @@ const TOPICS = [
     words: ["listo", "pendiente"],
     block: ["plan"],
     answer:
-      "Cocina trabaja producto por producto, no la orden entera de un golpe.\nListo lo pasa a Preparado. Regresar lo vuelve a dejar Pendiente. Cancelar platillo anula solo esa línea.\nCuando todos los productos activos están preparados, la orden queda en Preparado (lista). Marcar listo no cobra y no baja el inventario.\nUn pedido de domicilio en Por confirmar se acepta o se rechaza ahí. En la tarjeta se ven teléfono y dirección.",
+      "Cocina trabaja producto por producto, no la orden entera de un golpe.\nListo lo pasa a Preparado. Regresar lo vuelve a dejar Pendiente. Cancelar platillo anula solo esa línea.\nCuando todos los productos activos están preparados, la orden queda en Preparado (lista). Marcar listo no cobra y no baja el inventario.\nMarcar entregada solo avisa que ya salió. La cuenta sigue abierta hasta Cobrar, en Punto de venta.\nUn pedido de domicilio en Por confirmar se acepta o se rechaza ahí. En la tarjeta se ven teléfono y dirección.",
   },
   {
     id: "estados",
     strong: ["estatus", "estado de la orden", "estado de la mesa", "que significa"],
     words: ["estatus"],
     answer:
-      "Hay tres cosas distintas.\nLa orden: Por confirmar, En mesa, En cocina, Preparado, Entregada, Pagada o Cancelada.\nEl producto dentro de la orden: Pendiente, Preparado o Cancelado.\nLa mesa: Libre, Ocupada o No disponible. A una mesa no disponible no se le asigna pedido.",
+      "Hay tres cosas distintas.\nLa orden: Por confirmar, En mesa, En cocina, Preparado, Entregada, Pagada o Cancelada. Pagada es el cierre y solo ocurre al cobrar en Punto de venta. Entregada todavía no está cobrada.\nEl producto dentro de la orden: Pendiente, Preparado o Cancelado.\nLa mesa: Libre, Ocupada o No disponible. A una mesa no disponible no se le asigna pedido.",
   },
   {
     id: "stock",

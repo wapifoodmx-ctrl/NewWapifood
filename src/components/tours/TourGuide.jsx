@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import { createClient } from "@/lib/supabase/client";
-import { TOURS, homeTour, tourForPath } from "@/lib/tours";
+import { TOURS, screenFlag, shouldAutoShowTour, tourForPath } from "@/lib/tours";
 import { fitTourPopover, pickTourElement, popoverSide } from "@/lib/tourTarget";
 
 function remember(tourId) {
@@ -68,7 +68,15 @@ export function TourGuide({ role }) {
     async function run(tourId, force) {
       const tour = TOURS[tourId];
       if (!tour || !tour.roles.includes(role || "owner")) return;
-      if (!force && (await alreadySeen(tourId))) return;
+      if (!force) {
+        const flag = screenFlag(pathname);
+        const screenSeen = flag ? await alreadySeen(flag) : false;
+        const tourSeen = await alreadySeen(tourId);
+        if (!shouldAutoShowTour(screenSeen, tourSeen)) {
+          if (flag && !screenSeen) remember(flag);
+          return;
+        }
+      }
       if (cancelled) return;
 
       const steps = tour.steps.map((step) => {
@@ -132,12 +140,6 @@ export function TourGuide({ role }) {
         onPopoverPositioned: (popover) => {
           placeCard(popover);
         },
-        onDestroyed: (_element, _step, opts) => {
-          const reason = opts?.reason;
-          if (reason === "done" || reason === "close" || reason === "overlay" || reason === "escape") {
-            remember(tourId);
-          }
-        },
         steps,
       });
       active = guide;
@@ -153,6 +155,9 @@ export function TourGuide({ role }) {
         window.removeEventListener("orientationchange", refresh);
       };
       guide.drive();
+      const flag = screenFlag(pathname);
+      if (flag) remember(flag);
+      remember(tourId);
     }
 
     function onAsk(event) {
@@ -160,14 +165,9 @@ export function TourGuide({ role }) {
       if (tourId) run(tourId, Boolean(event.detail?.force));
     }
 
-    const timer = window.setTimeout(async () => {
-      const hello = homeTour(pathname, role);
-      if (hello && !(await alreadySeen(hello))) {
-        run(hello, false);
-        return;
-      }
+    const timer = window.setTimeout(() => {
       const tourId = tourForPath(pathname, role);
-      if (tourId && tourId !== hello) run(tourId, false);
+      if (tourId) run(tourId, false);
     }, 700);
 
     window.addEventListener("wapifood-tour", onAsk);

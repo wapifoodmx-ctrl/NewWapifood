@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/Toast";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { EmptyState, Skeleton } from "@/components/ui/States";
 import { Icon } from "@/components/ui/Icon";
-import { statusMeta, itemStatusMeta, waitMeta } from "@/lib/orderStatus";
+import { closeHint, statusMeta, itemStatusMeta, waitMeta } from "@/lib/orderStatus";
 import { kitchenArrival } from "@/lib/brand";
 import { OrderComments } from "@/components/OrderComments";
 import { confirmAsync } from "@/components/ui/confirm";
@@ -379,14 +380,24 @@ export function KitchenBoard({ restaurantId, initialOrders, products }) {
                       Rechazar
                     </button>
                   </>
-                ) : order.status === "lista" || order.status === "entregada" ? (
-                  <button type="button" onClick={() => markDelivered(order.id)} className="btn-lg btn-accent">
-                    {order.status === "entregada" ? "Entregada" : "Marcar entregada"}
-                  </button>
+                ) : order.status === "lista" ? (
+                  <>
+                    <button type="button" onClick={() => markDelivered(order.id)} className="btn-lg btn-accent">
+                      Marcar entregada
+                    </button>
+                    <p className="text-base">{closeHint(order.status)}</p>
+                  </>
+                ) : order.status === "entregada" ? (
+                  <p className="text-lg font-bold">
+                    Ya se entregó. <Link href="/pos" className="underline">Cobrar en Punto de venta</Link> cierra esta cuenta.
+                  </p>
                 ) : (
-                  <button type="button" onClick={() => markAllPreparado(order.id)} className="btn-lg" style={{ background: "var(--sage-solid)", color: "var(--on-tone)" }}>
-                    Todo listo
-                  </button>
+                  <>
+                    <button type="button" onClick={() => markAllPreparado(order.id)} className="btn-lg" style={{ background: "var(--sage-solid)", color: "var(--on-tone)" }}>
+                      Todo listo
+                    </button>
+                    <p className="text-base">Todo listo no cierra la cuenta.</p>
+                  </>
                 )}
               </div>
             </article>

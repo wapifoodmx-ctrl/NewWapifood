@@ -103,7 +103,7 @@ export function WaiterApp({
       .select("id,status,source,opened_at,waiter_id,order_items(id,product_id,qty,status),dining_tables(number)")
       .eq("restaurant_id", restaurantId)
       .in("table_id", tableIds)
-      .in("status", ["abierta", "cocina", "lista", "pendiente"])
+      .in("status", ["abierta", "cocina", "lista", "pendiente", "entregada"])
       .order("opened_at", { ascending: false })
       .limit(30);
 
@@ -112,7 +112,7 @@ export function WaiterApp({
       .select("id,status,source,opened_at,closed_at,waiter_id,order_items(id,product_id,qty,unit_price),dining_tables(number)")
       .eq("restaurant_id", restaurantId)
       .in("table_id", tableIds)
-      .in("status", ["pagada", "entregada", "cancelada"])
+      .in("status", ["pagada", "cancelada"])
       .order("opened_at", { ascending: false })
       .limit(20);
 
@@ -524,13 +524,16 @@ async function login(e) {
                     </li>
                   ))}
                 </ul>
+                {o.status === "entregada" ? (
+                  <p className="mt-1 text-sm font-bold">Falta cobrar en caja. El mesero no cierra la cuenta.</p>
+                ) : null}
                 {o.waiter_id === session.id ? (
                   <p className="mt-1 text-[11px] text-[var(--color-saffron-glow)]">Tu comanda</p>
                 ) : null}
               </article>
             ))}
             {!activeOrders.length ? (
-              <p className="text-[var(--color-walnut)]">No hay órdenes activas en tus mesas.</p>
+              <p className="text-[var(--color-walnut)]">No hay cuentas abiertas en tus mesas. Se cierran cuando caja cobra.</p>
             ) : null}
           </div>
         ) : null}
@@ -559,7 +562,7 @@ async function login(e) {
               );
             })}
             {!history.length ? (
-              <p className="text-[var(--color-walnut)]">Sin historial reciente en tus mesas.</p>
+              <p className="text-[var(--color-walnut)]">Aquí solo entran las cuentas ya cobradas o canceladas.</p>
             ) : null}
           </div>
         ) : null}

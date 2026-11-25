@@ -41,8 +41,7 @@ export default async function TicketsPage() {
       setupOnly={setupOnly}
     >
       <p className="mb-4 text-sm text-[var(--color-espresso)]">
-        Historial y seguimiento tipo beeper. Cada orden tiene enlace público{" "}
-        <code className="bg-[var(--color-paper)] px-1">/t/…</code> para el cliente.
+        Una orden se cierra en Punto de venta, con Cobrar, y pasa a Pagadas. Cancelarla la pasa a Canceladas, sin cobro. Cocina no la cierra: Entregada sigue abierta. El enlace <code className="bg-[var(--color-paper)] px-1">/t/…</code> es solo para que el cliente vea el pedido.
       </p>
       {ordersError ? (
         <div className="mb-4 border border-[var(--color-wine)] bg-[var(--color-paper)] p-4 text-sm text-[var(--color-wine)]">

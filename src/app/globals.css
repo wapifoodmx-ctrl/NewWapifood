@@ -1,4 +1,29 @@
+/* Hallmark · v2.0.0
+   theme: Comal (locked, docs/DISENO.md) · genre: editorial on /, app screen on the panel
+   shape: ticket (/) · login split (/login) · app screen (panel)
+   hero: head and two actions left, paper ticket right · nav: wordmark, Precios, Entrar, Crear cuenta
+   footer: one line and Términos · signature: the mostrador ticket
+   redesign: full · scope: public entry plus shared shell
+   waive: stamp sits above @import because Tailwind requires that import before any rule
+   waive 58: FAQ, prices and steps stay; they are the owner's copy
+   waive app density 32px: DISENO.md locks touch at 48px and Cobrar at 56px
+   waive 3: the role-tile left rule marks a station link, not a card stripe
+   waive 48 on .dark: those literals are the dark token block, same names as :root
+   dropped: example quotes (46a, the page said they were not real) · rotating words · pixel pricing cards · the three fake screenshots
+   critique: P4 H4 E4 S4 R4 V4 · weakest: S, the ticket is set in type because there is no product photo */
+
 @import "tailwindcss";
+
+/* Tracked caps and leftover sharp corners were the generic tell.
+   Unlayered so this beats Tailwind utilities. rounded-full stays round. */
+[class*="uppercase"] {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+[class*="rounded-[3px]"] {
+  border-radius: var(--radius-control);
+}
 
 /* Comal — sistema de diseño de Wapifood.
    Cálido, legible y con contraste AA. Los alias --color-* mantienen
@@ -35,6 +60,7 @@
   --radius-control: 14px;
   --radius-card: 22px;
   --radius-sheet: 28px;
+  --rail: #f3e6da;
   --touch: 48px;
   --touch-lg: 56px;
   --font-display: var(--font-display), Fraunces, Georgia, serif;
@@ -88,6 +114,7 @@
   --chip-neutral-fg: #f3e4d6;
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.28);
   --shadow-2: 0 22px 56px rgba(0, 0, 0, 0.48);
+  --rail: #1c1613;
   --color-linen: #2a211b;
   --color-midnight-roast: #0e0b09;
 }
@@ -103,6 +130,7 @@
 html,
 body {
   height: 100%;
+  overflow-x: clip;
 }
 
 body {
@@ -125,6 +153,9 @@ h4 {
   letter-spacing: -0.03em;
   line-height: 1.15;
   color: var(--ink);
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  min-width: 0;
 }
 
 button,
@@ -233,6 +264,170 @@ input[type="radio"] {
   font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: -0.03em;
+}
+
+.entry {
+  width: min(72rem, calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+.hero-band {
+  display: grid;
+  gap: 2.5rem;
+  align-items: center;
+  padding-bottom: 3.5rem;
+}
+
+.hero-band h1 {
+  max-width: 16ch;
+  font-size: clamp(2.75rem, 6vw, 4.5rem);
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.ticket {
+  width: min(22rem, 100%);
+  justify-self: start;
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  border-top: 8px solid var(--primary-solid);
+  box-shadow: var(--shadow-2);
+  padding: 1.35rem 1.4rem 1.15rem;
+}
+
+.ticket-place,
+.ticket-state,
+.ticket-action,
+.ticket ol {
+  margin: 0;
+}
+
+.ticket-place {
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.ticket-state {
+  margin-top: 0.15rem;
+  color: var(--ink-soft);
+}
+
+.ticket ol {
+  margin-top: 0.85rem;
+  padding: 0;
+  list-style: none;
+}
+
+.ticket li {
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--border);
+  font-size: 1.15rem;
+}
+
+.ticket-action {
+  margin-top: 0.15rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border);
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.price-figure {
+  font-size: 2.6rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.start-band,
+.floor-band,
+.faq-band {
+  padding-bottom: 3.5rem;
+}
+
+.start-list,
+.floor-list {
+  display: grid;
+  gap: 1.5rem 2.5rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.start-list h3,
+.floor-list h3 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.start-list p,
+.floor-list p,
+.floor-lead {
+  margin: 0.35rem 0 0;
+  color: var(--ink-soft);
+  font-size: 1.05rem;
+}
+
+.faq-band details {
+  border-top: 1px solid var(--border);
+  padding: 0.9rem 0;
+}
+
+.faq-band details:last-child {
+  border-bottom: 1px solid var(--border);
+}
+
+.faq-band summary {
+  cursor: pointer;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.login-split {
+  display: grid;
+  min-height: 100%;
+  background: var(--bg);
+}
+
+.login-aside {
+  display: none;
+}
+
+.login-form-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+}
+
+@media (min-width: 960px) {
+  .hero-band {
+    grid-template-columns: minmax(0, 1.2fr) minmax(16rem, 0.8fr);
+  }
+
+  .start-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .floor-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .login-split {
+    grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
+    min-height: 100svh;
+  }
+
+  .login-aside {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 2.5rem;
+    background: var(--rail);
+  }
 }
 
 .card {
@@ -395,34 +590,46 @@ input[type="radio"] {
 @media (min-width: 1024px) {
   .help-dock,
   .help-dock-high { bottom: 1rem; right: 1rem; }
+  /* Ticket owns the right edge, so the dock sits on the mesas column. */
+  .app-frame:has(.pos-shell) .help-dock,
+  .app-frame:has(.pos-shell) .help-dock-high {
+    right: auto;
+    left: 1rem;
+  }
 }
 
 .role-tile {
   display: flex;
-  min-height: 132px;
-  flex-direction: column;
-  justify-content: space-between;
+  min-height: var(--touch);
+  flex-direction: row;
+  align-items: center;
   gap: 0.75rem;
-  border-radius: var(--radius-card);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  padding: 1rem;
-  box-shadow: var(--shadow-1);
+  border-radius: 0;
+  border: 0;
+  border-left: 3px solid var(--border);
+  background: transparent;
+  padding: 0.55rem 0.75rem;
+  box-shadow: none;
   color: inherit;
   text-decoration: none;
 }
 
-.role-tile:hover { border-color: var(--primary); }
-.role-tile strong { font-size: 1.2rem; }
+.role-tile:hover,
+.role-tile:focus-visible {
+  border-left-color: var(--primary-solid);
+  background: var(--surface);
+}
+.role-tile strong { font-size: 1.2rem; color: var(--ink); }
 .role-tile span { color: var(--ink-soft); font-size: 0.95rem; }
 .role-tile .role-ico {
   display: grid;
   place-items: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
-  background: var(--surface-2);
-  color: var(--primary);
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink-soft);
 }
 
 .app-side {
@@ -433,8 +640,8 @@ input[type="radio"] {
   top: 0;
   height: 100vh;
   height: 100dvh;
-  border-right: 1px solid var(--border);
-  background: var(--surface);
+  border-right: 1px solid transparent;
+  background: var(--rail);
   z-index: 25;
 }
 
@@ -776,7 +983,7 @@ button.side-link {
   z-index: 90;
   top: 12vh;
   left: 50%;
-  width: min(560px, calc(100vw - 1.5rem));
+  width: min(560px, calc(100% - 1.5rem));
   transform: translateX(-50%);
   border-radius: 22px;
   border: 1px solid var(--border);
@@ -950,7 +1157,7 @@ button.cmdk-item[aria-selected="true"] {
     right: auto;
     bottom: auto;
     top: 50%;
-    width: min(520px, calc(100vw - 2rem));
+    width: min(520px, calc(100% - 2rem));
     transform: translate(-50%, -50%);
     border-radius: var(--radius-sheet);
     padding: 1.25rem;
@@ -1029,8 +1236,8 @@ button.cmdk-item[aria-selected="true"] {
   color: var(--ink);
 }
 .cat-chip.is-on {
-  background: var(--ink);
-  color: var(--bg);
+  background: var(--primary-solid);
+  color: var(--on-solid);
   border-color: transparent;
 }
 
@@ -1056,20 +1263,111 @@ button.cmdk-item[aria-selected="true"] {
   color: inherit;
   box-shadow: var(--shadow-1);
 }
-.pos-tile-media {
+.pos-tile-media,
+.menu-photo,
+.dish-frame {
+  position: relative;
+  display: block;
+  flex: none;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--surface-2);
+  color: var(--on-tone);
+}
+.dish-frame {
+  width: 100%;
+  max-height: 16rem;
+  border-radius: var(--radius-card);
+  object-fit: cover;
+}
+.pos-tile-media,
+.menu-photo {
   display: grid;
   place-items: center;
-  height: 92px;
-  color: #fff;
-  font-size: 1.8rem;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.pos-tile-media img,
+.menu-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pos-tile-media > span,
+.menu-photo > span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
   font-weight: 800;
 }
-.pos-tile-media img { width: 100%; height: 100%; object-fit: cover; }
-.pos-tile-body { display: grid; gap: 0.15rem; padding: 0.7rem 0.8rem 0.85rem; }
-.pos-tile-cat { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.01em; }
-.pos-tile-name { font-size: 1.05rem; font-weight: 800; line-height: 1.2; }
-.pos-tile-price { color: var(--ink-soft); font-weight: 700; }
-.pos-tile-extra { color: var(--primary); font-size: 0.85rem; font-weight: 700; }
+.pos-tile-body { display: grid; gap: 0.2rem; padding: 0.75rem 0.85rem 0.9rem; }
+.pos-tile-cat { color: var(--ink-soft); font-size: 0.9rem; font-weight: 700; }
+.pos-tile-name {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  min-height: 2.4em;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.pos-tile-price { color: var(--ink); font-weight: 800; font-variant-numeric: tabular-nums; }
+.pos-tile-extra { color: var(--primary); font-size: 0.9rem; font-weight: 700; }
+
+.dish-thumb {
+  width: 4.5rem;
+  height: 4.5rem;
+  flex: none;
+  overflow: hidden;
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-weight: 700;
+  object-fit: cover;
+}
+.dish-thumb:not(img) {
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+@media (max-width: 1023px) {
+  .pos-tile-media {
+    aspect-ratio: auto;
+    height: 6.5rem;
+  }
+  .pos-tile-name { min-height: 0; }
+  /* Focus screens have no tab bar, so the charge dock sits on the bottom edge. */
+  .app-frame:not(:has(.app-tabbar)) .pos-shell {
+    padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+  }
+  .app-frame:not(:has(.app-tabbar)) .pos-dock {
+    bottom: 0;
+  }
+  .app-frame:not(:has(.app-tabbar)) .pos-summary.open {
+    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 5.5rem - env(safe-area-inset-bottom));
+  }
+  .app-frame:has(.pos-shell) .help-dock,
+  .app-frame:has(.pos-shell) .help-dock-high {
+    right: 0.75rem;
+    bottom: calc(5.6rem + env(safe-area-inset-bottom));
+  }
+  .pos-summary.open > .card {
+    display: flex;
+    flex-direction: column;
+  }
+  .pos-summary.open .pos-scroll { display: contents; }
+  .pos-summary.open .pos-charge { order: 1; }
+  .pos-summary.open .pos-more { order: 2; } /* after Cobrar */
+}
 
 .pos-summary { display: none; }
 .pos-summary.open {
@@ -1221,21 +1519,17 @@ button.cmdk-item[aria-selected="true"] {
   .menu-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 .menu-card {
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border-radius: 22px;
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: var(--shadow-1);
 }
-.menu-photo {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 4 / 3;
-  background: var(--surface-2);
-  color: var(--ink-soft);
-  font-weight: 800;
-}
-.menu-photo img { width: 100%; height: 100%; object-fit: cover; }
+.menu-card > .btn,
+.menu-card > .btn-primary { margin-top: auto; }
+
 
 .guest-menu {
   padding-bottom: calc(7.5rem + env(safe-area-inset-bottom));
@@ -1302,6 +1596,7 @@ button.cmdk-item[aria-selected="true"] {
     align-items: start;
   }
   .pos-layout > aside { overflow: visible; }
+  .pos-layout > aside.pos-summary { overflow: hidden; }
   .pos-tables-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -1310,16 +1605,36 @@ button.cmdk-item[aria-selected="true"] {
   .table-tile { width: 100%; }
   .pos-summary,
   .pos-summary.open {
-    display: block;
+    display: flex;
+    flex-direction: column;
     position: sticky;
     top: 12px;
     left: auto;
     right: auto;
     bottom: auto;
-    max-height: calc(100vh - 96px);
-    overflow: auto;
+    max-height: calc(100svh - 8.5rem);
+    overflow: hidden;
     border-radius: 22px;
     box-shadow: var(--shadow-1);
+  }
+  .pos-summary > .card {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .pos-scroll {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: auto;
+  }
+  .pos-charge {
+    flex: none;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
   }
   .pos-shell { padding-bottom: 0; }
   .pos-dock { display: none; }
@@ -1438,3 +1753,5 @@ button.cmdk-item[aria-selected="true"] {
   .offline-banner,
   .pos-dock { display: none !important; }
 }
+
+

@@ -16,7 +16,7 @@ export function RoleHome({ role, restaurantName }) {
       <p className="text-lg text-[var(--ink-soft)]">
         Hola{restaurantName ? `, ${restaurantName}` : ""}. {roleLabel(role) ? `Entraste como ${roleLabel(role)}.` : ""} {COPY[role] || COPY.owner}
       </p>
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
+      <div className="mt-4 grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
         {tiles.map((tile) => (
           <Link key={tile.id} href={tile.href} className="role-tile">
             <span className="role-ico">

@@ -56,7 +56,11 @@ export function TicketsBoard({ orders, productNames, ivaEnabled = false }) {
       <div className="space-y-3">
         {list.length === 0 ? (
           <p className="border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-5 text-[var(--color-espresso)]">
-            No hay tickets en este filtro.
+            {filter === "pagada"
+              ? "No hay cuentas cobradas. Se cierran en Punto de venta, con Cobrar."
+              : filter === "activas"
+                ? "No hay cuentas abiertas. Una orden sigue aquí hasta que se cobra o se cancela."
+                : "No hay tickets en este filtro."}
           </p>
         ) : (
           list.map((o) => (

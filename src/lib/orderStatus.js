@@ -51,6 +51,13 @@ export const ITEM_STATUS = {
   cancelado: { label: "Cancelado", color: "text-[var(--color-wine)] line-through" },
 };
 
+/** La orden solo se cierra al cobrar o al cancelar. Entregada sigue abierta. */
+export function closeHint(status) {
+  if (status === "pagada") return "Ya se cerró al cobrar.";
+  if (status === "cancelada") return "Ya se cerró, sin cobro.";
+  return "Sigue abierta. Se cierra en Punto de venta, con Cobrar.";
+}
+
 export function statusMeta(status) {
   return (
     ORDER_STATUS[status] || {

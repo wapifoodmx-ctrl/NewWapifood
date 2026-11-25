@@ -104,8 +104,16 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] px-4 py-10">
-      <form onSubmit={onSubmit} className="card w-full max-w-md p-6 sm:p-8">
+    <div className="login-split">
+      <aside className="login-aside">
+        <p className="brand text-4xl">Wapifood</p>
+        <div>
+          <p className="text-3xl font-extrabold leading-tight">Punto de venta, cocina y menú.</p>
+          <p className="mt-3 text-lg text-[var(--ink-soft)]">Vendes, pasas la comanda y ves qué queda en bodega.</p>
+        </div>
+      </aside>
+      <div className="login-form-wrap">
+      <form id="contenido" onSubmit={onSubmit} className="card w-full max-w-md p-6 sm:p-8">
         <div className="flex items-center justify-between gap-3">
           <p className="brand text-3xl">Wapifood</p>
           <ThemeToggle />
@@ -196,6 +204,7 @@ export default function LoginPage() {
           Volver al inicio
         </Link>
       </form>
+      </div>
     </div>
   );
 }

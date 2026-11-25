@@ -590,24 +590,22 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories,
               {list.map((p) => (
                 <article
                   key={p.id}
-                  className={`border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4 ${
+                  className={`overflow-hidden rounded-[22px] border border-[var(--color-warm-stone)] bg-[var(--color-paper)] p-4 ${
                     p.active === false ? "opacity-60" : ""
                   }`}
                 >
                   <div className="flex gap-3">
                     {p.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.image_url} alt="" className="h-16 w-16 shrink-0 object-cover" />
+                      <img src={p.image_url} alt="" className="dish-thumb" />
                     ) : (
-                      <div className="grid h-16 w-16 shrink-0 place-items-center bg-[var(--color-parchment)] text-[10px] text-[var(--color-walnut)]">
-                        Sin foto
-                      </div>
+                      <div className="dish-thumb">Sin foto</div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-saffron-glow)]">
+                      <p className="text-sm font-bold text-[var(--ink-soft)]">
                         {catName(p.category_id)}
                       </p>
-                      <h3 className="truncate text-lg font-normal">{p.name}</h3>
+                      <h3 className="truncate text-lg font-extrabold">{p.name}</h3>
                       <p className="text-sm text-[var(--color-espresso)]">
                         {money(p.price)}
                         {(() => {
@@ -721,7 +719,7 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories,
             </label>
             {form.image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={form.image_url} alt="" className="mt-2 h-20 w-20 object-cover" />
+              <img src={form.image_url} alt="" className="dish-thumb mt-2" />
             ) : null}
             {editingId ? (
               <div className="mt-3">
@@ -733,7 +731,7 @@ export function CartaManager({ restaurantId, initialProducts, initialCategories,
                   {gallery.map((img) => (
                     <li key={img.id} className="relative">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={img.path} alt="" className="h-16 w-16 object-cover" />
+                      <img src={img.path} alt="" className="dish-thumb" />
                       <button type="button" className="mt-1 block text-[10px] font-semibold uppercase text-[var(--color-wine)]" onClick={() => removeGalleryPhoto(img.id)}>
                         Quitar
                       </button>

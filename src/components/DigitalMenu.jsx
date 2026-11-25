@@ -352,7 +352,7 @@ export function DigitalMenu({
           <div className="max-h-[92vh] w-full max-w-md overflow-y-auto border border-[var(--color-warm-stone)] bg-[var(--color-paper)] shadow-2xl">
             {detail.image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={detail.image_url} alt="" className="h-48 w-full object-cover" />
+              <img src={detail.image_url} alt="" className="dish-frame" />
             ) : null}
             <div className="p-5">
               <h2 className="text-2xl font-normal">{detail.name}</h2>

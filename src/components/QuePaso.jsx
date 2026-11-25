@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
 import { toast } from "@/components/ui/Toast";
 import { Icon } from "@/components/ui/Icon";
-import { startTour } from "@/components/tours/TourGuide";
 
 const STEPS = ["Qué pasó", "Platillos", "Dinero", "Revisar"];
 
@@ -19,11 +18,6 @@ export function QuePaso({ order, onDone }) {
   const [pay, setPay] = useState(order?.method === "tarjeta" ? "tarjeta" : order?.method === "transferencia" ? "mercadopago" : "efectivo");
   const [pin, setPin] = useState("");
 
-  useEffect(() => {
-    if (!open) return;
-    const timer = window.setTimeout(() => startTour("que-paso"), 400);
-    return () => window.clearTimeout(timer);
-  }, [open]);
   const [busy, setBusy] = useState(false);
   const paid = order?.status === "pagada";
 

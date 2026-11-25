@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { money } from "@/lib/format";
 import { extrasCharge, extrasForProduct, lineAmount } from "@/lib/extras";
-import { itemStatusMeta, statusMeta } from "@/lib/orderStatus";
+import { closeHint, itemStatusMeta, statusMeta } from "@/lib/orderStatus";
 import { ExtrasLines, ExtrasPicker, OmitPicker } from "@/components/ExtrasPicker";
 import { isMissingRelation } from "@/lib/schema";
 import { toast } from "@/components/ui/Toast";
@@ -746,6 +746,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
 
   const summary = (
     <div className="card p-4">
+      <div className="pos-scroll">
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           <h2 className="text-2xl">Cuenta</h2>
@@ -755,7 +756,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                 ? "Punto de venta"
                 : `Mesa ${activeTable.number}`
               : "Elige el punto de venta"}
-            {order ? ` · ${statusMeta(order.status).label}` : ""}
+            {order ? ` · ${statusMeta(order.status).label}. ${closeHint(order.status)}` : ""}
           </p>
         </div>
         <button type="button" className="btn-ghost px-3 lg:hidden" onClick={() => setCartOpen(false)}>
@@ -870,6 +871,18 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
           Aplicar
         </button>
       </div>
+      <div className="pos-more mt-3 grid gap-2">
+        <button type="button" className="btn-ghost" onClick={() => openPay(true)}>
+          Cobrar solo lo marcado
+        </button>
+        <QuePaso order={order} onDone={refresh} />
+        <MesaTools order={order} tables={floorTables} orders={orders} marked={chargeItems || []} onDone={refresh} />
+        <button type="button" className="btn-danger" onClick={cancelOrder}>
+          Cancelar cuenta
+        </button>
+      </div>
+      </div>
+      <div className="pos-charge">
       {subtotal !== total ? (
         <p className="mt-3 flex justify-between text-base text-[var(--ink-soft)]">
           <span>Subtotal</span><span>{money(subtotal)}</span>
@@ -886,14 +899,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
         <button type="button" data-tour="pos-cobrar" className="btn-lg btn-primary" onClick={() => openPay(false)}>
           Cobrar {money(total)}
         </button>
-        <button type="button" className="btn-ghost" onClick={() => openPay(true)}>
-          Cobrar solo lo marcado
-        </button>
-        <QuePaso order={order} onDone={refresh} />
-        <MesaTools order={order} tables={floorTables} orders={orders} marked={chargeItems || []} onDone={refresh} />
-        <button type="button" className="btn-danger" onClick={cancelOrder}>
-          Cancelar cuenta
-        </button>
+      </div>
       </div>
     </div>
   );
@@ -975,7 +981,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                     {activeTable?.channel_type === "caja" ? "Punto de venta" : `Mesa ${activeTable?.number}`}
                   </h2>
                   <p className="text-base text-[var(--ink-soft)]">
-                    {order ? statusMeta(order.status).label : "Sin cuenta"} · {itemCount} {itemCount === 1 ? "platillo" : "platillos"}
+                    {order ? `${statusMeta(order.status).label}. ${closeHint(order.status)}` : "Sin cuenta"} · {itemCount} {itemCount === 1 ? "platillo" : "platillos"}
                   </p>
                 </div>
               </div>
@@ -1014,7 +1020,7 @@ export function PosBoard({ restaurantId, tables: initialTables, products, catego
                         )}
                       </span>
                       <span className="pos-tile-body">
-                        <span className="pos-tile-cat" style={{ color }}>{catName(p.category_id)}</span>
+                        <span className="pos-tile-cat">{catName(p.category_id)}</span>
                         <span className="pos-tile-name">{p.name}</span>
                         <span className="pos-tile-price">{money(p.price)}</span>
                         {hasExtras ? <span className="pos-tile-extra">Con adicionales</span> : null}
