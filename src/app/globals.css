@@ -445,7 +445,12 @@ input[type="radio"] {
 }
 
 .wf-btn,
-.btn {
+.btn,
+.btn-primary,
+.btn-ghost,
+.btn-accent,
+.btn-danger,
+.btn-lg {
   min-height: var(--touch);
   border-radius: var(--radius-control);
   font-weight: 700;
@@ -492,6 +497,59 @@ input[type="radio"] {
 .btn:hover:not(:disabled),
 .btn-lg:hover:not(:disabled) {
   transform: translateY(-1px);
+}
+
+/* ponytail: fill uses theme tokens. Ceiling: circle grows from center, not the pointer. */
+.btn,
+.btn-primary,
+.btn-ghost,
+.btn-accent,
+.btn-danger,
+.btn-lg,
+.wf-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::after,
+.btn-primary::after,
+.btn-ghost::after,
+.btn-accent::after,
+.btn-danger::after,
+.btn-lg::after,
+.wf-btn::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 50%;
+  width: 140%;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: var(--primary-solid);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.btn:hover:not(:disabled)::after,
+.btn-primary:hover:not(:disabled)::after,
+.btn-ghost:hover:not(:disabled)::after,
+.btn-accent:hover:not(:disabled)::after,
+.btn-danger:hover:not(:disabled)::after,
+.btn-lg:hover:not(:disabled)::after,
+.wf-btn:hover:not(:disabled)::after {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.btn,
+.btn-primary,
+.btn-ghost,
+.btn-accent,
+.btn-danger,
+.btn-lg,
+.wf-btn {
+  z-index: 1;
 }
 
 .wf-input {

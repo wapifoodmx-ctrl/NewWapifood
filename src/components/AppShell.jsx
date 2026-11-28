@@ -11,7 +11,6 @@ import { HelpChat } from "@/components/HelpChat";
 import { Icon } from "@/components/ui/Icon";
 import { CommandPalette } from "@/components/CommandPalette";
 import { SideNav, useNavPrefs } from "@/components/SideNav";
-import { OriginButton } from "@/components/OriginButton";
 import { TourGuide, startTour } from "@/components/tours/TourGuide";
 
 export function AppShell({
@@ -137,22 +136,18 @@ export function AppShell({
                 </button>
               ) : null}
               {focus ? (
-                <div className="hidden lg:block">
-                  <OriginButton className="btn-ghost" onClick={() => router.push(home)}>
-                    Inicio
-                  </OriginButton>
-                </div>
+                <Link href={home} className="btn-ghost hidden h-12 items-center justify-center whitespace-nowrap px-4 text-center leading-none lg:inline-flex">
+                  Inicio
+                </Link>
               ) : null}
               <ThemeToggle className={focus ? "" : "lg:hidden"} />
-              <button type="button" className="btn-ghost hidden h-12 px-3 sm:inline-flex" onClick={() => startTour(undefined, { force: true })}>
+              <button type="button" className="btn-ghost hidden h-12 items-center justify-center whitespace-nowrap px-4 text-center leading-none sm:inline-flex" onClick={() => startTour(undefined, { force: true })}>
                 Ver guía
               </button>
               {focus ? (
-                <div className="hidden lg:block">
-                  <OriginButton className="btn-ghost" onClick={signOut}>
-                    Salir
-                  </OriginButton>
-                </div>
+                <button type="button" className="btn-ghost hidden h-12 items-center justify-center whitespace-nowrap px-4 text-center leading-none lg:inline-flex" onClick={signOut}>
+                  Salir
+                </button>
               ) : null}
             </div>
           </div>
